@@ -5,13 +5,14 @@ PY      := $(CURDIR)/.venv/bin/python
 PIP     := $(CURDIR)/.venv/bin/pip
 BACKEND ?= mock
 
-.PHONY: help setup test demo web gateway-setup gateway gateway-test
+.PHONY: help setup test demo web deck gateway-setup gateway gateway-test
 
 help:
 	@echo "make setup          create .venv and install dev deps"
 	@echo "make test           run the agent test suite"
 	@echo "make demo           run a scripted interview through the mock backend"
 	@echo "make web            run the landing page dev server"
+	@echo "make deck           rebuild the pitch deck into deck.html"
 	@echo "make gateway-setup  install the gateway's transport deps (aiortc, aiohttp)"
 	@echo "make gateway        run the WebRTC gateway (BACKEND=mock|gb10)"
 	@echo "make gateway-test   run the gateway test suite (no transport deps needed)"
@@ -45,6 +46,11 @@ redteam:
 
 web:
 	cd web && npm run dev
+
+# The pitch deck. Edit SLIDES in tools/build_deck.py, run this, open deck.html.
+# Arrow keys to move, N for speaker notes, F for fullscreen, print to PDF.
+deck:
+	$(PY) tools/build_deck.py deck.html
 
 # The gateway's transport deps are heavy (aiortc pulls PyAV); the agent and its
 # tests stay stdlib-only, so this is a separate, opt-in install. The gateway
