@@ -9,8 +9,8 @@ start. The phases are ordered so the cheapest disqualifying answers come first.
 TTS concurrently, at p95 mouth-to-ear under 800 ms, over real telephone audio?
 
 - Provision both candidate boxes, GB10 and RTX Pro 6000
-- Confirm current NVIDIA model identifiers and licenses from the live catalogs
-- Stand up Riva, benchmark ASR, LLM, and TTS alone and together
+- Confirm current model identifiers and licenses from the live catalogs
+- Stand up the speech runtime and benchmark it under a real audio load
 - Loop 8 kHz telephone-quality audio through end to end
 - Produce the per-stage latency histograms
 

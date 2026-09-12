@@ -26,22 +26,17 @@ with ASR and TTS running concurrently and competing for the same memory system.
 
 ## Model stack
 
-| Stage | Candidate | Notes |
-| --- | --- | --- |
-| ASR | NVIDIA Parakeet, streaming variant | Fast, strong English, well supported in Riva |
-| ASR alternative | NVIDIA Canary | Better on accented and multilingual speech, heavier |
-| Reasoning | Nemotron Nano class, roughly 9 to 12 B, FP8 | Small enough to decode fast, strong reasoning for its size |
-| Reasoning, offline scoring | Nemotron Super class, larger | Latency does not matter after the call ends |
-| TTS | NVIDIA Magpie TTS, streaming | Low time-to-first-audio, interruptible |
+We run a single full-duplex audio-to-audio speech model rather than a cascade of
+recognition, reasoning and synthesis. One model, one pass, one thing to operate, and
+none of the latency that the handoffs between three stages cost.
 
-NVIDIA's speech and Nemotron lineups move quickly and names change between releases.
-**Before writing any integration code, pull the current NGC and NeMo catalogs and confirm
-exact model identifiers, license terms, and whether a streaming checkpoint exists for
-each.** Do not build against a name from memory.
+Exact checkpoints, revisions and dependency pins are recorded in `SETUP.local.md`,
+which is untracked. They move fast enough that pinning them in a design document
+guarantees the document is wrong within a month.
 
-Riva gives us a serving layer for ASR and TTS with the streaming and barge-in plumbing
-already done. NeMo gives us the checkpoints and the fine-tuning path. Starting on Riva
-and dropping to raw NeMo only where Riva blocks us is the cheaper path.
+The cascade stays documented as a fallback: streaming recognition, a small local
+language model, streaming synthesis. Slower and more moving parts, but every component
+is independently replaceable.
 
 ## Why the reasoning model stays small
 

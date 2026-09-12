@@ -43,3 +43,8 @@ build/
 *.log
 .idea/
 .vscode/
+
+# Local third-party setup notes, deliberately untracked
+SETUP.local.md
+voicechat-spark/
+voicechat-parent/

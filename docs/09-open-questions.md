@@ -16,9 +16,10 @@ Decisions owed before or during Phase 0. Each one blocks something.
 ## Technical
 
 5. **Which Dell box?** Blocked on Phase 0 benchmarks.
-6. **Riva or raw NeMo?** Riva is faster to a working system. NeMo gives control over
-   endpointing and streaming behavior. Probably Riva first, but confirm Riva exposes the
-   barge-in control we need before committing.
+6. **Vendor serving layer, or drive the checkpoints ourselves?** The serving layer is
+   faster to a working system. Driving the checkpoints directly gives control over
+   endpointing and streaming behaviour. Probably the serving layer first, but confirm it
+   exposes the barge-in control we need before committing.
 7. **How many concurrent calls per box?** Drives the unit economics and the sales pitch.
 8. **Is a shared code pad in scope?** A read-only snippet the candidate discusses would
    deepen the technical probe considerably. It also adds a web surface, a second

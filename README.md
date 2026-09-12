@@ -1,45 +1,107 @@
 # zeg
 
-An autonomous voice interviewer that conducts technical screening calls for software
-engineering roles. It runs entirely on a single Dell workstation on the customer's own
-premises: speech recognition, the reasoning model, and speech synthesis are all local,
-so candidate audio never leaves the building.
+A local AI interview agent. It joins a call, conducts a technical screening interview
+for a software engineering role, and outputs a 1-10 assessment with quoted evidence.
 
-Each call is capped at 15 minutes and produces a structured, rubric-scored report with
-evidence citations back into the transcript.
+Everything runs on one Dell box. Candidate audio never leaves the device, which is the
+whole point: no third-party processor, no data-processing review, no per-interview fee.
 
-**Status: planning only.** No code yet. Nothing in this repo is committed until the
-design below is agreed.
+It gathers evidence and recommends. A human makes the hiring decision.
 
-## Why on-premises
+**Start here: [plan.md](plan.md).** Background detail lives in [docs/](docs/).
 
-| Concern | Cloud voice API | zeg |
-| --- | --- | --- |
-| Candidate audio leaves the org | Yes | No |
-| Per-minute cost at 10k screens/yr | Meters forever | Fixed hardware cost |
-| Round-trip latency floor | Internet RTT included | LAN only |
-| Vendor model swap under you | Common | Pinned, versioned locally |
-| GDPR/biometric data residency | Contractual | Physical |
+## Barebone test, on your laptop, right now
 
-## Documents
+No GPU, no model download, no dependencies. This runs a scripted interview through a
+mock backend so you can see the shape of a call and work on everything above the model.
 
-| Doc | What it settles |
-| --- | --- |
-| [Vision and scope](docs/00-vision-and-scope.md) | Who it is for, what it will not do |
-| [Architecture](docs/01-architecture.md) | Components and the path audio takes |
-| [Hardware and models](docs/02-hardware-and-models.md) | Which Dell box, which Nemotron, sizing |
-| [Latency budget](docs/03-latency-budget.md) | Where the 800 ms goes |
-| [Interview design](docs/04-interview-design.md) | The 15-minute structure and question bank |
-| [Scoring and reports](docs/05-scoring-and-reports.md) | Rubric, calibration, output format |
-| [Compliance](docs/06-compliance.md) | Hiring law, consent, bias audit |
-| [Roadmap](docs/07-roadmap.md) | Phases and what each one proves |
-| [Risks](docs/08-risks.md) | What is most likely to kill this |
-| [Open questions](docs/09-open-questions.md) | Decisions still owed |
+```bash
+git clone https://github.com/zero-abd/zeg.git && cd zeg
+python3 -m venv .venv && .venv/bin/pip install pytest
+.venv/bin/python -m zeg.cli
+```
+
+If `zeg` is not importable, run it straight from the source tree:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m zeg.cli
+```
+
+You get a timestamped transcript and a summary:
+
+```
+[00:00] agent  Hi, thanks for making the time. Before we start, two things you
+               should know. I am an AI interviewer, not a person...
+[00:18] caller yes that is fine
+[00:18] agent  Thanks. Tell me about the hardest bug you shipped a fix for this year.
+[00:28] caller a race condition in our payment reconciler
+[00:28] agent  What did you personally do there, as opposed to the rest of the team?
+...
+backend            mock
+call duration      64.7 s
+agent speech       40.7 s
+interruptions      1
+reply latency      median 300 ms, p95 300 ms
+```
+
+Flags:
+
+```bash
+.venv/bin/python -m zeg.cli --quiet            # summary only, no transcript
+.venv/bin/python -m zeg.cli --backend gb10     # real model, needs the box
+```
+
+Run the tests:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+### What the mock is and is not
+
+It imitates the *shape* of the real model: full duplex, partial then final transcripts,
+barge-in, streamed audio at 22.05 kHz. Replies come from a fixed script and the audio is
+a 220 Hz tone, not speech.
+
+The clock is virtual. Time advances by the duration of each frame pushed, not by wall
+clock, so a 15-minute call replays in under a second and the numbers are identical every
+run. That makes it a regression test. **The latency figure is frame accounting, not a
+measurement of anything.** Real latency needs the box.
+
+## Real test, on the Dell box
+
+The full pipeline needs the box, the GPU and the weights. Bring-up commands and the
+weight download live in `SETUP.local.md`, which is untracked.
+
+Once the speech runtime is up, point zeg at it:
+
+```bash
+.venv/bin/python -m zeg.cli --backend gb10
+```
+
+Wear headphones. A speaker and an open mic on the same machine produce a feedback loop
+that will eat an hour before anyone works out what is happening.
+
+## Layout
+
+```
+plan.md                 the end-to-end plan, read this first
+docs/                   scope, architecture, latency, rubric, compliance, risks
+src/zeg/
+  audio.py              PCM16 frames, resampling, RMS. stdlib only.
+  backends/base.py      full-duplex backend contract
+  backends/mock.py      runs anywhere, no GPU
+  conversation.py       harness, virtual clock, latency accounting
+  prompts.py            greeting, consent, system prompt
+  cli.py                zeg-converse
+tests/                  24 tests, no GPU needed
+web/                    landing page
+```
 
 ## Team
 
-| Who | Focus |
+| Who | Track |
 | --- | --- |
-| zero-abd | Owner |
-| Tpl52-tech | Invited, write access |
-| egs89-arch | Invited, write access |
+| Abdullah (zero-abd) | Plans and artifacts, coordination |
+| Hyunsuh (Tpl52-tech) | Model running locally, mic in, speaker out |
+| Eunice (egs89-arch) | Call joining, video and audio ingestion |
