@@ -45,6 +45,17 @@
       <label class="vid"><input type="checkbox" id="video" /> send video</label>
       <span id="status">Ready.</span>
     </footer>
+    <div id="assessment" hidden style="padding:18px 22px;border-top:1px solid #30363d;">
+      <div style="font-weight:600;margin-bottom:8px;">Screening assessment</div>
+      <div style="font-size:34px;font-weight:700;color:#3fb950;">7<span style="font-size:16px;color:#8b949e;font-weight:500;"> / 10</span></div>
+      <ul style="color:#c9d1d9;font-size:13px;margin:10px 0 0;padding-left:18px;line-height:1.7;">
+        <li>Debugging: walked through a real race-condition fix with concrete before/after throughput.</li>
+        <li>Ownership: clear on what they personally did versus the rest of the team.</li>
+        <li>Tradeoffs: named what was given up (strict cross-shard ordering) and the fallout.</li>
+        <li>Recommendation: advance to a system-design round.</li>
+      </ul>
+      <div style="color:#6e7681;font-size:11px;margin-top:10px;">Prepared demo assessment. A human recruiter makes the decision.</div>
+    </div>
   </div>
   <audio id="remote" autoplay></audio>
 
@@ -141,7 +152,12 @@
     $("leave").disabled = true;
   }
 
-  function leave() { cleanup(); setStatus("Interview ended."); $("prompt").textContent = "Thanks — the interview has ended."; }
+  function leave() {
+    cleanup();
+    setStatus("Interview ended.");
+    $("prompt").textContent = "Thanks — the interview has ended.";
+    $("assessment").hidden = false;
+  }
 
   $("join").addEventListener("click", join);
   $("leave").addEventListener("click", leave);
