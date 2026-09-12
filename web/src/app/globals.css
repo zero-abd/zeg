@@ -50,8 +50,8 @@ body {
 .dot-bg {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+  background-size: 26px 26px;
   mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, black 30%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, black 30%, transparent 100%);
   pointer-events: none;
@@ -104,7 +104,7 @@ body {
 
 /* Live waveform bars. Distinct per-bar delay is set inline. */
 @keyframes bar-speak {
-  0%, 100% { transform: scaleY(0.18); }
+  0%, 100% { transform: scaleY(0.32); }
   50% { transform: scaleY(1); }
 }
 

@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 import { GitHubIcon, PrimaryButton, REPO_URL, SecondaryButton } from "./ui";
 
 /* Fixed, not random: the server and the client have to agree on the markup. */
-const AGENT_BARS = [0.4, 0.75, 0.35, 0.9, 0.55, 0.7, 0.3, 0.85, 0.45, 0.65, 0.95, 0.4, 0.6, 0.8, 0.35, 0.7, 0.5, 0.9, 0.3, 0.6, 0.75, 0.45, 0.85, 0.4];
-const CANDIDATE_BARS = [0.6, 0.3, 0.8, 0.45, 0.7, 0.35, 0.9, 0.5, 0.65, 0.4, 0.55, 0.85, 0.3, 0.75, 0.6, 0.4, 0.8, 0.35, 0.7, 0.5, 0.45, 0.9, 0.55, 0.65];
+const AGENT_BARS = [0.34, 0.72, 0.45, 0.95, 0.55, 0.38, 0.8, 0.62, 0.3, 0.88, 0.5, 0.7, 0.42, 0.92, 0.58, 0.35, 0.76, 0.48, 0.85, 0.4, 0.66, 0.3, 0.9, 0.52, 0.74, 0.36, 0.6, 0.82, 0.44, 0.96, 0.5, 0.32, 0.68, 0.56, 0.86, 0.4, 0.72, 0.46, 0.78, 0.34, 0.62, 0.9, 0.42, 0.54];
+const CANDIDATE_BARS = [0.58, 0.32, 0.8, 0.46, 0.68, 0.36, 0.9, 0.5, 0.62, 0.4, 0.54, 0.84, 0.3, 0.74, 0.6, 0.42, 0.78, 0.35, 0.7, 0.48, 0.44, 0.92, 0.52, 0.64, 0.38, 0.86, 0.56, 0.33, 0.76, 0.5, 0.66, 0.4, 0.88, 0.46, 0.6, 0.34, 0.82, 0.54, 0.7, 0.42, 0.94, 0.5, 0.36, 0.72];
 
 /* Every one of these is a line the interview prompt actually tells it to ask. */
 const PROBES = [
@@ -17,13 +17,13 @@ const PROBES = [
 ];
 
 function Bars({ values, tone }: { values: number[]; tone: "agent" | "candidate" }) {
-    const color = tone === "agent" ? "bg-[#2dd4bf]" : "bg-[rgba(255,255,255,0.45)]";
+    const color = tone === "agent" ? "bg-[#2dd4bf]" : "bg-[rgba(255,255,255,0.4)]";
     return (
-        <div className="flex items-center gap-[3px] h-9 flex-1" aria-hidden="true">
+        <div className="flex items-center gap-[2px] h-9 flex-1 overflow-hidden" aria-hidden="true">
             {values.map((v, i) => (
                 <span
                     key={i}
-                    className={`bar-speak flex-1 min-w-[2px] rounded-full ${color}`}
+                    className={`bar-speak flex-1 min-w-[2px] rounded-[1.5px] ${color}`}
                     style={{
                         height: `${Math.round(v * 100)}%`,
                         animationDelay: `${((i * (tone === "agent" ? 97 : 131)) % 1100) / 1000}s`,

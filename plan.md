@@ -13,6 +13,40 @@ Written 2026-09-12 from the team meeting.
 Start the model download. It is 54 GiB and everything is blocked behind it. Commands in
 `SETUP.local.md`. Hyunsuh owns this; confirm it finished before 8 AM.
 
+## Getting started
+
+Clone it and get a call running in two commands. No GPU, no weights, nothing to
+install beyond a virtualenv.
+
+```bash
+git clone https://github.com/zero-abd/zeg.git && cd zeg
+make setup
+make demo
+```
+
+`make demo` plays a full scripted screening call through a mock model and prints a
+timestamped transcript with latency. If that works, the repo works.
+
+```bash
+make test    # 24 tests
+make web     # landing page dev server
+```
+
+Then read [ONBOARDING.md](ONBOARDING.md). It names the files to read in order and
+points each person at their track. The short version: everything meets at
+`services/agent/zeg/backends/base.py`, and `mock.py` next to it is that contract
+implemented without a model, so it is the spec by example.
+
+On the box, weights and bring-up are in `SETUP.local.md`, which is untracked. Start
+that download before anything else; it is 12.6 GiB and everything is behind it.
+
+| Track | Directory | Owner |
+| --- | --- | --- |
+| Interview brain | `services/agent/` | Shared |
+| Model on the box | `services/speech/` | Hyunsuh |
+| Call joining, A/V | `services/gateway/` | Eunice |
+| Landing page | `web/` | Abdullah |
+
 ## Timeline
 
 | When | What |

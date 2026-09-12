@@ -28,8 +28,8 @@ const steps = [
 
 function Connector() {
     return (
-        <div className="shrink-0 w-[44px] flex items-center justify-center max-xl:w-full max-xl:h-[44px]" aria-hidden="true">
-            <svg viewBox="0 0 44 24" fill="none" className="w-[44px] h-6 max-xl:rotate-90">
+        <div className="shrink-0 w-[40px] hidden xl:flex items-center justify-center" aria-hidden="true">
+            <svg viewBox="0 0 44 24" fill="none" className="w-[40px] h-6">
                 <path d="M0 12h38M33 6l6 6-6 6" stroke="url(#stepGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <defs>
                     <linearGradient id="stepGrad" x1="0" y1="12" x2="44" y2="12">
@@ -53,7 +53,7 @@ export default function HowItWorks() {
                     lede="One candidate at a time per box, which is also the unit you buy more of."
                 />
 
-                <div className="flex flex-col xl:flex-row items-center justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 xl:flex xl:flex-row xl:items-stretch xl:gap-0 xl:justify-center">
                     {steps.map((step, i) => (
                         <div key={step.num} className="contents">
                             <motion.div
@@ -62,7 +62,7 @@ export default function HowItWorks() {
                                 viewport={{ once: true, margin: "-40px" }}
                                 transition={{ duration: 0.5, delay: i * 0.12, ease: "easeOut" }}
                                 whileHover={{ y: -6, transition: { duration: 0.25 } }}
-                                className="glass-card rounded-2xl p-8 flex-1 max-w-[320px] w-full"
+                                className="glass-card rounded-2xl p-7 w-full xl:flex-1 xl:max-w-[320px]"
                             >
                                 <div className="text-5xl font-[900] gradient-text opacity-30 mb-4 leading-none">
                                     {step.num}
