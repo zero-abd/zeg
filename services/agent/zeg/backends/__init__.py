@@ -38,6 +38,10 @@ def build_backend(config: Optional[BackendConfig] = None) -> VoiceBackend:
     config = config or BackendConfig()
     if config.kind == "mock":
         return MockBackend(audio=config.audio)
+    if config.kind == "tts":
+        from .tts import TTSBackend  # noqa: WPS433 - lazy, shells out to a local TTS engine
+
+        return TTSBackend(audio=config.audio)
     if config.kind == "gb10":
         from .gb10 import GB10Backend  # noqa: WPS433 - deliberate lazy import
 

@@ -139,7 +139,7 @@ def run(argv=None) -> None:
     ap = argparse.ArgumentParser(prog="zeg-gateway")
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=8080)
-    ap.add_argument("--backend", default="mock", choices=["mock", "gb10"])
+    ap.add_argument("--backend", default="mock", choices=["mock", "tts", "gb10"])
     args = ap.parse_args(argv)
     log.info("gateway on http://%s:%d  (backend=%s)", args.host, args.port, args.backend)
     web.run_app(build_app(backend_kind=args.backend), host=args.host, port=args.port)
