@@ -21,8 +21,15 @@ setup:
 	$(CURDIR)/.venv/bin/pip install -q pytest
 	@echo "ready. try: make demo"
 
-test:
+# Both tracks, because the gateway imports the agent package and a change on either
+# side can break the other. Running only your own half is how that gets found late.
+test: test-agent test-gateway
+
+test-agent:
 	cd $(AGENT) && $(PY) -m pytest -q
+
+test-gateway:
+	cd $(GATEWAY) && PYTHONPATH=.:../agent $(PY) -m pytest -q
 
 demo:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -m zeg.cli
