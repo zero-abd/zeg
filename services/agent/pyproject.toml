@@ -5,7 +5,7 @@ description = "zeg interview agent: conversation control, rubric, scoring"
 requires-python = ">=3.9"
 dependencies = []
 
-# Real inference on the GB10 box. Pins verified 2026-09-12, see docs/10-model-pinning.md.
+# Real inference on the GB10 box. Exact pins live in SETUP.local.md, untracked.
 # Deliberately not installed on a dev laptop; the mock backend has no dependencies.
 [project.optional-dependencies]
 gb10 = [

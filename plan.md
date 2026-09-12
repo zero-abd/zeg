@@ -175,17 +175,26 @@ problem.
 | Mock backend, no GPU needed | Done, `src/zeg/backends/mock.py` |
 | Conversation harness, 24 tests | Done, `src/zeg/conversation.py` |
 | Interview prompt and consent text | Done, `src/zeg/prompts.py` |
-| Real backend | In progress |
+| Real backend | Written, untested on hardware |
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
-| Serving runtime implementation | In progress |
+| Serving runtime implementation | Written, 100 tests, needs the box |
 | Scoring pass and report | Not started |
-| Landing page | In progress |
+| Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**Serving runtime implemented.** `services/agent/zeg/runtime/` is the model-side
+process: wire protocol, session lifecycle, the frame loop with explicit budget
+accounting, and the audio codec. `backends/gb10.py` is the client half. The client owns
+turn boundaries and the server owns continuous model state, because the model's own
+endpointer is tuned for ordinary conversational pauses and an interview is precisely
+where a long pause means thinking rather than finishing. Endpointing is therefore an
+interview design decision, not a model default. 100 new tests, all against a fake
+transport. The model wrapper has three seams that need the box.
 
 **Interview engine and question block list.** `services/agent/zeg/engine.py` holds the
 plan, the wall clock, what the candidate claimed and which rubric dimensions still
