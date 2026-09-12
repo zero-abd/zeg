@@ -13,7 +13,7 @@ That plays a full scripted screening call through a mock model and prints a
 transcript. No GPU, no weights, no waiting. If that works, the whole repo works.
 
 ```bash
-make test    # 24 tests
+make test    # 432 tests
 make web     # landing page dev server
 ```
 
