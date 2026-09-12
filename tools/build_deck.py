@@ -155,18 +155,19 @@ SLIDES = [
         "eyebrow": "Cost",
         "headline": "Rent forever, or buy once.",
         "per_interview": 10,
-        "box": 5000,
+        "box": 10000,
         "volumes": [250, 500, 1000, 2500],
         "facts": [
             ("~$10", "what one hosted interview costs. Every time."),
-            ("~$5,000", "one machine, once. Still yours next year."),
-            ("500", "interviews to break even. Then it is electricity."),
+            ("~$10,000", "one machine, once. Still yours next year."),
+            ("1,000", "interviews to break even. Then it is electricity."),
         ],
         "foot": "Our own estimate, not a quote from anyone. Put your numbers in; "
                 "the crossover moves, the shape does not.",
         "notes": "Hosted screening is priced per interview, so the bill grows with exactly the "
-                 "thing you want more of. A machine is bought once. Around 500 interviews it "
-                 "has paid for itself; after that the next one costs electricity.",
+                 "thing you want more of. A team doing real hiring pays about $15K a month, "
+                 "forever. A machine is bought once. Around a thousand interviews it has paid "
+                 "for itself; after that the next one costs electricity.",
     },
     {
         "kind": "demo",
