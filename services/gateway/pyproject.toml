@@ -1,0 +1,37 @@
+[project]
+name = "zeg-gateway"
+version = "0.0.1"
+description = "zeg gateway: WebRTC call joining, candidate A/V ingestion into a VoiceSession"
+requires-python = ">=3.9"
+# The transport has real dependencies; the agent (zeg) stays stdlib-only and is
+# reached over PYTHONPATH, not installed here. See gateway/__init__.py.
+dependencies = [
+  "aiortc>=1.6",
+  "aiohttp>=3.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+# Stretch only: provisioning a real Google Meet link (tools/meet_provision.py).
+# The browser client is the media path; Meet is not. See services/gateway/README.md.
+meet = [
+  "google-api-python-client",
+  "google-auth-httplib2",
+  "google-auth-oauthlib",
+]
+
+[project.scripts]
+zeg-gateway = "gateway.server:run"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gateway*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests import both gateway (.) and the agent (../agent) straight from source.
+pythonpath = [".", "../agent"]
