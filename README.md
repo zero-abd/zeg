@@ -3,6 +3,16 @@
 A local AI interview agent. It joins a call, conducts a technical screening interview
 for a software engineering role, and outputs a 1-10 assessment with quoted evidence.
 
+## Watch the demo, two minutes
+
+[![Watch the two-minute demo](docs/demo-poster.png)](https://github.com/zero-abd/zeg/blob/main/docs/zeg-demo.mp4)
+
+The problem, a real screening call end to end, and the report it produces.
+Plays in the browser: **[docs/zeg-demo.mp4](https://github.com/zero-abd/zeg/blob/main/docs/zeg-demo.mp4)**.
+
+The slides on their own are [`deck.html`](deck.html) — clone and open it, or run
+`make deck` to rebuild it from [`tools/build_deck.py`](tools/build_deck.py).
+
 Everything runs on one Dell box. Candidate audio never leaves the device, which is the
 whole point: no third-party processor, no data-processing review, no per-interview fee.
 
@@ -41,7 +51,7 @@ reply latency      median 300 ms, p95 300 ms
 ```
 
 ```bash
-make test    # 24 tests, no GPU needed
+make test    # 432 tests, no GPU needed
 make web     # landing page dev server
 ```
 
@@ -83,7 +93,7 @@ services/
     zeg/backends/mock.py    that contract, no GPU needed
     zeg/conversation.py     how a call is driven
     zeg/prompts.py          greeting, consent, interview prompt
-    tests/                  24 tests
+    tests/                  423 tests
   speech/               model serving on the box
   gateway/              call joining, audio and video
 web/                    landing page
