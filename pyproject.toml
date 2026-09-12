@@ -33,3 +33,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Tests import zeg straight from src, so no install step is needed to run them.
+pythonpath = ["src"]
