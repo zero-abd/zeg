@@ -58,7 +58,7 @@ that download before anything else; it is 12.6 GiB and everything is behind it.
 
 ## 1. Product
 
-SMBs cannot afford $10 per interview from the incumbents. A $5K box amortises against
+SMBs cannot afford $10 per interview from the incumbents. A $10K box amortises against
 roughly $15K a month of SaaS. The differentiator is not the AI, it is that candidate
 audio stays on the device, which removes the third-party data-processing problem from
 the customer's compliance review entirely.

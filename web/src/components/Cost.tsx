@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { SectionHeading } from "./ui";
 
 const PER_INTERVIEW = 10;
-const BOX = 5000;
+const BOX = 10000;
 
 const volumes = [250, 500, 1000, 2500];
 const MAX = Math.max(...volumes) * PER_INTERVIEW;
@@ -81,8 +81,8 @@ function Bars() {
 
 const facts = [
     { k: "~$10", v: "roughly what a hosted screening interview costs, per interview, every interview" },
-    { k: "~$5,000", v: "one workstation, once, and it is still yours next year" },
-    { k: "500", v: "interviews to break even; after that the marginal cost is electricity" },
+    { k: "~$10,000", v: "one workstation, once, and it is still yours next year" },
+    { k: "1,000", v: "interviews to break even; after that the marginal cost is electricity" },
 ];
 
 export default function Cost() {
@@ -134,7 +134,7 @@ export default function Cost() {
                     className="mt-6 text-[12.5px] text-[rgba(255,255,255,0.4)] leading-relaxed max-w-[760px]"
                 >
                     Our own arithmetic, not a quote from anyone. It assumes ten dollars an interview and a
-                    five-thousand-dollar machine, and it ignores the electricity and the hours someone on your side
+                    ten-thousand-dollar machine, and it ignores the electricity and the hours someone on your side
                     spends running it. Put your own two numbers in; the crossover moves, the shape does not.
                 </motion.p>
             </div>

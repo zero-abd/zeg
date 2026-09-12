@@ -62,10 +62,10 @@ what it cost us.
 
 Hosted screening is priced per interview, so the bill grows with exactly the activity the
 customer is trying to increase. A company that hires harder pays more for the privilege,
-forever. A box is bought once, and after roughly five hundred interviews the marginal
+forever. A box is bought once, and after roughly a thousand interviews the marginal
 cost of the next one is electricity.
 
-Our arithmetic is ten dollars an interview against a five-thousand-dollar machine, which
+Our arithmetic is ten dollars an interview against a ten-thousand-dollar machine, which
 is our own estimate and not a quote from anyone. Put different numbers in and the
 crossover moves; the shape does not, and the shape is the argument.
 
