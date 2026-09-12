@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>zeg Interview</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px; background: #0d1117; color: #e6edf3;
+    font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  .card { width: 100%; max-width: 620px; background: #161b22; border: 1px solid #30363d; border-radius: 16px; overflow: hidden; }
+  header { padding: 18px 22px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; flex: 1; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #6e7681; }
+  .dot.live { background: #3fb950; box-shadow: 0 0 0 4px rgba(63,185,80,.18); }
+  select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 7px; padding: 5px 8px; font: inherit; font-size: 12px; }
+  .interviewer { aspect-ratio: 16/9; background: radial-gradient(120% 120% at 50% 30%, #1f6feb22, #161b22);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0 24px; }
+  .avatar { width: 96px; height: 96px; border-radius: 50%; background: #1f6feb; display: grid; place-items: center; font-size: 42px; transition: box-shadow .2s, transform .2s; }
+  .avatar.speaking { box-shadow: 0 0 0 8px rgba(31,111,235,.25); transform: scale(1.04); }
+  #say { margin: 0; color: #e6edf3; font-size: 15px; text-align: center; min-height: 44px; }
+  .listening { display: flex; align-items: center; gap: 8px; color: #8b949e; font-size: 13px; height: 18px; }
+  .listening[hidden] { display: none; }
+  .listening .pulse { width: 9px; height: 9px; border-radius: 50%; background: #3fb950; animation: lpulse 1.4s ease-in-out infinite; }
+  @keyframes lpulse { 0%,100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+  .listening .dots::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: ldots 1.6s steps(1,end) infinite; }
+  @keyframes ldots { 0%{content:"";} 25%{content:".";} 50%{content:"..";} 75%{content:"...";} }
+  footer { padding: 16px 22px; border-top: 1px solid #30363d; display: flex; gap: 10px; align-items: center; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 9px; padding: 10px 18px; cursor: pointer; color: #fff; background: #238636; }
+  button:hover { background: #2ea043; }
+  button:disabled { opacity: .45; cursor: default; }
+  #hint { color: #6e7681; font-size: 12px; margin-left: auto; }
+  #notes { padding: 12px 22px; border-top: 1px dashed #30363d; color: #d29922; font-size: 13px; background: #1c1a10; }
+  #notes[hidden] { display: none; }
+  #assessment { padding: 18px 22px; border-top: 1px solid #30363d; }
+  #assessment[hidden] { display: none; }
+  #assessment .score { font-size: 34px; font-weight: 700; color: #3fb950; }
+  #assessment .score span { font-size: 16px; color: #8b949e; font-weight: 500; }
+  #assessment ul { color: #c9d1d9; font-size: 13px; margin: 10px 0 0; padding-left: 18px; line-height: 1.7; }
+  #assessment .fine { color: #6e7681; font-size: 11px; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <span class="dot" id="dot"></span>
+      <h1>zeg Interview</h1>
+      <select id="voice" title="voice"></select>
+    </header>
+    <div class="interviewer">
+      <div class="avatar" id="avatar">🤖</div>
+      <p id="say">Click Begin. The interviewer discloses it is an AI, asks for recording consent, then runs a short screening.</p>
+      <div class="listening" id="listening" hidden><span class="pulse"></span> Listening<span class="dots"></span></div>
+    </div>
+    <footer>
+      <button id="begin">Begin</button>
+      <span id="hint">press <b>space</b> for the next question · <b>n</b> for presenter notes</span>
+    </footer>
+    <div id="notes" hidden></div>
+    <div id="assessment" hidden>
+      <div style="font-weight:600;margin-bottom:8px;">Screening assessment</div>
+      <div class="score">7<span> / 10</span></div>
+      <ul>
+        <li>Debugging: walked through a real race-condition fix with concrete before/after throughput.</li>
+        <li>Ownership: clear on what they personally did versus the rest of the team.</li>
+        <li>Tradeoffs: named what was given up (strict cross-shard ordering) and the fallout.</li>
+        <li>Recommendation: advance to a system-design round.</li>
+      </ul>
+      <div class="fine">Prepared demo assessment. A human recruiter makes the decision.</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  // Agent line + the answer the presenter should give after it (shown via 'n').
+  const LINES = [
+    { q: "Hi, thanks for making the time. Before we start, two things you should know. I am an AI interviewer, not a person. And this call is recorded so a human reviewer can go through it afterwards. Is that okay with you?", a: "You say: “Yes, that's fine.”" },
+    { q: "Thanks. Tell me about the hardest bug you shipped a fix for this year.", a: "You say: “A race condition in our payment reconciler.”" },
+    { q: "What did you personally do there, as opposed to the rest of the team?", a: "You say: “I wrote the fix and the repro harness.”" },
+    { q: "Do you remember roughly what the throughput was before and after?", a: "You say: “About twelve hundred a second before, forty thousand after.”" },
+    { q: "What did you give up to get that? Every fix costs something.", a: "You say: “We gave up strict ordering across shards.”" },
+    { q: "Last one. What broke afterwards that you did not expect?", a: "You say: “A downstream report started double-counting.”" },
+    { q: "That is my time. Thanks for talking me through it.", a: "" },
+  ];
+  const AUTO_ADVANCE_MS = 9000;   // self-drives if untouched; space advances now
+
+  let idx = -1;
+  let voices = [];
+  let notesOn = false;
+  let autoTimer = null;
+
+  // ---- voice picker (prefer a natural-sounding English voice) --------------
+  const PREFERRED = ["Samantha", "Google US English", "Karen", "Daniel", "Serena", "Moira", "Alex", "Microsoft Aria Online (Natural)"];
+  function loadVoices() {
+    voices = speechSynthesis.getVoices().filter(v => /^en(-|_|$)/i.test(v.lang));
+    if (!voices.length) voices = speechSynthesis.getVoices();
+    const sel = $("voice");
+    sel.innerHTML = "";
+    voices.forEach((v, i) => {
+      const o = document.createElement("option");
+      o.value = i; o.textContent = v.name.replace(/\s*\(.*\)/, "") + (v.localService ? "" : " ☁");
+      sel.appendChild(o);
+    });
+    let pick = 0;
+    for (const name of PREFERRED) {
+      const j = voices.findIndex(v => v.name === name);
+      if (j >= 0) { pick = j; break; }
+    }
+    sel.value = pick;
+  }
+  loadVoices();
+  if (typeof speechSynthesis !== "undefined") speechSynthesis.onvoiceschanged = loadVoices;
+
+  // ---- sequencing (onend-driven: a line always finishes before the next) ---
+  function speak(i) {
+    idx = i;
+    clearTimeout(autoTimer);
+    $("listening").hidden = true;
+    $("notes").hidden = true;
+    $("avatar").classList.add("speaking");
+    $("dot").classList.add("live");
+    $("say").textContent = LINES[i].q;
+    renderNotes();
+
+    const u = new SpeechSynthesisUtterance(LINES[i].q);
+    const v = voices[$("voice").value];
+    if (v) u.voice = v;
+    u.rate = 1.0; u.pitch = 1.0;
+    u.onend = () => {
+      $("avatar").classList.remove("speaking");
+      if (i >= LINES.length - 1) { finish(); return; }
+      $("listening").hidden = false;
+      $("say").textContent = "";
+      renderNotes();
+      autoTimer = setTimeout(() => speak(i + 1), AUTO_ADVANCE_MS);
+    };
+    speechSynthesis.cancel();     // clear any queued speech, then speak this one
+    speechSynthesis.speak(u);
+  }
+
+  function finish() {
+    clearTimeout(autoTimer);
+    $("listening").hidden = true;
+    $("notes").hidden = true;
+    $("dot").classList.remove("live");
+    $("say").textContent = "Interview complete.";
+    $("assessment").hidden = false;
+    $("begin").disabled = false;
+    $("begin").textContent = "Restart";
+  }
+
+  function renderNotes() {
+    const note = idx >= 0 ? LINES[idx].a : "";
+    if (notesOn && note) { $("notes").textContent = note; $("notes").hidden = false; }
+    else { $("notes").hidden = true; }
+  }
+
+  function begin() {
+    $("assessment").hidden = true;
+    $("begin").disabled = true;
+    $("begin").textContent = "Running…";
+    speak(0);
+  }
+
+  // ---- controls ------------------------------------------------------------
+  $("begin").addEventListener("click", begin);
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (idx >= 0 && idx < LINES.length - 1 && $("listening").hidden === false) speak(idx + 1);
+    } else if (e.key === "n") {
+      notesOn = !notesOn; renderNotes();
+    }
+  });
+})();
+</script>
+</body>
+</html>
