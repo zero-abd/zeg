@@ -30,10 +30,10 @@ function Bars() {
                             </span>
                             <span className="text-[12px] font-mono text-[rgba(255,255,255,0.35)]">
                                 {saas > BOX
-                                    ? money(saas - BOX) + " more"
+                                    ? "zeg saves " + money(saas - BOX)
                                     : saas === BOX
                                       ? "break even"
-                                      : money(BOX - saas) + " less"}
+                                      : "zeg costs " + money(BOX - saas) + " more"}
                             </span>
                         </div>
 

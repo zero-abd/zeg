@@ -50,7 +50,7 @@ body {
 .dot-bg {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.19) 1px, transparent 1px);
   background-size: 26px 26px;
   mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, black 30%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, black 30%, transparent 100%);
