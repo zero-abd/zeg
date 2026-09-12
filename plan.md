@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**One backend is playback, not a call.** The speaking backend added for the demo never
+reports that the candidate said anything, so with it in place consent is never resolved,
+no probe is issued and no rollover can fire. That is a fine thing for a canned demo to
+be and a dangerous thing to mistake for a screening call. If a judge asks whether the
+demo took consent, the honest answer is that the disclosure was spoken and the answer
+was never processed. Tests now state the difference between the two backends explicitly.
+
 **The consent gate, red-teamed.** `make consent` fires 32 answers at the gate that
 decides whether a call happens at all. Its two failure directions are not equally bad: a
 false yes records someone who declined, a false no ends the interview for someone who
