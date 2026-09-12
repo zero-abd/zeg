@@ -187,11 +187,29 @@ problem.
 | Scoring pass and report | Done, 47 tests, model-free and model-backed judges |
 | Eval suite and agreement instrument | Done, 16 tests, `make evals` |
 | Matched-pair bias evals | Done, 18 tests, `make bias` |
+| Block-list red team | Done, 51 tests, `make redteam` |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**The prohibited-question gate, red-teamed.** `make redteam` fires realistic phrasings
+at the block list: not caricatures, but the way a model actually produces these while
+building rapport. It caught 19 of 23 on the first run and wrongly blocked one ordinary
+sentence.
+
+The four that got through were all near-misses of an existing rule. "First language"
+where only "native language" was covered. "Medical conditions" where the pattern matched
+the singular and a word boundary. Salary history asked in the progressive and the
+passive, where only the textbook form was covered. Each is a question a candidate could
+genuinely have been asked.
+
+The false positive was "citizen" as an ordinary noun in a data model, which the gate read
+as a question about immigration status. A gate that blocks normal engineering talk is a
+gate someone turns off.
+
+All five are fixed and each is now a regression test.
 
 **Matched-pair bias evals, and the bug they found.** `make bias` scores the same
 substantive answers twice, varying only delivery: verbal filler, non-native phrasing,
