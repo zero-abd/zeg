@@ -275,3 +275,188 @@ def band_for(overall: int, scores: Sequence[DimensionScore]) -> str:
 def _trim(text: str, limit: int = 72) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+# --- A judge with a model behind it -------------------------------------------
+
+_DIMENSION_BRIEF = {
+    "technical_depth": (
+        "Does the candidate explain mechanisms correctly, and show awareness of how "
+        "the thing fails? Specific causal explanations count. Naming technologies does "
+        "not."
+    ),
+    "ownership": (
+        "Did they do this, or were they nearby when it happened? First-person accounts "
+        "carrying detail a bystander would not have are the evidence."
+    ),
+    "tradeoffs": (
+        "Do they name what was given up, not only what was gained? Real work costs "
+        "something and retellings often omit the cost."
+    ),
+    "debugging": (
+        "Do they form a hypothesis before reaching for a fix? Reproducing, narrowing "
+        "and isolating are the evidence."
+    ),
+    "communication": (
+        "Do they structure an answer and adjust it when followed up? Score structure "
+        "and responsiveness ONLY. Accent, fluency, pace, vocabulary breadth and "
+        "grammatical correctness are irrelevant and must not affect this score."
+    ),
+}
+
+JUDGE_PROMPT = """\
+You are scoring one dimension of a technical screening interview. You are not making a
+hiring decision and you are not scoring the whole candidate. Score only the dimension
+named below.
+
+Dimension: {dimension}
+{brief}
+
+Scoring: 1 is no evidence of this, 4 is strong evidence. If the transcript contains
+nothing that speaks to this dimension, the score is null. A null is not a low score and
+it is the correct answer far more often than people expect. Do not infer, do not give
+the benefit of the doubt, and do not reward confidence.
+
+Respond with JSON only:
+{{"score": 1-4 or null, "quote": "verbatim span from the transcript, or null",
+  "reason": "one sentence"}}
+
+The quote must be copied exactly from the transcript below. A quote you cannot find
+there is a fabrication and the answer is null instead.
+
+Transcript:
+{transcript}
+"""
+
+
+class ModelJudge(Judge):
+    """Scores with a language model, one dimension per call.
+
+    `complete` takes a prompt and returns the model's text. Keeping it a plain callable
+    means this works against whatever is on the box without the scoring code knowing
+    anything about it.
+
+    The important behaviour here is distrust. A model asked for evidence will sometimes
+    produce a quote that is not in the transcript, and a fabricated quote in a hiring
+    report is worse than no report. Every citation is checked against the transcript
+    verbatim, and one that is not found turns the whole verdict into insufficient
+    evidence rather than being quietly dropped while the score survives.
+    """
+
+    name = "model"
+
+    def __init__(self, complete, prompt: str = JUDGE_PROMPT) -> None:
+        self.complete = complete
+        self.prompt = prompt
+        self.fabrications: List[str] = []
+
+    def score_dimension(self, dimension: str, units: Sequence[QAUnit]) -> DimensionScore:
+        if not units:
+            return DimensionScore(dimension, None, [], "Nothing was said.")
+
+        transcript = render_units(units)
+        try:
+            raw = self.complete(
+                self.prompt.format(
+                    dimension=dimension.replace("_", " "),
+                    brief=_DIMENSION_BRIEF.get(dimension, ""),
+                    transcript=transcript,
+                )
+            )
+        except Exception as e:  # a judge that dies must not take the report with it
+            return DimensionScore(dimension, None, [], "Judge failed: %s" % e)
+
+        verdict = parse_verdict(raw)
+        if verdict is None:
+            return DimensionScore(
+                dimension, None, [], "Judge returned something unreadable."
+            )
+
+        score, quote, reason = verdict
+        if score is None:
+            return DimensionScore(dimension, None, [], reason or "No evidence found.")
+
+        if not quote or not _appears_in(quote, units):
+            # The score might be right. It is not usable without a citation, and a
+            # citation that cannot be located is the one thing a report must never
+            # carry, so the score goes with it.
+            self.fabrications.append(dimension)
+            return DimensionScore(
+                dimension,
+                None,
+                [],
+                "Scored %s but cited a quote not present in the transcript." % score,
+            )
+
+        at = _timestamp_of(quote, units)
+        return DimensionScore(
+            dimension, _clamp(int(score)), [Evidence(dimension, quote, at)], reason
+        )
+
+
+def render_units(units: Sequence[QAUnit]) -> str:
+    lines = []
+    for u in units:
+        lines.append("Interviewer: %s" % u.question)
+        lines.append("Candidate: %s" % u.answer)
+    return "\n".join(lines)
+
+
+def parse_verdict(raw: str):
+    """Pull (score, quote, reason) out of a model's reply, or None if unreadable.
+
+    Tolerant of a model wrapping JSON in prose or a code fence, which they do. Not
+    tolerant of anything it cannot parse: a guess here becomes a number in a hiring
+    report.
+    """
+    import json
+
+    if not isinstance(raw, str):
+        return None
+    start, end = raw.find("{"), raw.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    try:
+        data = json.loads(raw[start : end + 1])
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    score = data.get("score")
+    if score is not None:
+        try:
+            score = int(score)
+        except (TypeError, ValueError):
+            return None
+        if not MIN_SCORE <= score <= MAX_SCORE:
+            return None
+
+    quote = data.get("quote")
+    if quote is not None and not isinstance(quote, str):
+        return None
+    reason = data.get("reason")
+    return score, quote, reason if isinstance(reason, str) else ""
+
+
+def _normalise(text: str) -> str:
+    return " ".join(text.split()).strip().lower()
+
+
+def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:
+    """Whitespace and case are not fabrication; missing words are."""
+    needle = _normalise(quote)
+    if not needle:
+        return False
+    return any(needle in _normalise(u.answer) or needle in _normalise(u.question)
+               for u in units)
+
+
+def _timestamp_of(quote: str, units: Sequence[QAUnit]) -> float:
+    needle = _normalise(quote)
+    for u in units:
+        if needle in _normalise(u.answer):
+            return u.answered_at_s
+        if needle in _normalise(u.question):
+            return u.asked_at_s
+    return 0.0

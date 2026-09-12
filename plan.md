@@ -184,12 +184,24 @@ problem.
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
-| Scoring pass and report | Done, 22 tests, model-free judge |
+| Scoring pass and report | Done, 47 tests, model-free and model-backed judges |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**A judge with a model behind it.** `ModelJudge` scores one dimension per call against
+any callable that takes a prompt and returns text, so it works with whatever is on the
+box without the scoring code knowing anything about it.
+
+Its important behaviour is distrust. A model asked for evidence will sometimes cite a
+quote that is not in the transcript, and a fabricated quote in a hiring report is worse
+than no report. Every citation is checked verbatim against the transcript, and one that
+cannot be found voids the whole verdict rather than being quietly dropped while the
+score survives. A model that fabricates everything produces "insufficient signal", which
+is the correct outcome and also a usable alarm. Unreadable output becomes insufficient
+evidence, never a guess.
 
 **Turn taking fixed.** The demo was reporting six interruptions in a twenty-nine second
 call. The driven runner waited for the agent by watching the transcript, which grows the
