@@ -1,0 +1,35 @@
+[project]
+name = "zeg"
+version = "0.0.1"
+description = "Local voice agent that conducts technical screening calls for SWE roles"
+requires-python = ">=3.9"
+dependencies = []
+
+# Real inference on the GB10 box. Pins verified 2026-09-12, see docs/10-model-pinning.md.
+# Deliberately not installed on a dev laptop; the mock backend has no dependencies.
+[project.optional-dependencies]
+gb10 = [
+  "torch==2.10.0",
+  "torchaudio==2.10.0",
+  "torchvision==0.25.0",
+  "transformers==4.56.0",
+  "tokenizers==0.22.0",
+  "lhotse==1.32.2",
+  "huggingface-hub==0.34.4",
+  "hf-xet==1.1.9",
+  "torchcodec==0.10.0",
+]
+dev = ["pytest>=7"]
+
+[project.scripts]
+zeg-converse = "zeg.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
