@@ -47,3 +47,6 @@ build/
 # Local third-party setup notes, deliberately untracked
 SETUP.local.md
 weights/
+
+# Session scratch
+.claude/scheduled_tasks.lock
