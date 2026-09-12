@@ -1,0 +1,45 @@
+# Model weights and checkpoints
+*.nemo
+*.onnx
+*.engine
+*.plan
+*.safetensors
+models/
+checkpoints/
+
+# Call data. Never commit candidate audio or transcripts.
+recordings/
+transcripts/
+calls/
+*.wav
+*.flac
+*.opus
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Local
+.DS_Store
+*.log
+.idea/
+.vscode/
