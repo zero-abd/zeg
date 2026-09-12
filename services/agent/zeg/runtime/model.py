@@ -111,6 +111,18 @@ class SpeechModel:
         """
         raise NotImplementedError
 
+    def load(self) -> None:
+        """Bring the weights up. Minutes. Called once, at process start."""
+
+    def prefill(self, instructions: Optional[str]) -> None:
+        """Put the system prompt into model state, before the session goes live.
+
+        Separate from `load` because it is per-session and per-prompt, and
+        separate from the first turn because it is the largest one-off cost in a
+        session. Paying it before the client is told the session is ready moves it
+        off the candidate's first question.
+        """
+
     def close(self) -> None:
         """Release the model."""
 
@@ -118,8 +130,8 @@ class SpeechModel:
 class CudaSpeechModel(SpeechModel):
     """The real thing. Unverified: this has never been run.
 
-    The constructor is cheap and the weights load in `warmup`, because loading is
-    minutes and the server needs to bind its socket and report unready first.
+    The constructor is cheap and the weights load in `load`, because loading is
+    minutes and the server has to be able to say "not ready yet" while it happens.
 
     The three seams that have to be wired on the box are marked SEAM below. They
     are the calls into the checkpoint's own module code, which lives with the
@@ -129,7 +141,9 @@ class CudaSpeechModel(SpeechModel):
 
     def __init__(self, paths: ModelPaths, codec_cores: Optional[list] = None) -> None:
         self.paths = paths
-        self.codec_cores = codec_cores if codec_cores is not None else codec_mod.default_codec_cores()
+        if codec_cores is None:
+            codec_cores = codec_mod.default_codec_cores()
+        self.codec_cores = codec_cores
         self._torch: Any = None
         self._model: Any = None
         self._decoder = codec_mod.PipelinedDecoder(self._decode_codec)
@@ -137,20 +151,17 @@ class CudaSpeechModel(SpeechModel):
 
     # --- lifecycle ------------------------------------------------------------
 
-    def warmup(self, instructions: Optional[str] = None) -> None:
-        """Load weights and prefill the prompt.
-
-        Prefill happens here rather than on the first turn on purpose. It is the
-        single largest one-off cost in a session, and paying it before the client
-        is told the session is ready moves it off the candidate's first question,
-        where it is the difference between a conversation and a demo that pauses.
-        """
+    def load(self) -> None:
         self._torch = require_cuda()
         self.paths.check()
         self._model = self._build()
+        self._loaded = True
+
+    def prefill(self, instructions: Optional[str]) -> None:
+        if not self._loaded:
+            raise ModelUnavailable("prefill before load")
         if instructions:
             self._prefill(instructions)
-        self._loaded = True
 
     def _build(self) -> Any:
         # SEAM 1: construct the model from the checkpoint's own module code and
@@ -181,12 +192,12 @@ class CudaSpeechModel(SpeechModel):
 
     def step(self, pcm: bytes) -> FrameResult:
         if not self._loaded:
-            raise ModelUnavailable("step before warmup")
+            raise ModelUnavailable("step before load")
         raise ModelUnavailable("model stepping is not wired up yet")
 
     def commit_turn(self) -> None:
         if not self._loaded:
-            raise ModelUnavailable("commit before warmup")
+            raise ModelUnavailable("commit before load")
         raise ModelUnavailable("turn commit is not wired up yet")
 
     def cancel_response(self, reason: str) -> None:

@@ -14,7 +14,7 @@ The division this file enforces, from docs/11-runtime.md: the client owns turn
 boundaries, the server owns continuous model state.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from . import protocol as p

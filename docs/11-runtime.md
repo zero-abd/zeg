@@ -282,7 +282,8 @@ not run on a box yet. Being honest about that in the source is part of the desig
 | --- | --- | --- |
 | `runtime/protocol.py` | Yes, pure stdlib | Yes |
 | `runtime/session.py` | Yes, pure state machine | Yes |
-| `runtime/loop.py` | Structure only; the step needs CUDA | Partly |
+| `runtime/loop.py` | Yes, against a stand-in model | Yes |
+| `runtime/codec.py` | Yes; pinning is a no-op off the box | Yes |
 | `runtime/model.py` | No. Guarded, lazy, raises without CUDA | No |
 | `runtime/server.py` | Needs a WebSocket library | Protocol layer only |
 | `backends/gb10.py` | Yes, against a fake transport | Yes |
