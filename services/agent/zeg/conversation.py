@@ -243,6 +243,7 @@ class DrivenResult:
     steers: List[str] = field(default_factory=list)
     probes: List[str] = field(default_factory=list)
     rollovers: int = 0
+    agent_audio_frames: int = 0
     flags: List[str] = field(default_factory=list)
     consent: Optional[bool] = None
     ended: Optional[str] = None
@@ -318,7 +319,11 @@ class InterviewRunner:
             for turn in caller:
                 if result.ended:
                     break
-                self._drain(clock, result, perform)
+                if not turn.barge_in:
+                    # A polite caller waits for the agent to finish. One who barges in
+                    # starts talking over it, which is the case the media path has to
+                    # get right.
+                    self._drain(clock, result, perform)
                 if result.ended:
                     break
                 self._speak(clock, result, perform, turn)
@@ -357,23 +362,32 @@ class InterviewRunner:
             clock.tick()
             self._consume(clock, result, perform)
 
-    def _drain(self, clock, result, perform, max_s: float = 30.0) -> None:
+    def _drain(self, clock, result, perform, max_s: float = 40.0) -> None:
+        """Wait for the agent to stop speaking.
+
+        Watch the audio, not the transcript. The transcript grows once per utterance,
+        which happens the moment the agent starts, so draining on it returned while
+        there were still seconds of speech queued and the caller then talked over every
+        single turn.
+        """
         idle = 0
         for _ in range(int(max_s * 1000 / self.audio.frame_ms)):
-            before = len(self.interview.record.transcript)
+            before = result.agent_audio_frames
             self._session.push_audio(
                 AudioFrame.silence(self.audio.input_sample_rate,
                                    self.audio.input_frame_samples, clock.now))
             clock.tick()
             self._consume(clock, result, perform)
-            idle = 0 if len(self.interview.record.transcript) > before else idle + 1
+            idle = 0 if result.agent_audio_frames > before else idle + 1
             if idle >= 15:
                 return
 
     def _consume(self, clock, result, perform) -> None:
-        from .backends.base import AgentInterrupted, UserTranscript
+        from .backends.base import AgentAudio, AgentInterrupted, UserTranscript
 
         for ev in self._session.poll():
+            if isinstance(ev, AgentAudio):
+                result.agent_audio_frames += 1
             if isinstance(ev, AgentInterrupted):
                 result.interruptions += 1
             if isinstance(ev, UserTranscript) and ev.final:

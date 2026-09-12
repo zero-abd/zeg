@@ -191,6 +191,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Turn taking fixed.** The demo was reporting six interruptions in a twenty-nine second
+call. The driven runner waited for the agent by watching the transcript, which grows the
+moment an utterance starts rather than when it ends, so it returned while seconds of
+speech were still queued and the simulated caller talked over every single turn. It now
+waits on the audio. Interruptions went to zero for a caller who waits, and the one
+deliberate barge-in in the script is honoured rather than ignored.
+
 **The demo runs the real path.** `make demo` now puts the interview engine in charge of
 a backend session rather than letting the backend's own script drive, which is the
 arrangement the real system uses. Wiring it found three integration bugs that every unit

@@ -129,3 +129,45 @@ def test_the_wall_clock_still_ends_a_runaway_call(_=None):
     r = run(long, call=CallConfig(max_duration_s=60, wrap_up_at_s=45))
     assert r.ended == "time limit reached"
     assert r.duration_s <= 90
+
+
+# --- turn taking ---------------------------------------------------------------
+
+
+POLITE = [CONSENT] + [
+    CallerTurn("a race condition in our payment reconciler", speak_s=4.0),
+    CallerTurn("i wrote the advisory-lock fix myself", speak_s=3.5),
+    CallerTurn("about twelve hundred a second before, forty thousand after", speak_s=4.5),
+]
+
+
+def test_a_caller_who_waits_is_never_treated_as_interrupting(_=None):
+    """The bug this pins: draining on the transcript returned while seconds of speech
+    were still queued, so a polite caller talked over every single turn."""
+    assert run(POLITE).interruptions == 0
+
+
+def test_the_default_script_exercises_one_deliberate_barge_in(_=None):
+    assert run().interruptions == 1
+
+
+def test_the_agent_is_allowed_to_finish_its_turn(_=None):
+    """A 40-word disclosure takes time to say. The call has to be long enough to
+    contain it, or the audio was cut off rather than played."""
+    assert run(POLITE).duration_s > 40
+
+
+def test_a_caller_who_cuts_in_does_interrupt(_=None):
+    cut_in = [CONSENT, CallerTurn("actually can I ask something", speak_s=3.0,
+                                  barge_in=True)]
+    assert run(cut_in).interruptions >= 1
+
+
+def test_an_interruption_does_not_lose_the_callers_turn(_=None):
+    cut_in = [CONSENT, CallerTurn("we rewrote the reconciler", speak_s=3.0,
+                                  barge_in=True)]
+    assert "we rewrote the reconciler" in caller_turns(run(cut_in))
+
+
+def test_the_agent_speaks_at_all(_=None):
+    assert run().agent_audio_frames > 0
