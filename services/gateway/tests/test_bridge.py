@@ -40,7 +40,7 @@ def test_greeting_audio_flows_out():
         bridge.feed(_silence(cfg))
     assert collected, "greeting should have produced agent audio frames"
     assert all(f.sample_rate == cfg.output_sample_rate for f in collected)
-    assert any(speaker == "agent" for speaker, _ in bridge.transcript)
+    assert any(speaker == "agent" for speaker, *_ in bridge.transcript)
     assert bridge.agent_audio_s > 0.0
 
 

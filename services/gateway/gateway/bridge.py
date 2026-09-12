@@ -11,6 +11,7 @@ conversation.py. The transport pushes real audio (silence included) at real
 time, so the agent's replies come back paced to real time for free.
 """
 
+import time
 from typing import Callable, List, Optional, Tuple
 
 from zeg.audio import AudioFrame
@@ -43,10 +44,11 @@ class CallBridge:
         self.on_agent_audio = on_agent_audio or (lambda frame: None)
         self.on_interrupt = on_interrupt or (lambda: None)
 
-        self.transcript: List[Tuple[str, str]] = []   # (speaker, text), speaker in {agent, caller}
+        self.transcript: List[Tuple[str, str, float]] = []  # (speaker, text, at_s)
         self.interruptions = 0
         self.agent_audio_s = 0.0
         self.error: Optional[str] = None
+        self._start = time.monotonic()
 
     def feed(self, frame: AudioFrame) -> None:
         """Push one caller frame and dispatch everything it shook loose."""
@@ -66,14 +68,17 @@ class CallBridge:
             self.on_interrupt()
         elif isinstance(ev, AgentText):
             if ev.final:
-                self.transcript.append(("agent", ev.text))
+                self.transcript.append(("agent", ev.text, self._elapsed()))
         elif isinstance(ev, UserTranscript):
             if ev.final:
-                self.transcript.append(("caller", ev.text))
+                self.transcript.append(("caller", ev.text, self._elapsed()))
         elif isinstance(ev, BackendError):
             # Fatal by default (see base.py). The call layer tears down playback
             # and the agent apologises and hangs up; here we just record it.
             self.error = ev.message
+
+    def _elapsed(self) -> float:
+        return time.monotonic() - self._start
 
     def close(self) -> None:
         self.session.close()

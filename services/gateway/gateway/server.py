@@ -20,7 +20,9 @@ from aiortc import RTCPeerConnection, RTCSessionDescription
 
 from zeg.backends import build_backend
 from zeg.config import AudioConfig, BackendConfig
+from zeg.conversation import TranscriptEntry
 from zeg.prompts import GREETING, SYSTEM_PROMPT
+from zeg.scoring import score_call
 
 from .bridge import CallBridge
 from .playback import PlaybackBuffer
@@ -110,10 +112,21 @@ class Gateway:
             bridge.interruptions,
             bridge.agent_audio_s,
         )
-        for speaker, text in bridge.transcript:
-            log.info("  %-6s %s", speaker, text)
+        for speaker, text, at_s in bridge.transcript:
+            m, s = divmod(int(at_s), 60)
+            log.info("  [%02d:%02d] %-6s %s", m, s, speaker, text)
         if bridge.error:
             log.warning("backend error: %s", bridge.error)
+
+        entries = [
+            TranscriptEntry(at_s=at_s, speaker=speaker, text=text)
+            for speaker, text, at_s in bridge.transcript
+        ]
+        if entries:
+            assessment = score_call(entries)
+            log.info("---- assessment ----")
+            for line in assessment.render().splitlines():
+                log.info("  %s", line)
 
     async def index(self, request: web.Request) -> web.Response:
         return web.FileResponse(os.path.join(WEB_DIR, "interview.html"))
