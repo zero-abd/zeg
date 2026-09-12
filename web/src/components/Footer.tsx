@@ -23,7 +23,7 @@ export default function Footer() {
                         the candidate actually did, and hands a person the evidence to decide on.
                     </p>
                     <p className="text-xs text-[rgba(255,255,255,0.4)] tracking-wider font-medium">
-                        NVIDIA NemotronLabs VoiceChat 11B · Pipecat · WebRTC · one on-prem box
+                        Full-duplex speech · WebRTC · runs on one box you own
                     </p>
                 </motion.div>
 
