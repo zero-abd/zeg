@@ -67,6 +67,7 @@ thing that will waste your morning if you get it wrong.
 | `docs/05-scoring-and-reports.md` | How a transcript becomes a 1-10 score with evidence. |
 | `docs/03-latency-budget.md` | Where the milliseconds go. Note that it predates the model choice. |
 | `docs/06-compliance.md` | The six things we do not negotiate on. |
+| `docs/10-why-on-device.md` | Why the box and not the cloud, and what it costs us. |
 | `docs/08-risks.md` | What kills this project, ordered by likelihood. |
 
 ## Four things that are not negotiable
