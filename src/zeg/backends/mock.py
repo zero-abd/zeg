@@ -1,7 +1,7 @@
 """A backend that runs anywhere.
 
 It exists so the conversation harness, the interview engine and the tests can be
-developed and run without a GB10 box. It imitates the *shape* of VoiceChat's
+developed and run without a GB10 box. It imitates the *shape* of the real model's
 behaviour: full duplex, partial then final transcripts, barge-in, streamed audio at
 22.05 kHz. It imitates none of its intelligence.
 

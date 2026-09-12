@@ -1,9 +1,9 @@
 """The backend contract.
 
 One interface, two implementations: a mock that runs anywhere, and the real
-Nemotron VoiceChat model on a GB10 box.
+speech model on a GB10 box.
 
-The interface is full-duplex on purpose. VoiceChat listens and speaks at the same
+The interface is full-duplex on purpose. The model listens and speaks at the same
 time, so there is no "now it is the agent's turn" state to model. Audio goes in
 continuously; events come out whenever the model has something to say. Anything
 that assumes strict turn-taking belongs above this layer, not inside it.
@@ -30,8 +30,8 @@ class AgentAudio:
 class AgentText:
     """What the agent is saying, in text.
 
-    VoiceChat emits this alongside the audio, so it is a record of what was actually
-    spoken rather than a separate transcription of it.
+    The model emits this alongside the audio, so it is a record of what was
+    actually spoken rather than a separate transcription of it.
     """
 
     text: str

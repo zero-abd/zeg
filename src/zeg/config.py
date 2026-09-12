@@ -1,24 +1,11 @@
-"""Configuration and model pins.
+"""Configuration.
 
-Every identifier here was verified against a live source on 2026-09-12.
-See docs/10-model-pinning.md before changing any of it.
+Audio rates are dictated by the speech model we run: it consumes 16 kHz and its
+synthesis stage emits 22.05 kHz, while telephony and most conferencing paths deliver
+8 kHz. Checkpoint locations are deployment configuration, not source constants.
 """
 
 from dataclasses import dataclass, field
-
-# --- Model identifiers -------------------------------------------------------
-
-#: Full-duplex audio-to-audio model. FastConformer encoder, Nemotron Nano v2 9B
-#: backbone, TTS decoder. Emits agent text, agent audio, and user transcript together.
-VOICECHAT_REPO = "nvidia/NVIDIA-NemotronLabs-VoiceChat-11B"
-
-#: Cascade fallback, used only if the unified model will not run on the target box.
-ASR_STREAMING_REPO = "nvidia/nemotron-speech-streaming-en-0.6b"
-
-#: The NeMo code for VoiceChat lives on a branch, not on main.
-NEMO_SPEECH_REPO = "https://github.com/NVIDIA-NeMo/Speech.git"
-NEMO_SPEECH_BRANCH = "nemotron-labs-voicechat"
-
 
 # --- Audio -------------------------------------------------------------------
 
@@ -67,7 +54,7 @@ class BackendConfig:
     """
 
     kind: str = "mock"  # "mock" | "gb10"
-    checkpoint_dir: str = "/opt/zeg/models/voicechat-11b"
+    checkpoint_dir: str = "/opt/zeg/weights"
     device: str = "cuda"
     dtype: str = "bfloat16"
     audio: AudioConfig = field(default_factory=AudioConfig)

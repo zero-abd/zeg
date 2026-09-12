@@ -64,9 +64,9 @@ than a scripted one: it wastes the 15 minutes and frustrates good candidates.
 *Mitigation.* Phase 1 ships scripted deliberately. Adaptive probing is measured against
 the scripted baseline, and if it does not beat it on kappa, it does not ship.
 
-## 8. NVIDIA's model lineup moves under us
+## 8. The upstream model lineup moves under us
 
-Names, checkpoints, and licenses in the Nemotron and speech families change between
+Names, checkpoints, and licenses in the open speech-model families change between
 releases. Building against a remembered name produces code that does not run.
 
 *Mitigation.* Pin exact versions in ops config. Confirm identifiers from the live catalog

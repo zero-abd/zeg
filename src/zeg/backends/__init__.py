@@ -39,7 +39,7 @@ def build_backend(config: Optional[BackendConfig] = None) -> VoiceBackend:
     if config.kind == "mock":
         return MockBackend(audio=config.audio)
     if config.kind == "gb10":
-        from .gb10 import GB10VoiceChatBackend  # noqa: WPS433 - deliberate lazy import
+        from .gb10 import GB10Backend  # noqa: WPS433 - deliberate lazy import
 
-        return GB10VoiceChatBackend(config)
+        return GB10Backend(config)
     raise ValueError("unknown backend kind: %r" % config.kind)

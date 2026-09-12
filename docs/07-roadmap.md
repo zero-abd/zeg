@@ -5,8 +5,7 @@ start. The phases are ordered so the cheapest disqualifying answers come first.
 
 ## Phase 0: Does the hardware hold up
 
-**Question.** Can one Dell box run streaming ASR, a Nemotron-class model, and streaming
-TTS concurrently, at p95 mouth-to-ear under 800 ms, over real telephone audio?
+**Question.** Can one Dell box run a full-duplex audio-to-audio speech model, at p95 mouth-to-ear under 800 ms, over real telephone audio?
 
 - Provision both candidate boxes, GB10 and RTX Pro 6000
 - Confirm current model identifiers and licenses from the live catalogs
