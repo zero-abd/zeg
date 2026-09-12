@@ -25,10 +25,59 @@ from .prompts import CONSENT_DECLINED, GREETING, SYSTEM_PROMPT, WRAP_UP
 #: briefing older than this is worth resending even if nothing changed.
 BRIEFING_INTERVAL_S = 60.0
 
-#: Consent detection. Crude and deliberately conservative: anything that is not a clear
-#: yes is treated as not-yet-consented, and silence never counts as agreement.
-_YES = re.compile(r"\b(yes|yeah|yep|sure|that'?s fine|ok|okay|of course|go ahead|fine)\b", re.I)
-_NO = re.compile(r"\b(no|nope|not really|i'?d rather not|don'?t|do not|rather you didn'?t|refuse)\b", re.I)
+#: Consent detection. The two failure directions are not equally bad, so the rules are
+#: not symmetrical. See `reads_as_consent`.
+
+#: Agreement that happens to contain a refusal word. English does this constantly: "no
+#: problem" and "I don't mind" are agreements, and reading them literally ends the
+#: interview for someone who just said yes.
+_AGREEMENT_IDIOM = re.compile(
+    r"\bno (problem|worries|issue|objection)\b|\b(i )?do(n'?t| not) mind\b", re.I
+)
+
+_YES = re.compile(
+    r"\b(yes|yeah|yep|yup|sure|absolutely|of course|go ahead|okay|ok)\b"
+    r"|\bthat'?s fine\b|\bthat is fine\b|\bfine (by|with) me\b|\bthat works\b",
+    re.I,
+)
+
+_NO = re.compile(
+    r"\b(no|nope|nah|refuse)\b|\bnot really\b"
+    r"|\bi'?d rather not\b|\bi would rather not\b"
+    r"|\brather you did ?n'?t\b|\brather you would not\b"
+    r"|\bplease do(n'?t| not)\b|\bdo(n'?t| not) record\b",
+    re.I,
+)
+
+#: Hedged, questioning or reluctant. Not a refusal, and emphatically not a yes. These
+#: are the dangerous ones: several contain an agreement word while meaning "maybe".
+_UNSURE = re.compile(
+    r"\bnot sure\b|\bmaybe\b|\bi guess\b|\bi suppose\b|\bif i have to\b"
+    r"|\bwhat happens\b|\brepeat that\b|\bdoes it have to\b"
+    r"|\bwhat was the question\b|\bhave to be\b",
+    re.I,
+)
+
+
+def reads_as_consent(text: str) -> bool:
+    """True only for a clear yes.
+
+    The two failure directions are not equally bad. A false yes records someone who
+    declined, which is the one thing this project promised not to do. A false no ends
+    an interview for someone who agreed, which is rude, costs a candidate, and is
+    recoverable by a human. So this requires a clear yes and treats everything else,
+    silence included, as refusal.
+
+    Order matters. Hedging is checked first, because "I'm not sure, yes maybe" contains
+    a yes and is not one. Then agreement idioms are rewritten, because "no problem" is
+    not a no. Only then is a literal refusal looked for.
+    """
+    if _UNSURE.search(text):
+        return False
+    plain = _AGREEMENT_IDIOM.sub(" yes ", text)
+    if _NO.search(plain):
+        return False
+    return bool(_YES.search(plain))
 
 
 # --- Actions the caller performs ---------------------------------------------
@@ -205,7 +254,7 @@ class Interview:
 
     def _resolve_consent(self, text: str, t_s: float) -> List[Action]:
         """No recording, no interview. Silence is not agreement."""
-        if _NO.search(text) or not _YES.search(text):
+        if not reads_as_consent(text):
             self.record.consent = False
             self.engine.note_consent(False)
             actions = self._say(CONSENT_DECLINED, t_s)

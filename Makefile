@@ -44,6 +44,9 @@ bias:
 redteam:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.redteam import run_redteam; print(run_redteam().render())"
 
+consent:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.consent import run_consent; print(run_consent().render())"
+
 web:
 	cd web && npm run dev
 

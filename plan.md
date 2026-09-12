@@ -188,11 +188,30 @@ problem.
 | Eval suite and agreement instrument | Done, 16 tests, `make evals` |
 | Matched-pair bias evals | Done, 18 tests, `make bias` |
 | Block-list red team | Done, 51 tests, `make redteam` |
+| Consent gate red team | Done, 42 tests, `make consent` |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**The consent gate, red-teamed.** `make consent` fires 32 answers at the gate that
+decides whether a call happens at all. Its two failure directions are not equally bad: a
+false yes records someone who declined, a false no ends the interview for someone who
+agreed. The first is the thing this project promised not to do.
+
+Two answers were being read as consent that were not. "I'm not sure, yes maybe" and
+"well, okay, I guess" both contain an agreement word while meaning something else, and
+both would have started recording. Three agreements were being read as refusals, because
+English says yes with refusal words constantly: "no problem", "no worries" and "I don't
+mind" were all ending calls on people who had just agreed.
+
+The gate now checks hedging first, rewrites agreement idioms, and only then looks for a
+literal refusal. Silence is still not agreement.
+
+Removing the fix also surfaced a shadowing duplicate of the decision function, where the
+older definition was the one actually running. Every intermediate value said yes while
+the function returned no.
 
 **The prohibited-question gate, red-teamed.** `make redteam` fires realistic phrasings
 at the block list: not caricatures, but the way a model actually produces these while
