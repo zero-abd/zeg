@@ -37,6 +37,9 @@ demo:
 evals:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -m zeg.evals
 
+bias:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.bias import run_pairs; print(run_pairs().render())"
+
 web:
 	cd web && npm run dev
 

@@ -186,11 +186,26 @@ problem.
 | Serving runtime implementation | Written, 100 tests, needs the box |
 | Scoring pass and report | Done, 47 tests, model-free and model-backed judges |
 | Eval suite and agreement instrument | Done, 16 tests, `make evals` |
+| Matched-pair bias evals | Done, 18 tests, `make bias` |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**Matched-pair bias evals, and the bug they found.** `make bias` scores the same
+substantive answers twice, varying only delivery: verbal filler, non-native phrasing,
+hedging, terseness. Any score difference is a defect.
+
+It immediately found one in our own code. Verbal filler alone moved a candidate from
+7/10 and "advance with reservations" to 4/10 and "do not advance", on identical facts,
+identical numbers and identical ownership. The vagueness detector treated "um" and "you
+know" as a lack of substance. Filler is delivery, and it correlates with nervousness and
+with speaking a second language, so that was the system scoring how someone sounds.
+Filler is now stripped before any judgement and the quote keeps their own words.
+
+This is the failure mode docs/05 names as most likely, and it was live in the
+codebase until a matched pair went looking for it.
 
 **An instrument for telling whether a change helped.** `make evals` scores six
 hand-labelled calls and reports band agreement, score spread, and which dimensions a

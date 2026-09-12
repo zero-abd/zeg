@@ -67,9 +67,12 @@ PROBE_LADDER = (
 
 #: Phrases that indicate an answer stayed general. Crude on purpose: the engine only
 #: needs to know whether to descend further, and the scoring pass judges properly.
+#: Content-free words. Filler ("um", "you know") is excluded on purpose: it is
+#: delivery, not substance, and treating it as vagueness penalises nervous and
+#: second-language speakers for saying exactly the same thing.
 _VAGUE = re.compile(
     r"\b(we just|basically|stuff|things|various|some kind of|pretty much|"
-    r"you know|a lot of|generally|typically|it depends)\b",
+    r"a lot of|generally|typically|it depends)\b",
     re.I,
 )
 _SPECIFIC = re.compile(r"\d|\b(because|so that|which meant|turned out|root cause)\b", re.I)
@@ -159,7 +162,10 @@ class InterviewEngine:
         start a new one. Treating it as new was the bug that kept the ladder pinned to
         its first rung through an entire interview.
         """
-        vague = bool(_VAGUE.search(text)) and not _SPECIFIC.search(text)
+        from .scoring import strip_filler  # local: scoring imports engine
+
+        spoken = strip_filler(text)
+        vague = bool(_VAGUE.search(spoken)) and not _SPECIFIC.search(spoken)
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0
 
         if self.state.probe_outstanding:

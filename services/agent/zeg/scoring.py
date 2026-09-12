@@ -150,7 +150,22 @@ _FIRST_PERSON = re.compile(
 )
 _TRADEOFF = re.compile(r"\b(gave up|traded|cost us|at the expense|downside|slower|doubled)\b", re.I)
 _HYPOTHESIS = re.compile(r"\b(hypothes\w+|suspected|reproduced|repro|bisect|narrowed)\b", re.I)
-_VAGUE = re.compile(r"\b(basically|stuff|things|various|pretty much|you know|a lot of)\b", re.I)
+#: Content-free words. "you know" and "um" are deliberately absent: they are filler,
+#: which is delivery, not substance. Confusing the two cost a candidate three points in
+#: the matched-pair evals.
+_VAGUE = re.compile(r"\b(basically|stuff|things|various|pretty much|a lot of)\b", re.I)
+#: Verbal filler. Not vagueness, and not weakness. It correlates with nervousness and
+#: with speaking a second language, so anything that reads it as a lack of substance is
+#: scoring the candidate's delivery. Stripped before any judgement is made.
+_FILLER = re.compile(
+    r"\b(u+m+|u+h+|e+r+m*|a+h+|you know|i mean|kind of|sort of)\b[,.]?\s*", re.I
+)
+
+
+def strip_filler(text: str) -> str:
+    """Remove filler words. What is left is what the candidate actually said."""
+    return " ".join(_FILLER.sub(" ", text).split())
+
 
 _SIGNALS: Dict[str, Sequence] = {
     "technical_depth": (_CAUSAL, _NUMBER),
@@ -175,7 +190,8 @@ class HeuristicJudge(Judge):
         patterns = _SIGNALS.get(dimension, ())
         hits: List[Evidence] = []
         for u in units:
-            if any(p.search(u.answer) for p in patterns):
+            # Judge the substance. The quote keeps the candidate's own words.
+            if any(p.search(strip_filler(u.answer)) for p in patterns):
                 hits.append(Evidence(dimension, u.answer, u.answered_at_s))
 
         if not hits:
@@ -186,7 +202,7 @@ class HeuristicJudge(Judge):
                 "Nothing in the transcript speaks to this. Not a low score.",
             )
 
-        vague = sum(1 for u in units if _VAGUE.search(u.answer))
+        vague = sum(1 for u in units if _VAGUE.search(strip_filler(u.answer)))
         score = 2 + min(2, len(hits)) - (1 if vague > len(units) / 2 else 0)
         return DimensionScore(dimension, _clamp(score), hits)
 
