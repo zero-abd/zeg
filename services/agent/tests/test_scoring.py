@@ -1,0 +1,192 @@
+import pytest
+
+from zeg.conversation import TranscriptEntry as T
+from zeg.engine import DIMENSIONS
+from zeg.scoring import (
+    Assessment,
+    DimensionScore,
+    HeuristicJudge,
+    Judge,
+    RolePack,
+    band_for,
+    score_call,
+    to_qa_units,
+)
+
+
+def strong():
+    """A candidate who answers specifically across every dimension."""
+    return [
+        T(0, "agent", "Tell me about the hardest bug you shipped a fix for."),
+        T(10, "caller", "A race in our reconciler. I wrote the repro harness and bisected it."),
+        T(20, "agent", "What did you personally do?"),
+        T(30, "caller", "I wrote the advisory-lock fix because the root cause was a double read."),
+        T(40, "agent", "Any numbers?"),
+        T(50, "caller", "11 double-settlements over 6 weeks, down to 0 after."),
+        T(60, "agent", "What did it cost?"),
+        T(70, "caller", "We gave up parallel reconciliation. Batch time roughly doubled."),
+        T(80, "agent", "How did you find it?"),
+        T(90, "caller", "I suspected a lock ordering issue and reproduced it under load."),
+    ]
+
+
+def thin():
+    return [
+        T(0, "agent", "Tell me about a recent project."),
+        T(10, "caller", "we basically did various things you know"),
+        T(20, "agent", "Anything specific?"),
+        T(30, "caller", "pretty much just stuff"),
+    ]
+
+
+# --- segmentation ------------------------------------------------------------
+
+
+def test_questions_pair_with_the_answer_that_followed():
+    units = to_qa_units(strong())
+    assert len(units) == 5
+    assert units[0].question.startswith("Tell me")
+    assert "repro harness" in units[0].answer
+    assert units[0].asked_at_s == 0 and units[0].answered_at_s == 10
+
+
+def test_an_unanswered_final_question_is_dropped():
+    units = to_qa_units([T(0, "agent", "q"), T(10, "caller", "a"), T(20, "agent", "unanswered")])
+    assert len(units) == 1
+
+
+def test_an_empty_transcript_yields_nothing():
+    assert to_qa_units([]) == []
+
+
+def test_a_caller_turn_before_any_question_is_ignored():
+    assert to_qa_units([T(0, "caller", "hello?")]) == []
+
+
+# --- evidence discipline -----------------------------------------------------
+
+
+def test_a_dimension_with_no_evidence_is_insufficient_not_low():
+    a = score_call(thin())
+    for d in a.dimensions:
+        if d.insufficient:
+            assert d.score is None
+            assert "Not a low score" in d.note
+
+
+def test_every_score_carries_a_quote():
+    a = score_call(strong())
+    for d in a.dimensions:
+        if not d.insufficient:
+            assert d.evidence, "%s scored with no evidence" % d.dimension
+            assert d.evidence[0].quote
+
+
+def test_evidence_keeps_its_timestamp():
+    a = score_call(strong())
+    scored = [d for d in a.dimensions if not d.insufficient]
+    assert all(e.at_s > 0 for d in scored for e in d.evidence)
+
+
+# --- bands -------------------------------------------------------------------
+
+
+def test_a_thin_call_is_insufficient_signal_not_a_rejection():
+    a = score_call(thin())
+    assert a.band == "insufficient signal"
+    assert a.overall is None
+    assert any("human screen" in f for f in a.flags)
+
+
+def test_a_strong_call_scores_and_lands_in_a_band():
+    a = score_call(strong())
+    assert a.overall is not None
+    assert 1 <= a.overall <= 10
+    assert a.band != "insufficient signal"
+
+
+def test_advance_requires_every_dimension_to_have_evidence():
+    """A high mean over a thin rubric is not an advance."""
+    thin_rubric = [DimensionScore(d, 4, [], "") for d in DIMENSIONS[:3]]
+    thin_rubric += [DimensionScore(d, None, [], "") for d in DIMENSIONS[3:]]
+    assert band_for(10, thin_rubric) == "advance with reservations"
+
+
+def test_reservations_band_is_reachable():
+    full = [DimensionScore(d, 3, [], "") for d in DIMENSIONS]
+    assert band_for(7, full) == "advance with reservations"
+
+
+# --- independence and weighting ----------------------------------------------
+
+
+def test_dimensions_are_judged_one_at_a_time():
+    """No halo: a judge must never see another dimension's verdict."""
+    seen = []
+
+    class Spy(Judge):
+        def score_dimension(self, dimension, units):
+            seen.append(dimension)
+            return DimensionScore(dimension, 3, [])
+
+    score_call(strong(), judge=Spy())
+    assert seen == list(DIMENSIONS)
+
+
+def test_role_weighting_moves_the_headline():
+    class Split(Judge):
+        def score_dimension(self, dimension, units):
+            return DimensionScore(dimension, 4 if dimension == "ownership" else 1, [])
+
+    heavy = RolePack("ownership-heavy", {d: (9.0 if d == "ownership" else 1.0) for d in DIMENSIONS})
+    assert score_call(strong(), judge=Split(), role=heavy).overall > \
+           score_call(strong(), judge=Split()).overall
+
+
+def test_scores_stay_inside_the_rubric():
+    a = score_call(strong())
+    for d in a.dimensions:
+        assert d.score is None or 1 <= d.score <= 4
+
+
+# --- report ------------------------------------------------------------------
+
+
+def test_report_leads_with_the_headline_and_the_band():
+    first = score_call(strong()).render().splitlines()[0]
+    assert "/10" in first
+
+
+def test_report_says_a_human_decides():
+    assert "does not decide" in score_call(strong()).render()
+
+
+def test_report_shows_insufficient_rather_than_a_number():
+    assert "insufficient evidence" in score_call(thin()).render()
+
+
+def test_report_quotes_with_a_timestamp():
+    assert "[00:" in score_call(strong()).render()
+
+
+def test_a_no_score_report_still_renders():
+    r = score_call(thin()).render()
+    assert "no score" in r and "insufficient signal" in r
+
+
+def test_the_heuristic_judge_is_deterministic():
+    assert score_call(strong()).overall == score_call(strong()).overall
+
+
+def test_judge_names_itself():
+    assert HeuristicJudge().name == "heuristic"
+
+
+def test_ownership_is_found_in_a_lowercased_transcript():
+    """Recognised speech is often lowercased; a capital-I rule loses every claim."""
+    lower = [
+        T(0, "agent", "What did you do?"),
+        T(10, "caller", "i wrote the fix and the repro harness"),
+    ]
+    own = next(d for d in score_call(lower).dimensions if d.dimension == "ownership")
+    assert not own.insufficient

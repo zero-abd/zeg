@@ -6,6 +6,7 @@ import sys
 from .backends import build_backend
 from .config import AudioConfig, BackendConfig, CallConfig
 from .conversation import ConversationRunner
+from .scoring import score_call
 from .prompts import GREETING, SYSTEM_PROMPT
 
 
@@ -19,6 +20,7 @@ def main(argv=None) -> int:
     )
     p.add_argument("--checkpoint", default=BackendConfig.checkpoint_dir)
     p.add_argument("--quiet", action="store_true", help="summary only")
+    p.add_argument("--no-score", action="store_true", help="skip the post-call report")
     args = p.parse_args(argv)
 
     backend = build_backend(
@@ -49,6 +51,13 @@ def main(argv=None) -> int:
         print("note               call hit the 15 minute wall clock")
     for e in result.errors:
         print("error              %s" % e)
+
+    if not args.no_score:
+        # The post-call pass. Offline, so it can afford judgement the live path cannot.
+        # Without a model behind it this is the heuristic judge, which is shallow by
+        # design; the report shape and the evidence discipline are what it demonstrates.
+        print()
+        print(score_call(result.transcript).render())
 
     return 1 if result.errors else 0
 

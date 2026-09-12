@@ -180,12 +180,19 @@ problem.
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
-| Scoring pass and report | Not started |
+| Scoring pass and report | Done, 22 tests, model-free judge |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**Post-call scoring.** `services/agent/zeg/scoring.py` turns a transcript into a 1-10
+assessment with quoted evidence. Dimensions are judged one at a time so a strong answer
+cannot lift the rest, and a dimension with no citable span is recorded as insufficient
+evidence rather than a low score. "Insufficient signal" is a real outcome with its own
+band. A model-free judge makes the whole pipeline demoable and testable today; a
+model-backed judge drops into the same interface. `make demo` now prints the report.
 
 **Serving runtime implemented.** `services/agent/zeg/runtime/` is the model-side
 process: wire protocol, session lifecycle, the frame loop with explicit budget
