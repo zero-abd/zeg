@@ -148,8 +148,12 @@ class Interview:
             return []
 
         if isinstance(event, AgentText) and event.final:
-            self.record.transcript.append(Turn(t_s, "agent", event.text))
-            self.engine.note_agent(event.text, t_s)
+            # A backend echoes back what it spoke, including the fixed utterances we
+            # handed it with say(). Recording both put the greeting in the transcript
+            # twice. The echo is a confirmation, not a second turn.
+            if not self._already_recorded(event.text):
+                self.record.transcript.append(Turn(t_s, "agent", event.text))
+                self.engine.note_agent(event.text, t_s)
             return []
 
         if isinstance(event, UserTranscript) and event.final:
@@ -229,6 +233,13 @@ class Interview:
         self.record.transcript.append(Turn(t_s, "agent", safe))
         self.engine.note_agent(safe, t_s)
         return [Speak(safe)]
+
+    def _already_recorded(self, text: str) -> bool:
+        for turn in reversed(self.record.transcript):
+            if turn.speaker == "agent":
+                return turn.text == text
+            return False
+        return False
 
     def _seed(self, t_s: float) -> SessionSeed:
         return SessionSeed(

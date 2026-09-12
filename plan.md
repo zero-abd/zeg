@@ -180,6 +180,7 @@ problem.
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
 | Call driver: consent, clock, briefing, gating | Done, 23 tests |
 | Session rollover and seeding | Done, 21 tests, needs the box to tune |
+| Engine-driven demo, end to end | Done, 15 integration tests |
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
@@ -189,6 +190,15 @@ problem.
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**The demo runs the real path.** `make demo` now puts the interview engine in charge of
+a backend session rather than letting the backend's own script drive, which is the
+arrangement the real system uses. Wiring it found three integration bugs that every unit
+test had missed: the disclosure appeared twice because the backend echoes back what it
+spoke and both copies were recorded; the candidate's words never reached the transcript
+because the endpoint fires during the silence *after* speech, not during it; and after a
+session rollover the loops kept pushing audio into the session that had just closed.
+Rollover would not have worked at all on the box.
 
 **The backend contract learned to be steered.** Wiring the driver to a real session
 exposed the gap: the contract could carry audio but gave the interview layer no way to

@@ -230,3 +230,158 @@ class _VirtualClock:
 
     def tick(self) -> None:
         self.now += self._step
+
+
+# --- Driven by the interview engine ------------------------------------------
+
+
+@dataclass
+class DrivenResult:
+    """What a driven call produced, on top of the raw audio accounting."""
+
+    transcript: List[TranscriptEntry] = field(default_factory=list)
+    steers: List[str] = field(default_factory=list)
+    probes: List[str] = field(default_factory=list)
+    rollovers: int = 0
+    flags: List[str] = field(default_factory=list)
+    consent: Optional[bool] = None
+    ended: Optional[str] = None
+    duration_s: float = 0.0
+    interruptions: int = 0
+
+    def render(self) -> str:
+        lines = []
+        for e in self.transcript:
+            m, s = divmod(int(e.at_s), 60)
+            lines.append("[%02d:%02d] %-6s %s" % (m, s, e.speaker, e.text))
+        return "\n".join(lines)
+
+
+class InterviewRunner:
+    """Runs a simulated caller against a backend with the interview engine in charge.
+
+    The difference from `ConversationRunner` is who decides what happens. There, the
+    backend's own script drives and the runner just measures. Here the engine owns
+    consent, the clock, the briefings and the rollovers, and the backend is only a
+    voice. That is the arrangement the real system uses, so this is the one that finds
+    integration bugs.
+    """
+
+    def __init__(
+        self,
+        backend: VoiceBackend,
+        interview=None,
+        audio: Optional[AudioConfig] = None,
+    ) -> None:
+        from .interview import Interview  # local: avoids a cycle at import time
+
+        self.backend = backend
+        self.audio = audio or AudioConfig()
+        self.interview = interview or Interview()
+
+    def run(self, caller: Sequence[CallerTurn] = DEFAULT_CALLER) -> DrivenResult:
+        from .interview import Brief, EndCall, Probe, Rollover, Speak
+
+        result = DrivenResult()
+        clock = _VirtualClock(self.audio.frame_ms)
+        # The session is instance state, not a local, because a rollover replaces it
+        # mid-call. Passing it down as an argument meant the loops kept pushing audio
+        # into the session that had just been closed.
+        self._session = self.backend.start_session(self.interview.system_prompt)
+        # What the simulated caller is currently saying. It has to outlive the speech
+        # itself, because the endpoint fires during the silence that follows.
+        self._saying: Optional[str] = None
+
+        def perform(actions):
+            for a in actions:
+                if isinstance(a, Speak):
+                    self._session.say(a.text)
+                elif isinstance(a, Brief):
+                    result.steers.append(a.text)
+                    self._session.steer(a.text)
+                elif isinstance(a, Probe):
+                    result.probes.append(a.instruction)
+                    self._session.steer(a.instruction)
+                elif isinstance(a, Rollover):
+                    # A fresh session, primed. The old one is closed only after the new
+                    # one exists, so there is never a moment with no session at all.
+                    result.rollovers += 1
+                    new = self.backend.start_session(a.seed.system_prompt)
+                    new.steer(a.seed.briefing)
+                    self._session.close()
+                    self._session = new
+                elif isinstance(a, EndCall):
+                    result.ended = a.reason
+
+        try:
+            perform(self.interview.start())
+            for turn in caller:
+                if result.ended:
+                    break
+                self._drain(clock, result, perform)
+                if result.ended:
+                    break
+                self._speak(clock, result, perform, turn)
+                self._silence(clock, result, perform, turn.pause_after_s)
+            if not result.ended:
+                self._drain(clock, result, perform)
+        finally:
+            self._session.close()
+
+        result.transcript = [
+            TranscriptEntry(t.at_s, t.speaker, t.text)
+            for t in self.interview.record.transcript
+        ]
+        result.flags = list(self.interview.record.flags)
+        result.consent = self.interview.record.consent
+        result.duration_s = clock.now
+        return result
+
+    # --- caller behaviours ----------------------------------------------------
+
+    def _speak(self, clock, result, perform, turn: CallerTurn) -> None:
+        n = int(turn.speak_s * 1000 / self.audio.frame_ms)
+        for _ in range(n):
+            f = tone(self.audio.input_sample_rate, self.audio.input_frame_samples,
+                     freq_hz=180.0, amplitude=0.3)
+            self._session.push_audio(AudioFrame(f.pcm, f.sample_rate, clock.now))
+            self._saying = turn.text
+            clock.tick()
+            self._consume(clock, result, perform)
+
+    def _silence(self, clock, result, perform, seconds: float) -> None:
+        for _ in range(int(seconds * 1000 / self.audio.frame_ms)):
+            self._session.push_audio(
+                AudioFrame.silence(self.audio.input_sample_rate,
+                                   self.audio.input_frame_samples, clock.now))
+            clock.tick()
+            self._consume(clock, result, perform)
+
+    def _drain(self, clock, result, perform, max_s: float = 30.0) -> None:
+        idle = 0
+        for _ in range(int(max_s * 1000 / self.audio.frame_ms)):
+            before = len(self.interview.record.transcript)
+            self._session.push_audio(
+                AudioFrame.silence(self.audio.input_sample_rate,
+                                   self.audio.input_frame_samples, clock.now))
+            clock.tick()
+            self._consume(clock, result, perform)
+            idle = 0 if len(self.interview.record.transcript) > before else idle + 1
+            if idle >= 15:
+                return
+
+    def _consume(self, clock, result, perform) -> None:
+        from .backends.base import AgentInterrupted, UserTranscript
+
+        for ev in self._session.poll():
+            if isinstance(ev, AgentInterrupted):
+                result.interruptions += 1
+            if isinstance(ev, UserTranscript) and ev.final:
+                # The simulated caller supplies the words; the mock only tells us *when*
+                # an utterance ended. Substituting keeps the transcript legible without
+                # pretending the mock recognised anything.
+                if self._saying is None:
+                    continue
+                ev = UserTranscript(self._saying, final=True)
+                self._saying = None
+            perform(self.interview.on_event(ev, clock.now))
