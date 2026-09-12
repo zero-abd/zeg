@@ -18,7 +18,8 @@ from .backends.base import AgentInterrupted, AgentText, UserTranscript
 from .blocklist import ProhibitedQuestion
 from .config import CallConfig
 from .engine import InterviewEngine
-from .prompts import CONSENT_DECLINED, GREETING, WRAP_UP
+from .memory import RolloverPolicy, SessionSeed, last_exchange
+from .prompts import CONSENT_DECLINED, GREETING, SYSTEM_PROMPT, WRAP_UP
 
 #: How often the model is re-grounded. Its audio context is roughly two minutes, so a
 #: briefing older than this is worth resending even if nothing changed.
@@ -60,6 +61,22 @@ class Probe:
 
 
 @dataclass
+class Rollover:
+    """Open a fresh model session primed with this, and swap at this turn boundary.
+
+    The model's context horizon is shorter than the interview, so the session is
+    replaced rather than allowed to drift past what it can hold. The candidate hears a
+    beat of silence; they do not hear the agent forget them.
+    """
+
+    seed: SessionSeed
+
+    @property
+    def text(self) -> str:
+        return self.seed.render()
+
+
+@dataclass
 class EndCall:
     reason: str
 
@@ -80,6 +97,7 @@ class InterviewRecord:
     flags: List[str] = field(default_factory=list)
     consent: Optional[bool] = None
     ended: Optional[str] = None
+    rollovers: int = 0
 
 
 class Interview:
@@ -90,14 +108,19 @@ class Interview:
         engine: Optional[InterviewEngine] = None,
         call: Optional[CallConfig] = None,
         greeting: str = GREETING,
+        rollover: Optional[RolloverPolicy] = None,
+        system_prompt: str = SYSTEM_PROMPT,
     ) -> None:
         self.call = call or CallConfig()
         self.engine = engine or InterviewEngine(call=self.call)
         self.greeting = greeting
+        self.rollover = rollover or RolloverPolicy()
+        self.system_prompt = system_prompt
         self.record = InterviewRecord()
         self._last_brief_s = -BRIEFING_INTERVAL_S
         self._wrapped = False
         self._asked_consent = False
+        self._session_started_s = 0.0
 
     # --- lifecycle ------------------------------------------------------------
 
@@ -161,6 +184,19 @@ class Interview:
         probe = self.engine.next_probe()
         if probe is not None:
             actions.append(Probe("Ask for %s." % probe))
+
+        # Turn boundaries are the only safe moment to replace a session, and a probe
+        # still descending is a thread a fresh session would drop.
+        if self.rollover.should_roll(
+            session_age_s=t_s - self._session_started_s,
+            at_turn_boundary=True,
+            probe_in_progress=self.engine.probe_in_progress,
+            frames_used=self.rollover.frames_for(t_s - self._session_started_s),
+        ):
+            actions.append(Rollover(self._seed(t_s)))
+            self.record.rollovers += 1
+            self._session_started_s = t_s
+            self._last_brief_s = t_s  # the seed already carries the briefing
         return actions
 
     def _resolve_consent(self, text: str, t_s: float) -> List[Action]:
@@ -193,6 +229,13 @@ class Interview:
         self.record.transcript.append(Turn(t_s, "agent", safe))
         self.engine.note_agent(safe, t_s)
         return [Speak(safe)]
+
+    def _seed(self, t_s: float) -> SessionSeed:
+        return SessionSeed(
+            system_prompt=self.system_prompt,
+            briefing=self.engine.briefing(t_s),
+            last_exchange=last_exchange(self.record.transcript),
+        )
 
     def _end(self, reason: str) -> List[Action]:
         self.record.ended = reason

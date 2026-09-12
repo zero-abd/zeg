@@ -116,3 +116,29 @@ def test_a_shorter_call_moves_the_wrap_up(eng):
     short = InterviewEngine(call=CallConfig(max_duration_s=300, wrap_up_at_s=240))
     assert short.should_wrap_up(250)
     assert short.is_over(300)
+
+
+def test_an_answer_to_a_probe_deepens_the_claim_rather_than_replacing_it(eng):
+    """The bug this guards: every specific answer used to start a fresh claim, so the
+    ladder reset on each turn and never got past its first rung."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    assert eng.next_probe() == PROBE_LADDER[0]
+    eng.note_caller("I wrote the advisory-lock fix myself", 110)
+    assert len(eng.state.claims) == 1
+    assert eng.next_probe() == PROBE_LADDER[1]
+
+
+def test_probe_in_progress_tracks_the_descent(eng):
+    assert not eng.probe_in_progress
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    assert not eng.probe_in_progress
+    eng.next_probe()
+    assert eng.probe_in_progress
+
+
+def test_probe_in_progress_clears_once_the_ladder_is_exhausted(eng):
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    for _ in PROBE_LADDER:
+        eng.next_probe()
+        eng.note_caller("a specific sounding answer with numbers 42", 110)
+    assert not eng.probe_in_progress

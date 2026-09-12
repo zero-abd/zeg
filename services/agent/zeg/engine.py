@@ -102,6 +102,10 @@ class InterviewState:
     evidence: List[Evidence] = field(default_factory=list)
     asked: List[str] = field(default_factory=list)
     vague_streak: int = 0
+    #: True between issuing a probe and hearing the answer to it. Without this, every
+    #: specific answer looked like a brand new claim and the ladder reset instead of
+    #: descending, so a probe never got past its first rung.
+    probe_outstanding: bool = False
 
 
 class InterviewEngine:
@@ -149,9 +153,18 @@ class InterviewEngine:
         self.state.asked.append(text)
 
     def note_caller(self, text: str, t_s: float) -> None:
-        """Record an answer and judge, crudely, whether it was specific."""
+        """Record an answer and judge, crudely, whether it was specific.
+
+        An answer to an outstanding probe deepens the claim being probed; it does not
+        start a new one. Treating it as new was the bug that kept the ladder pinned to
+        its first rung through an entire interview.
+        """
         vague = bool(_VAGUE.search(text)) and not _SPECIFIC.search(text)
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0
+
+        if self.state.probe_outstanding:
+            self.state.probe_outstanding = False
+            return
         if not vague and len(text.split()) >= 4:
             self.state.claims.append(Claim(text=text, at_s=t_s))
 
@@ -182,7 +195,19 @@ class InterviewEngine:
             return None
         rung = PROBE_LADDER[claim.probed_to]
         claim.probed_to += 1
+        self.state.probe_outstanding = True
         return rung
+
+    @property
+    def probe_in_progress(self) -> bool:
+        """True while a claim is partway down the ladder.
+
+        Used to hold off a session rollover: the descent is exactly the thread a fresh
+        session would lose.
+        """
+        if not self.state.claims:
+            return False
+        return 0 < self.state.claims[-1].probed_to < len(PROBE_LADDER)
 
     def speak(self, text: str) -> str:
         """Gate an outbound utterance. Raises ProhibitedQuestion if it must not be said.

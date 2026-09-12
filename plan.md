@@ -178,6 +178,7 @@ problem.
 | Real backend | Written, untested on hardware |
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
 | Call driver: consent, clock, briefing, gating | Done, 23 tests |
+| Session rollover and seeding | Done, 21 tests, needs the box to tune |
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
@@ -187,6 +188,18 @@ problem.
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**Session rollover.** `services/agent/zeg/memory.py` decides when to replace the model
+session and what to prime the new one with. The policy is conservative on purpose: only
+at a turn boundary, never twice in quick succession, and never while a probe is still
+descending, because the descent is exactly the thread a fresh session would lose. The
+seed carries the standing rules, the briefing and the last exchange, so there is no seam
+the candidate can hear. Every number in it is a starting point; the real rollover point
+needs the box.
+
+Writing it surfaced a genuine bug in the engine. Every specific answer was starting a
+new claim, so the probe ladder reset each turn and never got past its first rung. An
+answer to an outstanding probe now deepens the claim being probed.
 
 **The parts became one system.** `services/agent/zeg/interview.py` drives a call:
 backend events in, actions out. It owns the consent gate, the wall clock, re-grounding
