@@ -176,6 +176,7 @@ problem.
 | Conversation harness, 24 tests | Done, `src/zeg/conversation.py` |
 | Interview prompt and consent text | Done, `src/zeg/prompts.py` |
 | Real backend | Written, untested on hardware |
+| Steering: say and steer, both sides | Done, 21 tests |
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
 | Call driver: consent, clock, briefing, gating | Done, 23 tests |
 | Session rollover and seeding | Done, 21 tests, needs the box to tune |
@@ -188,6 +189,16 @@ problem.
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**The backend contract learned to be steered.** Wiring the driver to a real session
+exposed the gap: the contract could carry audio but gave the interview layer no way to
+make the model say a fixed sentence or to hand it context. `say` speaks exact wording
+for the utterances that are ours and not the model's, the disclosure, the consent
+request, the wrap-up. `steer` puts a briefing into the model's working context without
+speaking it. They are separate calls, and separate wire messages, because they fail
+differently: a `say` that leaks into context makes the model repeat itself, and a
+`steer` that reaches the speaker reads the agent its own notes aloud. The server refuses
+a `say` mid-turn, because speaking over a candidate is the failure they remember.
 
 **Session rollover.** `services/agent/zeg/memory.py` decides when to replace the model
 session and what to prime the new one with. The policy is conservative on purpose: only

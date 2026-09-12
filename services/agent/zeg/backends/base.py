@@ -89,6 +89,31 @@ class VoiceSession(abc.ABC):
         """
 
     @abc.abstractmethod
+    def say(self, text: str) -> None:
+        """Speak this exact text.
+
+        For the utterances that are ours and not the model's: the disclosure, the
+        consent request, the wrap-up, the decline. Those are legal requirements or
+        fixed policy, so their wording is not something a model gets to improvise.
+
+        Call it at a turn boundary. Mid-response the model is mid-sentence, and two
+        voices at once is the one failure a candidate will remember.
+        """
+
+    @abc.abstractmethod
+    def steer(self, text: str) -> None:
+        """Put guidance into the model's working context. Not spoken.
+
+        This is how the interview engine remains in charge of a model that cannot
+        remember: briefings, probe instructions, phase changes. The candidate never
+        hears it.
+
+        Separate from `say` because the two fail differently. A `say` that leaks into
+        the model's context makes it repeat itself; a `steer` that reaches the speaker
+        reads the agent its own notes aloud.
+        """
+
+    @abc.abstractmethod
     def close(self) -> None:
         """Release the session. Safe to call twice."""
 

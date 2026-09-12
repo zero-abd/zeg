@@ -151,6 +151,11 @@ class ServerSession:
         self.frames = 0
         self.over_budget = 0
 
+        #: Exact text the client asked to be spoken, waiting for the loop to pick up.
+        self.pending_say: Optional[str] = None
+        #: Context guidance queued by the client. Never spoken.
+        self.steers: List[str] = []
+
         self._turn: Optional[int] = None
         self._turn_id: Optional[str] = None
         self._turn_index = 0
@@ -205,9 +210,42 @@ class ServerSession:
             return self._turn_commit(msg)
         if kind == p.CANCEL:
             return self._cancel(msg.get("reason") or "barge_in")
+        if kind == p.SAY:
+            return self._say(msg)
+        if kind == p.STEER:
+            return self._steer(msg)
         if kind == p.STOP:
             return self.close("client_stop")
         return [self.wire.error("unknown_message", "unknown message type: %r" % kind)]
+
+    def _say(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Speak exact text.
+
+        Rejected mid-turn. A turn is open means the candidate is still talking, and
+        speaking over them is the failure they will remember. The client is expected to
+        do this at a turn boundary; if it does not, that is a client bug worth naming
+        rather than papering over.
+        """
+        text = msg.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return [self.wire.error("bad_say", "say needs non-empty text")]
+        if self._turn_id is not None:
+            return [self.wire.error("say_mid_turn", "say is only valid at a turn boundary")]
+        self.pending_say = text
+        return []
+
+    def _steer(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Context guidance. Queued, never spoken, applied before the next response."""
+        text = msg.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return [self.wire.error("bad_steer", "steer needs non-empty text")]
+        self.steers.append(text)
+        return []
+
+    def take_steers(self) -> List[str]:
+        """Drain the queued guidance. Called by the loop before it builds a response."""
+        out, self.steers = self.steers, []
+        return out
 
     def _configure(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if self.configured:

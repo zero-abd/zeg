@@ -312,6 +312,25 @@ class GB10Session(VoiceSession):
         self._emit_playout()
         self._check_watchdog()
 
+    def say(self, text: str) -> None:
+        """Speak fixed text.
+
+        Cancels any response in flight first. The caller asked for this utterance now,
+        and letting a half-finished model response trail behind it is how two voices
+        end up overlapping.
+        """
+        if self._closed:
+            raise RuntimeError("session is closed")
+        if self._speaking():
+            self._barge_in()
+        self._link.send({"type": protocol.SAY, "text": text})
+
+    def steer(self, text: str) -> None:
+        """Guidance into the model's context. Never reaches the speaker."""
+        if self._closed:
+            raise RuntimeError("session is closed")
+        self._link.send({"type": protocol.STEER, "text": text})
+
     def poll(self) -> Iterator[BackendEvent]:
         if not self._closed:
             self._absorb()

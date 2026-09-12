@@ -58,6 +58,13 @@ TURN_START = "input.turn_start"
 AUDIO = "input.audio"
 TURN_COMMIT = "input.turn_commit"
 CANCEL = "response.cancel"
+#: Speak this exact text. For utterances whose wording is ours, not the model's:
+#: the disclosure, the consent request, the wrap-up.
+SAY = "response.say"
+#: Put text into the model's working context without speaking it. Briefings, probe
+#: instructions, phase changes. The two are separate messages because they fail
+#: differently, and a server that conflated them would read notes aloud.
+STEER = "context.steer"
 STOP = "session.stop"
 
 # Server to client.
@@ -175,6 +182,14 @@ class Wire:
             session={"id": session_id},
             limits=limits,
         )
+
+    def say(self, text: str) -> Dict[str, Any]:
+        """Client to server: speak this exact text."""
+        return {"type": SAY, "text": text}
+
+    def steer(self, text: str) -> Dict[str, Any]:
+        """Client to server: context guidance, not to be spoken."""
+        return {"type": STEER, "text": text}
 
     def configured(self, session_id: str, limits: Dict[str, Any]) -> Dict[str, Any]:
         """The model-ready barrier.

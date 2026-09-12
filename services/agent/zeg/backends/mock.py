@@ -47,6 +47,7 @@ class ScriptedSession(VoiceSession):
         self._audio = audio
         self._latency_frames = latency_frames
 
+        self.steers: List[str] = []
         self._pending: List[BackendEvent] = []
         self._speaking: List[AudioFrame] = []
         self._phase = 0.0
@@ -95,6 +96,21 @@ class ScriptedSession(VoiceSession):
             self._countdown -= 1
         elif self._speaking:
             self._pending.append(AgentAudio(self._speaking.pop(0)))
+
+    def say(self, text: str) -> None:
+        """Speak fixed text. Replaces anything queued, because the caller asked for
+        this utterance now and a half-finished previous one is not wanted behind it."""
+        if self._closed:
+            raise RuntimeError("session is closed")
+        self._speaking.clear()
+        self._begin_reply(text)
+
+    def steer(self, text: str) -> None:
+        """Recorded, never spoken. The mock has no context to put it in, so the only
+        thing worth asserting is that it does not reach the audio path."""
+        if self._closed:
+            raise RuntimeError("session is closed")
+        self.steers.append(text)
 
     def poll(self) -> Iterator[BackendEvent]:
         out, self._pending = self._pending, []
