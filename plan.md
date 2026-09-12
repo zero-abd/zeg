@@ -177,6 +177,7 @@ problem.
 | Interview prompt and consent text | Done, `src/zeg/prompts.py` |
 | Real backend | Written, untested on hardware |
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
+| Call driver: consent, clock, briefing, gating | Done, 23 tests |
 | Prohibited-question block list | Done, 24 tests |
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
@@ -186,6 +187,13 @@ problem.
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**The parts became one system.** `services/agent/zeg/interview.py` drives a call:
+backend events in, actions out. It owns the consent gate, the wall clock, re-grounding
+the model when a briefing goes stale, and dropping any prohibited question before it
+reaches synthesis. It is a pure state machine with no I/O, so consent, the time limit
+and the block list are testable without a model, a socket or a microphone, which is the
+only way they stay tested. Its record feeds the scoring pass with no translation.
 
 **Post-call scoring.** `services/agent/zeg/scoring.py` turns a transcript into a 1-10
 assessment with quoted evidence. Dimensions are judged one at a time so a strong answer
