@@ -108,7 +108,10 @@ def to_qa_units(transcript: Sequence) -> List[QAUnit]:
     for entry in transcript:
         if entry.speaker == "agent":
             pending = entry
-        elif entry.speaker == "caller" and pending is not None:
+            continue
+        if entry.speaker != "caller":
+            continue
+        if pending is not None:
             units.append(
                 QAUnit(
                     question=pending.text,
@@ -118,6 +121,18 @@ def to_qa_units(transcript: Sequence) -> List[QAUnit]:
                 )
             )
             pending = None
+        elif units:
+            # A candidate who pauses and then keeps going produces two turns in a row.
+            # Dropping the second silently loses evidence, and the answer that follows
+            # a pause is often the specific one, because they have had a moment to
+            # remember the number.
+            last = units[-1]
+            units[-1] = QAUnit(
+                question=last.question,
+                answer="%s %s" % (last.answer, entry.text),
+                asked_at_s=last.asked_at_s,
+                answered_at_s=entry.at_s,
+            )
     return units
 
 

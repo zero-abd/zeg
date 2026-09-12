@@ -190,3 +190,56 @@ def test_ownership_is_found_in_a_lowercased_transcript():
     ]
     own = next(d for d in score_call(lower).dimensions if d.dimension == "ownership")
     assert not own.insufficient
+
+
+# --- a candidate who pauses and keeps going -----------------------------------
+
+
+def test_a_second_consecutive_answer_is_not_dropped():
+    """Real candidates pause and then continue. The second half used to be discarded,
+    and it is often the specific half, because they have had a moment to remember the
+    number."""
+    paused = [
+        T(0, "agent", "What did you do?"),
+        T(10, "caller", "I rewrote the retry logic."),
+        T(18, "caller", "Retry volume dropped by ninety percent, because of the jitter."),
+    ]
+    units = to_qa_units(paused)
+    assert len(units) == 1
+    assert "ninety percent" in units[0].answer
+
+
+def test_the_merged_answer_keeps_the_later_timestamp():
+    paused = [
+        T(0, "agent", "What did you do?"),
+        T(10, "caller", "I rewrote it."),
+        T(18, "caller", "Volume dropped ninety percent."),
+    ]
+    assert to_qa_units(paused)[0].answered_at_s == 18
+
+
+def test_a_dropped_continuation_used_to_cost_the_whole_score():
+    """The regression: with the continuation discarded there was no citable evidence
+    left and the call came out as insufficient signal."""
+    paused = [
+        T(0, "agent", "What did you do?"),
+        T(10, "caller", "It was the reconciler."),
+        T(18, "caller", "I wrote the advisory-lock fix because two workers raced."),
+        T(30, "agent", "What did it cost?"),
+        T(40, "caller", "We gave up parallelism. Batch time roughly doubled."),
+        T(50, "agent", "How did you find it?"),
+        T(60, "caller", "I reproduced it under load and narrowed it to one merchant."),
+    ]
+    assert score_call(paused).band != "insufficient signal"
+
+
+def test_three_turns_in_a_row_all_merge():
+    runs = [
+        T(0, "agent", "Tell me."),
+        T(10, "caller", "one"),
+        T(15, "caller", "two"),
+        T(20, "caller", "three"),
+    ]
+    units = to_qa_units(runs)
+    assert len(units) == 1
+    assert units[0].answer == "one two three"

@@ -195,7 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
-**One backend is playback, not a call.** The speaking backend added for the demo never
+**The demo takes consent again.** The speaking backend added for the demo cannot
+recognise speech, so it never reported when a candidate stopped talking, and the engine
+saw only its own voice: consent unresolved, no probe issued, no rollover possible, while
+the transcript still looked plausible. That was the demo a judge would have watched.
+
+The harness now supplies the turn boundary when a backend cannot, since the simulated
+caller knows what it said and when it stopped, and it counts how often it had to. A
+non-zero count is the honest signal that the audio is real and the listening is not.
+Both backends now reach the same consent, the same probes and the same score.
+
+Chasing that surfaced a genuine bug in the scoring pass. A candidate who pauses and then
+keeps talking produces two turns in a row, and the second was being silently discarded.
+That is often the specific half, because they have had a moment to remember the number.
+In one transcript it was the difference between a 7 and no score at all.
+
+ The speaking backend added for the demo never
 reports that the candidate said anything, so with it in place consent is never resolved,
 no probe is issued and no rollover can fire. That is a fine thing for a canned demo to
 be and a dangerous thing to mistake for a screening call. If a judge asks whether the

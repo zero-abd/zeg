@@ -244,6 +244,9 @@ class DrivenResult:
     probes: List[str] = field(default_factory=list)
     rollovers: int = 0
     agent_audio_frames: int = 0
+    #: Turn boundaries the harness had to supply because the backend reported none.
+    #: Non-zero means the backend is playback, not recognition.
+    synthesised_turns: int = 0
     flags: List[str] = field(default_factory=list)
     consent: Optional[bool] = None
     ended: Optional[str] = None
@@ -361,6 +364,27 @@ class InterviewRunner:
                                    self.audio.input_frame_samples, clock.now))
             clock.tick()
             self._consume(clock, result, perform)
+        self._deliver_pending(clock, result, perform)
+
+    def _deliver_pending(self, clock, result, perform) -> None:
+        """Tell the interview the caller finished, if the backend never did.
+
+        A backend that cannot recognise speech reports no end of turn, and the engine
+        then sees only its own voice: consent is never resolved, no probe is issued,
+        nothing downstream of a candidate turn happens at all. The transcript still
+        looks plausible, which is what makes it dangerous.
+
+        The simulated caller knows what it said and when it stopped, so the harness
+        supplies the boundary itself. A backend that does report one gets there first
+        and this finds nothing left to deliver.
+        """
+        from .backends.base import UserTranscript
+
+        if self._saying is None:
+            return
+        text, self._saying = self._saying, None
+        result.synthesised_turns += 1
+        perform(self.interview.on_event(UserTranscript(text, final=True), clock.now))
 
     def _drain(self, clock, result, perform, max_s: float = 40.0) -> None:
         """Wait for the agent to stop speaking.
