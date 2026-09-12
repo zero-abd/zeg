@@ -23,10 +23,10 @@ import tempfile
 import wave
 from typing import Dict, List, Optional, Sequence
 
-from ..audio import AudioFrame, resample_linear, tone
+from ..audio import AudioFrame, resample_linear, rms, tone
 from ..config import AudioConfig
-from .base import VoiceBackend, VoiceSession
-from .mock import DEFAULT_SCRIPT, ScriptedSession
+from .base import AgentAudio, VoiceBackend, VoiceSession
+from .mock import DEFAULT_SCRIPT, SPEECH_RMS, ScriptedSession
 
 
 def _which_engine() -> Optional[str]:
@@ -96,10 +96,40 @@ def synth_frames(text: str, audio: AudioConfig, engine: Optional[str]) -> List[A
 class TTSSession(ScriptedSession):
     """A ScriptedSession whose 'voice' is real speech instead of a tone."""
 
-    def __init__(self, system_prompt, greeting, script, audio, cache, engine, latency_frames=3):
+    def __init__(self, system_prompt, greeting, script, audio, cache, engine,
+                 latency_frames=3, auto_gap_ms=1300):
         self._cache = cache
         self._engine = engine
+        self._auto_gap_ms = auto_gap_ms
+        self._gap = 0
         super().__init__(system_prompt, greeting, script, audio, latency_frames)
+
+    def push_audio(self, frame: AudioFrame) -> None:
+        """Self-driving playback: stream the current line, then auto-advance.
+
+        Deliberately independent of mic endpointing, which is unreliable for the
+        demo. The agent plays a line, waits out the candidate's answer (the gap
+        resets while they talk), then moves to the next line once they pause —
+        and advances on its own even in silence. Barge-in is off here so a full
+        question always plays, even in a noisy room.
+        """
+        if self._closed:
+            raise RuntimeError("session is closed")
+        self._elapsed_s += frame.duration_s
+        if self._countdown > 0:
+            self._countdown -= 1
+            return
+        if self._speaking:
+            self._pending.append(AgentAudio(self._speaking.pop(0)))
+            self._gap = 0
+            return
+        if rms(frame) >= SPEECH_RMS:
+            self._gap = 0
+        else:
+            self._gap += 1
+            if self._gap * self._audio.frame_ms >= self._auto_gap_ms and self._script:
+                self._begin_reply(self._script.pop(0))
+                self._gap = 0
 
     def _synthesise(self, text: str) -> List[AudioFrame]:
         frames = self._cache.get(text)
