@@ -175,10 +175,41 @@ problem.
 | Mock backend, no GPU needed | Done, `src/zeg/backends/mock.py` |
 | Conversation harness, 24 tests | Done, `src/zeg/conversation.py` |
 | Interview prompt and consent text | Done, `src/zeg/prompts.py` |
-| Real backend | Next |
-| Interview engine: plan, clock, memory, block list | Not started |
+| Real backend | In progress |
+| Interview engine: plan, clock, memory, briefing | Done, 20 tests |
+| Prohibited-question block list | Done, 24 tests |
+| Serving runtime design | Done, `docs/11-runtime.md` |
+| Serving runtime implementation | In progress |
 | Scoring pass and report | Not started |
 | Landing page | In progress |
+
+## 6a. Progress log
+
+Newest first. Each entry is one commit or a short run of them.
+
+**Interview engine and question block list.** `services/agent/zeg/engine.py` holds the
+plan, the wall clock, what the candidate claimed and which rubric dimensions still
+lack evidence. `briefing()` is the answer to the two-minute context window: a compact
+restatement handed back at a turn boundary, so the model is reminded rather than asked
+to remember. `blocklist.py` gates every outbound utterance against nine categories of
+prohibited question, in code before synthesis, with work authorisation explicitly
+permitted and unable to shield an unlawful clause in the same breath. 44 new tests.
+
+**Serving runtime design.** `docs/11-runtime.md` settles the two-process split, the
+80 ms frame, who decides a turn has ended, barge-in cancellation, the wire protocol,
+the watchdog, the session frame budget and the memory strategy. It is explicit about
+what has not run on hardware.
+
+**Monorepo split.** One directory per track, a Makefile so setup is two commands, and
+`ONBOARDING.md` naming the files to read in order.
+
+**Repo scrubbed and pushed.** Vendor project names, checkpoint ids and dependency pins
+are out of the tracked tree and out of the commit history, and live untracked in
+`SETUP.local.md`.
+
+**Foundation.** Audio frames, the full-duplex backend contract, a mock backend that
+needs no GPU, the conversation harness with a virtual clock, and the interview prompt
+with its consent text.
 
 ## 7. Demo script
 
