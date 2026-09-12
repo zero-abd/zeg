@@ -1,6 +1,6 @@
 # services/gateway — call joining and A/V ingestion
 
-**Owner: Eunice (Track 2)**
+**Owner: Hyunsuh (Track 2)**
 
 Goal: get a candidate's audio into the box and the agent's audio back out, over a
 link the candidate can open in a browser.
@@ -42,3 +42,46 @@ most visible quality signal in a voice agent.
 MediaPipe, flag gaze beyond 30 to 45 degrees for more than 5 seconds, save the clip
 for recruiter review. Needs the video channel, which the audio path does not. First
 thing to cut if time runs short.
+
+## Implementation
+
+Built against the plan above. Audio-first; video is an optional WebRTC track with a
+Track-4 seam, nothing more.
+
+```
+gateway/
+  framing.py    rechunk a resampled PCM stream into exact 20 ms AudioFrames
+  playback.py   playback FIFO + the barge-in flush()
+  bridge.py     transport-agnostic core: caller frame in -> VoiceSession -> events out
+  webrtc.py     aiortc adapter: resample 48k<->16k/22.05k, the outbound audio track
+  server.py     aiohttp signaling, one call at a time, prints the transcript on hangup
+web/interview.html   candidate page: getUserMedia -> RTCPeerConnection -> /offer
+tools/meet_provision.py   stretch-only Google Meet link (see its header)
+```
+
+The split that matters: `bridge.py` is pure and imports no transport, so the barge-in
+behaviour is unit-tested against the mock backend with no browser and no aiortc. The
+WebRTC adapter is the only file that touches PyAV. Resampling is asymmetric on purpose
+(see `../agent/zeg/audio.py`): the inbound recognition leg uses PyAV's proper
+resampler, the outbound playback leg uses the cheap linear one.
+
+```bash
+make gateway-test               # bridge / framing / playback, no transport deps
+make gateway-setup              # aiortc + aiohttp into .venv (heavy: PyAV)
+make gateway                    # http://localhost:8080  (BACKEND=mock by default)
+```
+
+Open the page, click Join: the mock backend greets you with the disclosure + consent
+line and streams a 220 Hz tone as its "voice". Swap to the real model with
+`make gateway BACKEND=gb10` once `services/agent/zeg/backends/gb10.py` exists.
+
+Remote candidates need HTTPS (mic is blocked on insecure origins off localhost):
+
+```bash
+cloudflared tunnel --url http://localhost:8080     # or: ngrok http 8080
+```
+
+**Not yet done / handoffs:** the WebRTC media path is validated by unit tests and a
+clean server boot, but the browser SDP handshake needs a real browser to exercise
+end to end (couldn't be done headless here). The gaze `video_sink` in `webrtc.py` is
+a stub for Track 4. Scoring picks up `bridge.transcript` after hangup.
