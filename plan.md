@@ -185,11 +185,29 @@ problem.
 | Serving runtime design | Done, `docs/11-runtime.md` |
 | Serving runtime implementation | Written, 100 tests, needs the box |
 | Scoring pass and report | Done, 47 tests, model-free and model-backed judges |
+| Eval suite and agreement instrument | Done, 16 tests, `make evals` |
 | Landing page | Done, builds clean |
 
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**An instrument for telling whether a change helped.** `make evals` scores six
+hand-labelled calls and reports band agreement, score spread, and which dimensions a
+human expected evidence for that the judge found nothing on. Without it, every prompt
+edit and model swap is a guess.
+
+The labels carry a rationale so they can be argued with, and the suite deliberately
+includes the two cases a judge gets wrong in opposite directions: a candidate who is
+articulate and says nothing checkable, and one whose call was short but specific. A
+judge that conflates short with thin rejects people for a dropped connection.
+
+It also watches for score compression. Every scored call landing on one number means the
+rubric is decorative: the reports look confident and carry no information. That failure
+is invisible in any single report and obvious across a suite.
+
+The heuristic judge currently agrees with the human label on four of six, which is the
+honest baseline a real judge has to beat.
 
 **A judge with a model behind it.** `ModelJudge` scores one dimension per call against
 any callable that takes a prompt and returns text, so it works with whatever is on the

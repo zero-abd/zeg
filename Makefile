@@ -34,6 +34,9 @@ test-gateway:
 demo:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -m zeg.cli
 
+evals:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -m zeg.evals
+
 web:
 	cd web && npm run dev
 
