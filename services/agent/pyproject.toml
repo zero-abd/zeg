@@ -1,7 +1,7 @@
 [project]
-name = "zeg"
+name = "zeg-agent"
 version = "0.0.1"
-description = "Local voice agent that conducts technical screening calls for SWE roles"
+description = "zeg interview agent: conversation control, rubric, scoring"
 requires-python = ">=3.9"
 dependencies = []
 
@@ -29,9 +29,10 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["zeg*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Tests import zeg straight from src, so no install step is needed to run them.
-pythonpath = ["src"]
+pythonpath = ["."]

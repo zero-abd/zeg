@@ -10,6 +10,8 @@ It gathers evidence and recommends. A human makes the hiring decision.
 
 **Start here: [plan.md](plan.md).** Background detail lives in [docs/](docs/).
 
+**New here? Read [ONBOARDING.md](ONBOARDING.md).**
+
 ## Barebone test, on your laptop, right now
 
 No GPU, no model download, no dependencies. This runs a scripted interview through a
@@ -17,14 +19,8 @@ mock backend so you can see the shape of a call and work on everything above the
 
 ```bash
 git clone https://github.com/zero-abd/zeg.git && cd zeg
-python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m zeg.cli
-```
-
-If `zeg` is not importable, run it straight from the source tree:
-
-```bash
-PYTHONPATH=src .venv/bin/python -m zeg.cli
+make setup
+make demo
 ```
 
 You get a timestamped transcript and a summary:
@@ -44,17 +40,9 @@ interruptions      1
 reply latency      median 300 ms, p95 300 ms
 ```
 
-Flags:
-
 ```bash
-.venv/bin/python -m zeg.cli --quiet            # summary only, no transcript
-.venv/bin/python -m zeg.cli --backend gb10     # real model, needs the box
-```
-
-Run the tests:
-
-```bash
-.venv/bin/python -m pytest -q
+make test    # 24 tests, no GPU needed
+make web     # landing page dev server
 ```
 
 ### What the mock is and is not
@@ -85,16 +73,19 @@ that will eat an hour before anyone works out what is happening.
 ## Layout
 
 ```
-plan.md                 the end-to-end plan, read this first
-docs/                   scope, architecture, latency, rubric, compliance, risks
-src/zeg/
-  audio.py              PCM16 frames, resampling, RMS. stdlib only.
-  backends/base.py      full-duplex backend contract
-  backends/mock.py      runs anywhere, no GPU
-  conversation.py       harness, virtual clock, latency accounting
-  prompts.py            greeting, consent, system prompt
-  cli.py                zeg-converse
-tests/                  24 tests, no GPU needed
+ONBOARDING.md           start here
+plan.md                 the build plan
+Makefile                setup, test, demo, web
+docs/                   design decisions, with the reasoning kept
+services/
+  agent/                interview brain. conversation, rubric, scoring
+    zeg/backends/base.py    the contract everything meets at
+    zeg/backends/mock.py    that contract, no GPU needed
+    zeg/conversation.py     how a call is driven
+    zeg/prompts.py          greeting, consent, interview prompt
+    tests/                  24 tests
+  speech/               model serving on the box
+  gateway/              call joining, audio and video
 web/                    landing page
 ```
 
