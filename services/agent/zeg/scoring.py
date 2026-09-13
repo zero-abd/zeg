@@ -156,7 +156,28 @@ class Judge:
 #: Signals of a specific, hard-to-fabricate answer. Deliberately shallow: this judge
 #: exists so the pipeline is testable and demoable without a model, not to be good at
 #: interviewing.
-_NUMBER = re.compile(r"\b\d+(\.\d+)?\s*(ms|s|x|%|k|m|gb|mb|qps|rps|percent)?\b", re.I)
+#: People say numbers out loud, and recognition writes them down as words. A detector
+#: that only sees digits misses "ninety percent", "twelve hundred" and "eleven double
+#: settlements", which is every number the interview actually asks for.
+#:
+#: "one" is deliberately absent: "one of the things we did" is not a measurement, and a
+#: false positive here inflates the score for an answer that gave no figure at all.
+_NUMBER_WORDS = (
+    r"two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|"
+    r"fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|"
+    r"seventy|eighty|ninety|hundred|thousand|million|billion"
+)
+_NUMBER = re.compile(
+    r"\b\d+(\.\d+)?\s*(ms|s|x|%|k|m|gb|mb|qps|rps|percent)?\b"
+    r"|\b(" + _NUMBER_WORDS + r")\b"
+    r"|\b(percent|per cent|doubled|tripled|halved|quadrupled)\b",
+    re.I,
+)
+
+
+def has_number(text: str) -> bool:
+    """True when the text states a quantity, in digits or in words."""
+    return bool(_NUMBER.search(text))
 _CAUSAL = re.compile(r"\b(because|root cause|turned out|which meant|so that|due to)\b", re.I)
 # Case-insensitive on purpose. Recognised speech is frequently lowercased, and a
 # capital-I requirement silently loses every ownership claim in such a transcript.

@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The scorer could not read a number.** The interview's central probe is "give me a
+number", and the thing that scores the answer only recognised digits. "Ninety percent",
+"twelve hundred a second" and "eleven double settlements over six weeks" were all
+invisible. People say numbers out loud and recognition writes them as words, so the
+single most important piece of evidence the interview is designed to extract was the one
+piece the scorer could not see.
+
+The engine had the same blind spot in the other direction: an answer full of spoken
+figures read as vague, which stalled the probe ladder on a candidate who was being
+precise.
+
+Number words are now recognised in both. "One" is deliberately excluded, because "one of
+the things we did" is not a measurement and a false positive credits an answer that gave
+no figure at all.
+
 **The demo takes consent again.** The speaking backend added for the demo cannot
 recognise speech, so it never reported when a candidate stopped talking, and the engine
 saw only its own voice: consent unresolved, no probe issued, no rollover possible, while

@@ -142,3 +142,11 @@ def test_probe_in_progress_clears_once_the_ladder_is_exhausted(eng):
         eng.next_probe()
         eng.note_caller("a specific sounding answer with numbers 42", 110)
     assert not eng.probe_in_progress
+
+
+def test_a_spoken_number_makes_an_answer_specific(eng):
+    """The engine used to require a digit, so an answer full of figures read as vague
+    and the probe ladder stalled on a candidate who was being precise."""
+    eng.note_caller("we saw about twelve hundred retries a second, you know", 100)
+    assert eng.state.vague_streak == 0
+    assert eng.state.claims

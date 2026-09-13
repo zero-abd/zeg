@@ -243,3 +243,47 @@ def test_three_turns_in_a_row_all_merge():
     units = to_qa_units(runs)
     assert len(units) == 1
     assert units[0].answer == "one two three"
+
+
+# --- numbers said out loud ------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", [
+    "retry volume dropped by ninety percent",
+    "about twelve hundred a second before, forty thousand after",
+    "eleven double settlements over about six weeks",
+    "two workers could read the same batch",
+    "batch time roughly doubled",
+    "latency went from 400ms to 30ms",
+])
+def test_a_number_is_a_number_however_it_is_written(text):
+    """The interview's central probe is "give me a number". People say numbers out
+    loud and recognition writes them as words, so a digits-only detector misses every
+    figure the interview was designed to extract."""
+    from zeg.scoring import has_number
+
+    assert has_number(text), text
+
+
+@pytest.mark.parametrize("text", [
+    "one of the things we worked on",
+    "we did various stuff around the backend",
+    "it depends on the access patterns",
+])
+def test_ordinary_speech_is_not_mistaken_for_a_measurement(text):
+    """A false positive here credits an answer that gave no figure at all."""
+    from zeg.scoring import has_number
+
+    assert not has_number(text), text
+
+
+def test_a_spoken_number_earns_technical_depth():
+    spoken = [
+        T(0, "agent", "What was the impact?"),
+        T(10, "caller", "Retry volume dropped by ninety percent during the next incident."),
+        T(20, "agent", "And before?"),
+        T(30, "caller", "We were seeing about twelve hundred retries a second."),
+    ]
+    depth = next(d for d in score_call(spoken).dimensions
+                 if d.dimension == "technical_depth")
+    assert not depth.insufficient

@@ -75,7 +75,9 @@ _VAGUE = re.compile(
     r"a lot of|generally|typically|it depends)\b",
     re.I,
 )
-_SPECIFIC = re.compile(r"\d|\b(because|so that|which meant|turned out|root cause)\b", re.I)
+_CAUSAL_OR_OUTCOME = re.compile(
+    r"\b(because|so that|which meant|turned out|root cause)\b", re.I
+)
 
 
 # --- State -------------------------------------------------------------------
@@ -162,10 +164,11 @@ class InterviewEngine:
         start a new one. Treating it as new was the bug that kept the ladder pinned to
         its first rung through an entire interview.
         """
-        from .scoring import strip_filler  # local: scoring imports engine
+        from .scoring import has_number, strip_filler  # local: scoring imports engine
 
         spoken = strip_filler(text)
-        vague = bool(_VAGUE.search(spoken)) and not _SPECIFIC.search(spoken)
+        specific = bool(_CAUSAL_OR_OUTCOME.search(spoken)) or has_number(spoken)
+        vague = bool(_VAGUE.search(spoken)) and not specific
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0
 
         if self.state.probe_outstanding:
