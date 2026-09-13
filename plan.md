@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A cough no longer interrupts the agent.** The voice gate decided both barge-in and
+turn opening from the loudness of a single 20 ms frame, so a door, a keyboard or someone
+clearing their throat stopped the agent mid-sentence. The runtime design had already
+named this the thing most likely to embarrass a demo; nobody had pointed anything at it.
+
+Five synthetic probes now do. Sustained speech yields the floor, a quiet voice is still
+heard, room tone never opens a turn, and neither a one-frame cough nor a two-frame knock
+interrupts. The gate waits for loudness to persist across 60 ms while still dating the
+onset from its first frame, so the pre-roll keeps the start of the word. `make gate`
+runs it.
+
 **An imperfect transcript now scores the same as a clean one.** Everything the scorer
 had been fed was hand-written and correctly punctuated, and nothing on the box will look
 like that. Five realistic recognition degradations of the same strong answer:

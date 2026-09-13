@@ -50,6 +50,9 @@ consent:
 asr:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.recognition import run_recognition; print(run_recognition().render())"
 
+gate:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.gate import run_gate; print(run_gate().render())"
+
 web:
 	cd web && npm run dev
 

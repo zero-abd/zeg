@@ -284,7 +284,10 @@ def test_barge_in_does_not_wait_for_the_runtime_to_agree(audio):
     link.deliver(link.wire.response_started("r1", "t1"))
     link.deliver(agent_frame(link))
     drive(sess, audio, 1)
-    events = drive(sess, audio, 1, speaking=True)
+    # Long enough to count as speech. One frame is a cough, and the gate is
+    # deliberately unmoved by those; what is under test here is that once it is
+    # convinced, it does not then wait for the runtime to agree.
+    events = drive(sess, audio, GB10Config().min_speech_frames, speaking=True)
     assert any(isinstance(e, AgentInterrupted) for e in events)
     assert link.of_type(p.CANCEL), "the runtime still has to close its response"
 
@@ -309,7 +312,7 @@ def test_audio_for_a_cancelled_response_is_dropped(audio):
     link.deliver(link.wire.response_started("r1", "t1"))
     link.deliver(agent_frame(link))
     drive(sess, audio, 1)
-    drive(sess, audio, 1, speaking=True)  # barge in
+    drive(sess, audio, GB10Config().min_speech_frames, speaking=True)  # barge in
     link.deliver(agent_frame(link, frame=9))
     events = drive(sess, audio, 4)
     assert not [e for e in events if isinstance(e, AgentAudio)]

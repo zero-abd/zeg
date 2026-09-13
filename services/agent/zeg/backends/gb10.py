@@ -65,6 +65,13 @@ class GB10Config:
     #: has the large advantage of being free and deterministic.
     speech_rms: float = 0.02
 
+    #: Consecutive frames above the threshold before the gate believes it is speech.
+    #: Three frames is 60 ms. A cough, a door or a keyboard is one or two loud frames
+    #: and used to cut the agent off mid-sentence; a person starting to talk is loud
+    #: for far longer than this. The cost is 60 ms of extra barge-in latency, which is
+    #: invisible next to being interrupted by a dog.
+    min_speech_frames: int = 3
+
     #: Silence after speech before we call the turn over. Longer than a breath,
     #: shorter than a thought. 640 ms is a compromise and should be tuned per role:
     #: a systems question earns longer pauses than a behavioural one.
@@ -255,6 +262,7 @@ class GB10Session(VoiceSession):
         self._turn_open = False
         self._loud = False
         self._silence_frames = 0
+        self._loud_run = 0
         self._onset_model_frame: Optional[int] = None
 
         # Frame accounting. Transport frames are 20 ms; model frames are 80 ms.
@@ -351,17 +359,27 @@ class GB10Session(VoiceSession):
     # --- caller audio ---------------------------------------------------------
 
     def _gate(self, loud: bool) -> None:
-        """Open and close turns, and cancel the agent when the caller cuts in."""
+        """Open and close turns, and cancel the agent when the caller cuts in.
+
+        Loudness alone is not speech. A single frame above the threshold is a cough, a
+        door or a keyboard, and acting on one meant any of those stopped the agent
+        mid-sentence. The gate now waits for the noise to persist, while still dating
+        the onset from its first frame so the pre-roll keeps the start of the word.
+        """
         if loud:
+            if self._loud_run == 0 and self._onset_model_frame is None:
+                self._onset_model_frame = self._model_frames
+            self._loud_run += 1
+            if self._loud_run < self._cfg.min_speech_frames:
+                return
             if self._speaking:
                 self._barge_in()
             self._silence_frames = 0
-            if self._onset_model_frame is None:
-                self._onset_model_frame = self._model_frames
             if not self._turn_open:
                 self._open_turn()
             return
 
+        self._loud_run = 0
         if not self._turn_open:
             self._onset_model_frame = None
             return
@@ -385,6 +403,7 @@ class GB10Session(VoiceSession):
         self._link.send(self._wire.turn_commit(self._turn))
         self._turn_open = False
         self._silence_frames = 0
+        self._loud_run = 0
         self._onset_model_frame = None
 
     def _enqueue(self, pcm: bytes) -> None:
