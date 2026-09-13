@@ -47,6 +47,9 @@ redteam:
 consent:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.consent import run_consent; print(run_consent().render())"
 
+asr:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.recognition import run_recognition; print(run_recognition().render())"
+
 web:
 	cd web && npm run dev
 

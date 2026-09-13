@@ -164,9 +164,9 @@ class InterviewEngine:
         start a new one. Treating it as new was the bug that kept the ladder pinned to
         its first rung through an entire interview.
         """
-        from .scoring import has_number, strip_filler  # local: scoring imports engine
+        from .scoring import has_number, normalise  # local: scoring imports engine
 
-        spoken = strip_filler(text)
+        spoken = normalise(text)
         specific = bool(_CAUSAL_OR_OUTCOME.search(spoken)) or has_number(spoken)
         vague = bool(_VAGUE.search(spoken)) and not specific
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0

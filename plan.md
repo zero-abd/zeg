@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**An imperfect transcript now scores the same as a clean one.** Everything the scorer
+had been fed was hand-written and correctly punctuated, and nothing on the box will look
+like that. Five realistic recognition degradations of the same strong answer:
+lowercased and unpunctuated, sentence boundaries lost, short words dropped, a
+self-correction left in, a stuttered opening.
+
+Four held. The self-correction did not. "I I— wrote the reproduction harness" stopped
+reading as first person, because the repair falls exactly between the pronoun and its
+verb, which is where the ownership signal lives. A candidate claiming their own work
+scored as having claimed nothing.
+
+That is the failure docs/05 names as the most probable route to a discriminatory
+outcome: recognition is worse on some speakers, the scorer sees a degraded transcript,
+and the transcription gap becomes a scoring gap. Stutters and repairs now collapse
+before anything judges content, while quoted evidence keeps the candidate's own words.
+`make asr` runs it.
+
 **The scorer could not read a number.** The interview's central probe is "give me a
 number", and the thing that scores the answer only recognised digits. "Ninety percent",
 "twelve hundred a second" and "eleven double settlements over six weeks" were all

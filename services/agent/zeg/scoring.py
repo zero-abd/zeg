@@ -203,6 +203,39 @@ def strip_filler(text: str) -> str:
     return " ".join(_FILLER.sub(" ", text).split())
 
 
+#: Dashes a recogniser leaves where a speaker broke off. Hyphens inside a word are left
+#: alone, because "advisory-lock" is one term and not a repair.
+_BREAK = re.compile(r"[\u2014\u2013]+|(?<=\w)-(?=\s)")
+
+#: An immediately repeated word. "I I wrote it" and "I I— wrote it" both say "I wrote
+#: it"; the repetition is a disfluency, not content.
+_REPETITION = re.compile(r"\b(\w+)\s+(?=\1\b)", re.I)
+
+
+def strip_repairs(text: str) -> str:
+    """Collapse stutters and self-corrections.
+
+    Speech is full of these and a recogniser writes them down. Left in, they sit between
+    a pronoun and its verb, which is exactly where the ownership signal lives: "I I—
+    wrote the fix" stopped reading as first person at all, so a candidate claiming their
+    own work was scored as having claimed nothing.
+    """
+    out = _BREAK.sub(" ", text)
+    previous = None
+    while previous != out:
+        previous, out = out, _REPETITION.sub("", out)
+    return " ".join(out.split())
+
+
+def normalise(text: str) -> str:
+    """What the candidate said, with delivery artefacts removed.
+
+    Filler and repairs are how people talk, not how well they did the work. Everything
+    that judges content runs on this; everything quoted back keeps their own words.
+    """
+    return strip_repairs(strip_filler(text))
+
+
 _SIGNALS: Dict[str, Sequence] = {
     "technical_depth": (_CAUSAL, _NUMBER),
     "ownership": (_FIRST_PERSON,),
@@ -227,7 +260,7 @@ class HeuristicJudge(Judge):
         hits: List[Evidence] = []
         for u in units:
             # Judge the substance. The quote keeps the candidate's own words.
-            if any(p.search(strip_filler(u.answer)) for p in patterns):
+            if any(p.search(normalise(u.answer)) for p in patterns):
                 hits.append(Evidence(dimension, u.answer, u.answered_at_s))
 
         if not hits:
@@ -238,7 +271,7 @@ class HeuristicJudge(Judge):
                 "Nothing in the transcript speaks to this. Not a low score.",
             )
 
-        vague = sum(1 for u in units if _VAGUE.search(strip_filler(u.answer)))
+        vague = sum(1 for u in units if _VAGUE.search(normalise(u.answer)))
         score = 2 + min(2, len(hits)) - (1 if vague > len(units) / 2 else 0)
         return DimensionScore(dimension, _clamp(score), hits)
 
