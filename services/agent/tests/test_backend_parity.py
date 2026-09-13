@@ -85,3 +85,17 @@ def test_the_speaking_backend_still_satisfies_the_session_contract(speaking_back
     s.steer("a briefing")
     s.say("a fixed sentence")
     s.close()
+
+
+def test_the_cli_can_select_every_backend_the_factory_knows():
+    """A backend the factory builds but the CLI cannot name is one nobody demos."""
+    import inspect
+
+    from zeg import cli
+    from zeg.backends import build_backend
+
+    source = inspect.getsource(build_backend)
+    known = {k for k in ("mock", "tts", "gb10") if '"%s"' % k in source}
+    parser_src = inspect.getsource(cli.main)
+    for kind in known:
+        assert '"%s"' % kind in parser_src, "%s is buildable but not selectable" % kind

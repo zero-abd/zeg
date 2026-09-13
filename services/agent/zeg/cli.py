@@ -15,8 +15,9 @@ def main(argv=None) -> int:
     p.add_argument(
         "--backend",
         default="mock",
-        choices=["mock", "gb10"],
-        help="mock runs anywhere; gb10 needs the real box and weights",
+        choices=["mock", "tts", "gb10"],
+        help="mock runs anywhere and is silent; tts speaks real words on this "
+             "machine; gb10 needs the box and the weights",
     )
     p.add_argument("--checkpoint", default=BackendConfig.checkpoint_dir)
     p.add_argument("--quiet", action="store_true", help="summary only")
