@@ -22,6 +22,7 @@ from typing import Dict, List, Optional, Sequence
 from .engine import DIMENSIONS, Evidence
 from .hesitation import is_hesitation
 from .memory import shorten
+from .textnorm import fold
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
 #: is a presentation of the same judgement, not a finer one.
@@ -580,8 +581,20 @@ def parse_verdict(raw: str):
     return score, quote, reason if isinstance(reason, str) else ""
 
 
+#: Punctuation a judge adds or drops when it quotes speech. Apostrophes inside words are
+#: kept, so "didn't" and "did nt" stay different words.
+_QUOTE_PUNCT = re.compile(r"[^\w\s']|(?<!\w)'|'(?!\w)")
+
+
 def _normalise(text: str) -> str:
-    return " ".join(text.split()).strip().lower()
+    """How a quote is compared: case, spacing, typography and punctuation ignored, words
+    kept. Padded with spaces so a match is always of whole words.
+
+    Genuine quotes were rejected, and the score voided, over a trailing full stop the
+    transcript did not have or a straight apostrophe where recognition wrote a curly one.
+    """
+    words = _QUOTE_PUNCT.sub(" ", fold(text)).lower().split()
+    return " %s " % " ".join(words) if words else ""
 
 
 def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:

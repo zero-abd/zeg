@@ -114,6 +114,35 @@ def test_a_quote_from_the_interviewer_is_not_evidence_about_the_candidate():
     assert j.fabrications == ["tradeoffs"]
 
 
+@pytest.mark.parametrize("quote", [
+    "I wrote the advisory-lock.",              # a full stop the transcript does not have
+    "a race in the reconciler, I wrote",      # a comma where the transcript has a stop
+    "“I wrote the advisory-lock fix”",  # wrapped in typographic quote marks
+])
+def test_punctuation_a_judge_adds_is_not_fabrication(quote):
+    """Each is word for word what the candidate said, and each voided the score."""
+    j = ModelJudge(replying({"score": 3, "quote": quote, "reason": "ok"}))
+    assert j.score_dimension("ownership", UNITS).score == 3, quote
+
+
+def test_a_straight_apostrophe_matches_a_curly_one_in_the_transcript():
+    units = to_qa_units([T(0, "agent", "Why?"), T(5, "caller", "I didn’t trust the retry path")])
+    j = ModelJudge(replying({"score": 3, "quote": "I didn't trust the retry path", "reason": "ok"}))
+    d = j.score_dimension("debugging", units)
+    assert d.score == 3
+    assert d.evidence[0].at_s == 5
+
+
+@pytest.mark.parametrize("quote", [
+    "I wrote the lock fix",      # a word missing
+    "rote the advisory-lock",   # starts inside a word
+    "I didnt write the fix",     # words the candidate never said
+])
+def test_what_is_still_fabrication(quote):
+    j = ModelJudge(replying({"score": 3, "quote": quote, "reason": "ok"}))
+    assert j.score_dimension("ownership", UNITS).insufficient, quote
+
+
 def test_the_interviewers_phrasing_cannot_score_ownership():
     units = to_qa_units([
         T(0, "agent", "What did you personally do, as opposed to the team?"),

@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Genuine quotes are no longer voided over punctuation.** The made-up-quote guard compared
+text with only case and spacing ignored. A judge quoting speech adds and drops punctuation
+and writes straight apostrophes, so real quotes were rejected and their scores voided: one
+with a full stop where the transcript had none, one with a comma where the transcript had a
+stop, one in typographic quote marks, and "I didn't trust the retry path" against a
+transcript where recognition wrote a curly apostrophe. Quotes are now compared after
+folding typography and removing punctuation, keeping apostrophes inside words. The match
+is also now of whole words only, so "rote the advisory-lock" no longer passes by sitting
+inside "wrote". Missing or different words are still rejected. On the old code five of the
+new cases failed. The others (a missing word, words never said) were already rejected and
+still are.
+
 **The model judge can no longer cite the interviewer as evidence about the candidate.** The
 guard against made-up quotes accepted a quote found anywhere in a question or an answer. A
 judge that cited "you personally do", from the question "What did you personally do?",
