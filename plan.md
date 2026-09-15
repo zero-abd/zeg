@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A fixed line asked for mid-turn is held until the turn ends.** The server refuses a
+fixed line while the candidate's turn is still open. On a declined consent with a short
+pause, the decline line hit exactly that: the client sent it, the server refused it as
+mid-turn, and the refusal was still unread when the call closed, while the transcript
+recorded the line as spoken. The same refusal is reachable on the box whenever a
+candidate keeps talking straight after an answer. The client now holds such a line and
+sends it the moment the turn commits, in order.
+
+On its own this does not yet get the decline heard. The runner still closes the session
+the instant the call ends, before a held line can play. That is the next step.
+
 **A backend failure no longer crashes the interview.** The whole interview now runs
 through the real client and the real server over the loopback, and on the normal path
 the layers agree: consent is taken over the wire, the disclosure comes back as audio

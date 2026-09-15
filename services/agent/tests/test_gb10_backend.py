@@ -526,3 +526,53 @@ def test_say_over_a_speaking_agent_cancels_it_first_on_the_real_session(audio):
         "That is my time. Thanks for talking me through it."
     ]
     assert any(isinstance(e, AgentInterrupted) for e in sess.poll())
+
+
+# --- a fixed line asked for while the candidate is talking --------------------------
+
+_TO_ENDPOINT = GB10Config().endpoint_silence_ms // 20 + 4
+
+
+def test_a_line_asked_for_mid_turn_waits_for_the_turn_to_end(audio):
+    """The server refuses a fixed line while a turn is open. The refusal used to come
+    back after the call had closed, so nobody saw it, and the transcript claimed the
+    line was spoken. On a declined consent that line is the one owed to the candidate."""
+    link = FakeLink()
+    sess = session(link, audio)
+    drive(sess, audio, 10, speaking=True)
+    assert sess._turn_open
+    sess.say("That is completely fine.")
+    assert not link.of_type(p.SAY), "sent mid-turn, where the server would refuse it"
+    drive(sess, audio, _TO_ENDPOINT)
+    assert not sess._turn_open
+    assert [m["text"] for m in link.of_type(p.SAY)] == ["That is completely fine."]
+
+
+def test_a_held_line_goes_out_after_the_commit_not_before(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    drive(sess, audio, 10, speaking=True)
+    sess.say("held")
+    drive(sess, audio, _TO_ENDPOINT)
+    types = link.types()
+    assert types.index(p.TURN_COMMIT) < types.index(p.SAY)
+
+
+def test_held_lines_keep_their_order(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    drive(sess, audio, 10, speaking=True)
+    sess.say("first")
+    sess.say("second")
+    # Without this the test passed on the old code too, which sent both lines at once
+    # and still in order. The point is that neither goes out while the turn is open.
+    assert not link.of_type(p.SAY)
+    drive(sess, audio, _TO_ENDPOINT)
+    assert [m["text"] for m in link.of_type(p.SAY)] == ["first", "second"]
+
+
+def test_a_line_between_turns_still_goes_out_at_once(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.say("now")
+    assert [m["text"] for m in link.of_type(p.SAY)] == ["now"]

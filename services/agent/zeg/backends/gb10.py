@@ -276,6 +276,9 @@ class GB10Session(VoiceSession):
         self._response_id: Optional[str] = None
         self._response_text = ""
         self._interrupted = False
+        #: Fixed lines asked for while the caller's turn was open. The server refuses a
+        #: say mid-turn, so they wait here and go out the moment the turn commits.
+        self._deferred_says = []
 
         self._link.send(
             self._wire.configure(
@@ -329,6 +332,12 @@ class GB10Session(VoiceSession):
         """
         if self._closed:
             raise RuntimeError("session is closed")
+        if self._turn_open:
+            # The candidate is still talking and the server would refuse this. The
+            # refusal used to arrive after the call had already closed, so nobody saw
+            # it, and the transcript claimed the line was spoken. Hold it instead.
+            self._deferred_says.append(text)
+            return
         if self._speaking:  # a property, not a method
             self._barge_in()
         self._link.send(self._wire.say(text))
@@ -370,6 +379,7 @@ class GB10Session(VoiceSession):
         finally:
             self._link.close()
         self._playout.clear()
+        self._deferred_says = []
 
     # --- caller audio ---------------------------------------------------------
 
@@ -420,6 +430,11 @@ class GB10Session(VoiceSession):
         self._silence_frames = 0
         self._loud_run = 0
         self._onset_model_frame = None
+        # Lines held while the caller talked go out now, in order, after the commit so
+        # the server has already seen the turn close.
+        held, self._deferred_says = self._deferred_says, []
+        for text in held:
+            self._link.send(self._wire.say(text))
 
     def _enqueue(self, pcm: bytes) -> None:
         """Aggregate 20 ms transport frames into 80 ms model frames."""
