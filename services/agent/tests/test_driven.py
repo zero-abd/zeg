@@ -367,3 +367,33 @@ def test_audio_is_still_counted_once_the_call_has_already_ended():
     result = DrivenResult(ended="consent declined")
     runner._consume(_VirtualClock(runner.audio.frame_ms), result, lambda actions: None)
     assert result.agent_audio_frames == 2
+
+
+# --- only the interview itself is scored, end to end --------------------------------
+
+
+def test_a_driven_call_does_not_score_the_consent_answer():
+    """A consent answer with a reason in it was quoted as technical evidence."""
+    from zeg.scoring import score_call
+
+    r = run([CallerTurn("yes that is fine, because I want the recruiter to hear it", speak_s=2.0)])
+    assert r.consent is True
+    a = score_call(r.transcript, window=r.interview_window)
+    quotes = [e.quote for d in a.dimensions for e in d.evidence]
+    assert not any("recruiter to hear it" in q for q in quotes)
+
+
+def test_a_declined_call_has_an_empty_interview_window():
+    from zeg.scoring import to_qa_units
+
+    r = run([CallerTurn("no thank you", speak_s=1.5)])
+    assert to_qa_units(r.transcript, window=r.interview_window) == []
+
+
+def test_the_demo_report_scores_only_the_interview():
+    """The command line scored the whole transcript, consent exchange included."""
+    import inspect
+
+    from zeg import cli
+
+    assert "window=result.interview_window" in inspect.getsource(cli)

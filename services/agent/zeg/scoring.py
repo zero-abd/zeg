@@ -97,11 +97,16 @@ class Assessment:
 # --- Turning a transcript into units -----------------------------------------
 
 
-def to_qa_units(transcript: Sequence) -> List[QAUnit]:
+def to_qa_units(transcript: Sequence, window: Optional[Sequence[float]] = None) -> List[QAUnit]:
     """Pair each agent question with the answer that followed it.
 
     Agent turns with no answer after them are dropped: an unanswered question is not
     evidence of anything, and the call ending is the usual reason for one.
+
+    `window` is the interview itself, from consent to wrap-up. Only pairs whose question
+    was asked inside it are kept. Without it, the recording disclosure and the wrap-up
+    were paired like interview questions: a consent answer with a reason in it scored as
+    technical depth, and a question the candidate asked at the end scored as ownership.
     """
     units: List[QAUnit] = []
     pending = None
@@ -133,6 +138,9 @@ def to_qa_units(transcript: Sequence) -> List[QAUnit]:
                 asked_at_s=last.asked_at_s,
                 answered_at_s=entry.at_s,
             )
+    if window is not None:
+        start, end = window
+        units = [u for u in units if start <= u.asked_at_s < end]
     return units
 
 
@@ -299,6 +307,7 @@ def score_call(
     judge: Optional[Judge] = None,
     role: Optional[RolePack] = None,
     flags: Optional[Sequence[str]] = None,
+    window: Optional[Sequence[float]] = None,
 ) -> Assessment:
     """Transcript in, assessment out.
 
@@ -307,7 +316,7 @@ def score_call(
     """
     judge = judge or HeuristicJudge()
     role = role or RolePack()
-    units = to_qa_units(transcript)
+    units = to_qa_units(transcript, window)
     duration = transcript[-1].at_s if len(transcript) else 0.0
 
     scores = [judge.score_dimension(d, units) for d in DIMENSIONS]

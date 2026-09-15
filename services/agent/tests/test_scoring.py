@@ -287,3 +287,49 @@ def test_a_spoken_number_earns_technical_depth():
     depth = next(d for d in score_call(spoken).dimensions
                  if d.dimension == "technical_depth")
     assert not depth.insufficient
+
+
+# --- only the interview itself is scored --------------------------------------------
+
+
+def _with_consent_and_closing():
+    from zeg.prompts import GREETING, WRAP_UP
+
+    return [
+        T(0, "agent", GREETING),
+        T(8, "caller", "Yes, that's fine, because I'd like the recruiter to hear it."),
+        T(30, "agent", "Tell me about a recent project."),
+        T(40, "caller", "We moved a pipeline to streaming."),
+        T(60, "agent", "What did you personally do?"),
+        T(70, "caller", "I was part of the team that did it."),
+        T(90, "agent", "Any numbers?"),
+        T(100, "caller", "It got faster."),
+        T(820, "agent", WRAP_UP),
+        T(830, "caller", "Why did the team move to that queue, because I scaled one to "
+                         "40000 messages a second and I fixed its root cause myself?"),
+    ]
+
+
+def test_the_consent_answer_and_the_closing_question_are_not_scored():
+    """Every agent line was paired with the reply after it. A candidate with nothing
+    checkable in the interview scored 9 out of 10, with technical depth and communication
+    quoting why they agreed to be recorded and ownership quoting a question they asked."""
+    a = score_call(_with_consent_and_closing(), window=(8, 820))
+    assert a.band == "insufficient signal"
+    quotes = [e.quote for d in a.dimensions for e in d.evidence]
+    assert not any("recruiter to hear it" in q or "messages a second" in q for q in quotes)
+
+
+def test_the_first_question_after_consent_is_inside_the_interview():
+    units = to_qa_units(_with_consent_and_closing(), window=(8, 820))
+    assert units[0].question == "Tell me about a recent project."
+
+
+def test_the_wrap_up_itself_is_outside_the_interview():
+    units = to_qa_units(_with_consent_and_closing(), window=(8, 820))
+    assert units[-1].question == "Any numbers?"
+
+
+def test_without_a_window_every_exchange_is_still_paired():
+    """What the evals rely on, and what used to happen to every live call."""
+    assert len(to_qa_units(_with_consent_and_closing())) == 5

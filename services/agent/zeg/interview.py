@@ -178,6 +178,10 @@ class InterviewRecord:
     consent: Optional[bool] = None
     ended: Optional[str] = None
     rollovers: int = 0
+    #: When consent was settled, and when the interview wrapped up. The part of the call
+    #: between them is the interview, and it is the only part that gets scored.
+    interview_started_s: Optional[float] = None
+    wrapped_up_s: Optional[float] = None
 
 
 class Interview:
@@ -279,6 +283,7 @@ class Interview:
         if self.engine.should_wrap_up(t_s):
             if not self._wrapped:
                 self._wrapped = True
+                self.record.wrapped_up_s = t_s
                 actions.extend(self._say(WRAP_UP, t_s))
             # Past the wrap-up the interview is closing: the candidate's questions, next
             # steps, thanks. Only the answer that triggered the wrap-up used to stop here.
@@ -315,6 +320,7 @@ class Interview:
             actions.extend(self._end("consent declined"))
             return actions
         self.record.consent = True
+        self.record.interview_started_s = t_s
         self.engine.note_consent(True)
         self._last_brief_s = t_s
         return [Brief(self.engine.briefing(t_s))]

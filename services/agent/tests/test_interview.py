@@ -266,3 +266,23 @@ def test_an_interruption_after_consent_does_not_ask_again(iv):
     actions = iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 35.0)
     assert iv.record.consent is True
     assert not any("AI interviewer" in s for s in spoken(actions))
+
+
+# --- the interview's own boundaries, for scoring ----------------------------------
+
+
+def test_the_record_marks_when_the_interview_proper_began(iv):
+    consented(iv, t=5.0)
+    assert iv.record.interview_started_s == 5.0
+
+
+def test_a_declined_call_has_no_interview_to_score(iv):
+    iv.start()
+    iv.on_event(UserTranscript("no thanks", final=True), 5.0)
+    assert iv.record.interview_started_s is None
+
+
+def test_the_record_marks_when_the_interview_wrapped_up(iv):
+    consented(iv)
+    iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 815)
+    assert iv.record.wrapped_up_s == 815

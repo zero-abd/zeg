@@ -61,7 +61,9 @@ def main(argv=None) -> int:
         # behind it this is the heuristic judge, which is shallow by design; the report
         # shape and the evidence discipline are what it demonstrates.
         print()
-        print(score_call(result.transcript).render())
+        # Only the interview itself. The consent answer and anything said after the
+        # wrap-up used to be scored as if they answered interview questions.
+        print(score_call(result.transcript, window=result.interview_window).render())
 
     return 0
 

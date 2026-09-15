@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Only the interview itself is scored.** The scoring pass pairs every agent line with the
+reply that follows it, and nothing marked where the interview began or ended. So the
+recording disclosure and the wrap-up were paired like interview questions. In a
+diagnostic, a transcript of three vague answers scored nothing on its own. With a consent
+answer and a closing question added, it scored 9 out of 10: technical depth and
+communication quoted "Yes, that's fine, because I'd like the recruiter to hear it", and
+ownership quoted a question the candidate asked after the wrap-up. A recruiter would have
+read a 9 backed by quotes that answered no interview question.
+
+The interview now records when consent was settled and when it wrapped up, the run result
+exposes that as the interview's window, and the report scores only the exchanges asked
+inside it. A declined call has an empty window, so there is nothing to score. Scoring with
+no window behaves as before, which is what the evaluation suites use, since their
+transcripts contain only interview exchanges.
+
 **A refusal phrased as an instruction is no longer recorded as consent.** "Sure, skip
 the recording" agrees to the call and refuses the recording with no contrast word, so the
 previous consent fix did not see it. In a diagnostic, 9 of 10 refusals phrased this way

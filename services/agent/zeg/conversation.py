@@ -256,6 +256,20 @@ class DrivenResult:
     errors: List[str] = field(default_factory=list)
     #: The backend failed and shut itself down. Nothing more can be pushed into it.
     failed: bool = False
+    #: When consent was settled and when the interview wrapped up.
+    interview_started_s: Optional[float] = None
+    wrapped_up_s: Optional[float] = None
+
+    @property
+    def interview_window(self):
+        """The part of the call that is the interview, for scoring.
+
+        Consent never settled means there was no interview, so nothing is inside it.
+        """
+        if self.interview_started_s is None:
+            return (float("inf"), float("inf"))
+        end = self.wrapped_up_s if self.wrapped_up_s is not None else float("inf")
+        return (self.interview_started_s, end)
 
     def render(self) -> str:
         lines = []
@@ -357,6 +371,8 @@ class InterviewRunner:
         ]
         result.flags = list(self.interview.record.flags)
         result.consent = self.interview.record.consent
+        result.interview_started_s = self.interview.record.interview_started_s
+        result.wrapped_up_s = self.interview.record.wrapped_up_s
         result.duration_s = clock.now
         return result
 
