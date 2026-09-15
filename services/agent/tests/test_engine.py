@@ -112,6 +112,58 @@ def test_briefing_stays_short(eng):
     assert len(eng.briefing(400).splitlines()) <= 10
 
 
+# --- what the probes drew out survives into the briefing ------------------------------
+
+
+def probe_and_answer(eng, answers, t_s=130):
+    for answer in answers:
+        assert eng.next_probe() is not None
+        eng.note_caller(answer, t_s)
+        t_s += 30
+
+
+def test_a_probe_answer_is_kept_with_the_claim_it_answers(eng):
+    """The answers were dropped, so a rolled session knew the project and not one thing
+    the candidate had said about it."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    probe_and_answer(eng, ["I wrote the advisory lock fix myself",
+                           "it caused eleven double settlements in six weeks"])
+    b = eng.briefing(200)
+    assert len(eng.state.claims) == 1
+    assert "their own part: I wrote the advisory lock fix myself" in b
+    assert "the figure: it caused eleven double settlements in six weeks" in b
+
+
+def test_a_fully_answered_ladder_fits_in_a_short_briefing(eng):
+    for i, older in enumerate(["we moved billing to a queue in twelve weeks",
+                               "I led the search index migration last year",
+                               "we cut deploy time from forty minutes to six"]):
+        eng.note_caller(older, 10 + i)
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    answers = ["I wrote the advisory lock fix myself",
+               "it caused eleven double settlements in six weeks",
+               "we gave up some write throughput to the lock",
+               "a nightly batch job deadlocked against it"]
+    probe_and_answer(eng, answers)
+    b = eng.briefing(400)
+    for answer in answers:
+        assert answer in b
+    assert "deploy time" in b, "the newest older claim still fits"
+    assert len(b.splitlines()) <= 10
+
+
+def test_a_vague_probe_answer_is_not_briefed_as_substance(eng):
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    probe_and_answer(eng, ["basically stuff like that"])
+    assert "basically" not in eng.briefing(200)
+
+
+def test_a_long_claim_keeps_the_figure_it_ends_on(eng):
+    eng.note_caller("we rebuilt the payment reconciler after a painful outage last spring "
+                    "and took p99 from 400 milliseconds down to 30", 100)
+    assert "down to 30" in eng.briefing(200)
+
+
 def test_a_shorter_call_moves_the_wrap_up(eng):
     short = InterviewEngine(call=CallConfig(max_duration_s=300, wrap_up_at_s=240))
     assert short.should_wrap_up(250)

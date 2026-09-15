@@ -130,13 +130,13 @@ def last_exchange(transcript: Sequence) -> List[str]:
             replies.append(t.text)
     out = []
     if question is not None:
-        out.append("Interviewer: %s" % _trim(question))
+        out.append("Interviewer: %s" % shorten(question))
     if replies:
-        out.append("Candidate: %s" % _trim(" ".join(reversed(replies))))
+        out.append("Candidate: %s" % shorten(" ".join(reversed(replies))))
     return out
 
 
-def _trim(text: str, limit: int = 160) -> str:
+def shorten(text: str, limit: int = 160) -> str:
     """Shorten from the middle.
 
     An answer ends on its point: "which took p99 from 400 milliseconds down to 30". Cut

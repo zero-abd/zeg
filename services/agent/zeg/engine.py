@@ -14,10 +14,11 @@ memory; `briefing()` is what gets handed back to the model at a turn boundary.
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .blocklist import assert_allowed
 from .config import CallConfig
+from .memory import shorten
 
 # --- The plan ----------------------------------------------------------------
 
@@ -65,6 +66,15 @@ PROBE_LADDER = (
     "what broke afterwards that they did not expect",
 )
 
+#: How each rung's answer is labelled in a briefing, in ladder order.
+RUNG_LABELS = ("their own part", "the figure", "the tradeoff", "what broke afterwards")
+assert len(RUNG_LABELS) == len(PROBE_LADDER)
+
+#: Lines a briefing spends on claims and the answers under the live one. Without answers
+#: that is the same four claims as before; a fully answered ladder leaves room for one
+#: older claim beside it.
+CLAIM_LINES = 6
+
 #: Phrases that indicate an answer stayed general. Crude on purpose: the engine only
 #: needs to know whether to descend further, and the scoring pass judges properly.
 #: Content-free words. Filler ("um", "you know") is excluded on purpose: it is
@@ -90,6 +100,8 @@ class Claim:
     text: str
     at_s: float
     probed_to: int = 0  # how far down PROBE_LADDER we have gone
+    #: (rung index, what the candidate said) for each probe answered with substance.
+    answers: List[Tuple[int, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -173,6 +185,12 @@ class InterviewEngine:
 
         if self.state.probe_outstanding:
             self.state.probe_outstanding = False
+            # Kept with the claim, because this is what the probe was for. It used to be
+            # dropped, so after a rollover the briefing named the project and none of
+            # what the candidate had said about it, and the fresh session asked again.
+            claim = self.state.claims[-1] if self.state.claims else None
+            if claim is not None and not vague and claim.probed_to > 0:
+                claim.answers.append((claim.probed_to - 1, text))
             return
         if not vague and len(text.split()) >= 4:
             self.state.claims.append(Claim(text=text, at_s=t_s))
@@ -265,8 +283,7 @@ class InterviewEngine:
         ]
         if self.state.claims:
             lines.append("The candidate has claimed:")
-            for c in self.state.claims[-max_claims:]:
-                lines.append("  - %s" % _trim(c.text))
+            lines.extend(self._claim_lines(max_claims))
         missing = self.uncovered()
         if missing:
             lines.append("Still no evidence for: %s." % ", ".join(missing))
@@ -276,7 +293,15 @@ class InterviewEngine:
             lines.append("Time is nearly up. Close the interview.")
         return "\n".join(lines)
 
-
-def _trim(text: str, limit: int = 90) -> str:
-    text = " ".join(text.split())
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+    def _claim_lines(self, max_claims: int) -> List[str]:
+        """The live claim with what the candidate said under each probe, and as many
+        older claims as fit beside it. Shortened from the middle, because a claim or an
+        answer usually ends on its figure."""
+        live, older = self.state.claims[-1], self.state.claims[-max_claims:-1]
+        live_lines = ["  - %s" % shorten(live.text, 90)] + [
+            "      %s: %s" % (RUNG_LABELS[rung], shorten(text, 90))
+            for rung, text in live.answers
+        ]
+        room = max(0, CLAIM_LINES - len(live_lines))
+        older = older[len(older) - room:] if room else []
+        return ["  - %s" % shorten(c.text, 90) for c in older] + live_lines

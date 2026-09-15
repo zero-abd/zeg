@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The briefing keeps what the probes drew out.** The engine treated an answer to a probe
+as deepening the claim, then threw the answer away. After a claim and three probe answers
+("I wrote the advisory lock fix myself", "eleven double settlements in six weeks", "two
+workers picked up the same batch id"), the briefing listed only the original claim. That
+briefing is what a rolled session starts from, and rollover waits for a ladder to finish,
+so at every rollover the fresh session knew the project and none of the answers, and could
+ask for them again. Each substantive probe answer is now stored with its claim and briefed
+under it with its rung ("their own part", "the figure", ...). Vague answers are not. The
+live claim and its answers get up to six lines, and older claims fill whatever is left,
+so a briefing stays about ten lines. Claims and answers are shortened from the middle,
+because they usually end on their figure. On the old engine the three new tests failed.
+
 **A rolled session is told what was asked, and keeps the figure an answer ends on.** When
 the call rolls to a fresh session, the seed carries the last exchange so the model can
 pick up the thread. It was the last two transcript turns, whoever spoke them. A candidate
