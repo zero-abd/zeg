@@ -141,3 +141,55 @@ def test_closing_ends_the_server_session_without_an_error():
     session.close()
     assert link.server.closed
     assert_clean(link, events)
+
+
+# --- words the recogniser confirms while it settles ---------------------------------
+
+
+def finals_of(events):
+    from zeg.backends import UserTranscript
+
+    return [e.text for e in events if isinstance(e, UserTranscript) and e.final]
+
+
+def test_a_one_word_answer_confirmed_while_settling_reaches_the_client():
+    """The server sent the final transcript at the commit and dropped what the recogniser
+    confirmed while it settled. A candidate who answered "yes" produced an empty final,
+    the client discarded it, and consent could never have been taken."""
+    from fakes import SettlingRecogniser
+
+    session, link = connect(SettlingRecogniser(["yes"]))
+    events = push(session, 40, speaking=True) + push(session, 60)
+    assert finals_of(events) == ["yes"]
+    assert_clean(link, events)
+
+
+def test_the_last_word_confirmed_while_settling_is_not_dropped():
+    from fakes import SettlingRecogniser
+
+    session, link = connect(SettlingRecogniser(["yes", "that", "is", "fine"]))
+    events = push(session, 40, speaking=True) + push(session, 60)
+    assert finals_of(events) == ["yes that is fine"]
+    assert_clean(link, events)
+
+
+def test_the_answer_reaches_the_client_before_the_reply_starts():
+    """The interview decides what to say when it hears the answer, so the answer has to
+    arrive before the agent starts replying to it."""
+    from fakes import SettlingRecogniser
+
+    session, link = connect(SettlingRecogniser(["yes"], reply_frames=6))
+    push(session, 40, speaking=True)
+    push(session, 60)
+    kinds = [m["type"] for m in link.received if m["type"] in (p.TRANSCRIPT_FINAL, p.RESPONSE_STARTED)]
+    assert p.TRANSCRIPT_FINAL in kinds and p.RESPONSE_STARTED in kinds
+    assert kinds.index(p.TRANSCRIPT_FINAL) < kinds.index(p.RESPONSE_STARTED)
+
+
+def test_a_model_that_never_replies_still_finalises_the_answer():
+    from fakes import SettlingRecogniser
+
+    session, link = connect(SettlingRecogniser(["yes"], never_reply=True))
+    events = push(session, 40, speaking=True) + push(session, 200)
+    assert finals_of(events) == ["yes"]
+    assert_clean(link, events)

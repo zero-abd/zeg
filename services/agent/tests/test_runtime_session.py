@@ -7,7 +7,7 @@ GPU to reproduce.
 """
 
 from zeg.runtime import protocol as p
-from zeg.runtime.session import FrameResult, ResponseWatchdog, ServerSession
+from zeg.runtime.session import SETTLE_FRAMES_MAX, FrameResult, ResponseWatchdog, ServerSession
 
 SILENCE = b"\x00" * p.OUTPUT_FRAME_BYTES
 
@@ -87,7 +87,12 @@ def test_a_turn_is_acknowledged_and_correlated():
     turn_id = out[0]["turn_id"]
 
     out = session.on_client(p.Wire().turn_commit(1))
-    assert types(out) == [p.TURN_COMMITTED, p.TRANSCRIPT_FINAL]
+    # The final transcript no longer rides on the commit. It waits for the recogniser
+    # to settle and follows when the model opens its reply.
+    assert types(out) == [p.TURN_COMMITTED]
+    assert out[0]["turn_id"] == turn_id
+    out = session.on_frame(FrameResult(control="response_open"))
+    assert types(out) == [p.TRANSCRIPT_FINAL, p.RESPONSE_STARTED]
     assert out[0]["turn_id"] == turn_id
 
 
@@ -151,8 +156,10 @@ def test_a_response_opens_speaks_and_terminates_once():
     session.on_client(p.Wire().turn_start(1))
     session.on_client(p.Wire().turn_commit(1))
 
+    # The committed turn's final transcript is held until the model settles, and goes
+    # out just ahead of the reply that follows it.
     out = session.on_frame(FrameResult(control="response_open"))
-    assert types(out) == [p.RESPONSE_STARTED]
+    assert types(out) == [p.TRANSCRIPT_FINAL, p.RESPONSE_STARTED]
 
     out = session.on_frame(FrameResult(text_delta="hi", audio_pcm=SILENCE, audible=True))
     assert types(out) == [p.RESPONSE_TEXT, p.RESPONSE_AUDIO]
@@ -196,9 +203,10 @@ def test_transcripts_are_deltas_within_the_open_turn():
     assert out[0]["delta"] == " condition"
     assert out[0]["text"] == "a race condition"
 
-    final = session.on_client(p.Wire().turn_commit(1))
-    assert final[1]["type"] == p.TRANSCRIPT_FINAL
-    assert final[1]["text"] == "a race condition"
+    assert p.TRANSCRIPT_FINAL not in types(session.on_client(p.Wire().turn_commit(1)))
+    final = session.on_frame(FrameResult(control="response_open"))
+    assert final[0]["type"] == p.TRANSCRIPT_FINAL
+    assert final[0]["text"] == "a race condition"
 
 
 def test_recognizer_output_outside_a_turn_is_not_recorded():
@@ -306,3 +314,80 @@ def test_close_is_idempotent():
     session = configured_session()
     assert session.close("done")
     assert session.close("done") == []
+
+
+# --- words the recogniser confirms while it settles --------------------------------
+
+
+def committed(session, heard=""):
+    """Open turn 1, let it hear `heard`, commit it. Returns the turn id."""
+    turn_id = session.on_client(p.Wire().turn_start(1))[0]["turn_id"]
+    if heard:
+        session.on_frame(FrameResult(user_text=heard))
+    session.on_client(p.Wire().turn_commit(1))
+    return turn_id
+
+
+def test_words_confirmed_while_the_recogniser_settles_reach_the_final_transcript():
+    """The final transcript went out at the commit, before the model settled, and words
+    the recogniser confirmed while settling arrived with no turn open and were dropped."""
+    session = configured_session()
+    turn_id = committed(session, heard="yes that is")
+    out = session.on_frame(FrameResult(user_text="yes that is fine"))
+    assert types(out) == [p.TRANSCRIPT_DELTA]
+    assert out[0]["delta"] == " fine"
+    assert out[0]["turn_id"] == turn_id
+    out = session.on_frame(FrameResult(control="response_open"))
+    assert types(out) == [p.TRANSCRIPT_FINAL, p.RESPONSE_STARTED]
+    assert out[0]["text"] == "yes that is fine"
+
+
+def test_a_one_word_answer_confirmed_only_while_settling_is_not_lost():
+    """A candidate who answered "yes" produced an empty final, which the client drops."""
+    session = configured_session()
+    committed(session)
+    out = session.on_frame(FrameResult(user_text="yes", control="response_open"))
+    assert [m["text"] for m in out if m["type"] == p.TRANSCRIPT_FINAL] == ["yes"]
+    assert types(out).index(p.TRANSCRIPT_FINAL) < types(out).index(p.RESPONSE_STARTED)
+
+
+def test_a_model_that_never_replies_still_gets_its_turn_finalised():
+    session = configured_session()
+    committed(session, heard="a race condition")
+    out = []
+    for _ in range(SETTLE_FRAMES_MAX):
+        out.extend(session.on_frame(FrameResult()))
+    assert [m["text"] for m in out if m["type"] == p.TRANSCRIPT_FINAL] == ["a race condition"]
+
+
+def test_the_final_transcript_is_sent_exactly_once():
+    session = configured_session()
+    committed(session, heard="yes")
+    out = session.on_frame(FrameResult(control="response_open"))
+    for _ in range(SETTLE_FRAMES_MAX * 2):
+        out.extend(session.on_frame(FrameResult(audio_pcm=SILENCE, audible=True)))
+    assert types(out).count(p.TRANSCRIPT_FINAL) == 1
+
+
+def test_a_new_turn_while_settling_finalises_the_previous_turn_first():
+    session = configured_session()
+    first = committed(session, heard="yes")
+    out = session.on_client(p.Wire().turn_start(2))
+    assert types(out) == [p.TRANSCRIPT_FINAL, p.TURN_STARTED]
+    assert out[0]["turn_id"] == first
+    assert out[0]["text"] == "yes"
+
+
+def test_closing_while_settling_finalises_the_turn():
+    session = configured_session()
+    committed(session, heard="no thanks")
+    out = session.on_client(p.Wire().stop())
+    assert types(out) == [p.TRANSCRIPT_FINAL, p.CLOSED]
+    assert out[0]["text"] == "no thanks"
+
+
+def test_recognizer_output_after_the_final_is_still_not_recorded():
+    session = configured_session()
+    committed(session, heard="yes")
+    session.on_frame(FrameResult(control="response_open"))
+    assert p.TRANSCRIPT_DELTA not in types(session.on_frame(FrameResult(user_text="yes and more")))

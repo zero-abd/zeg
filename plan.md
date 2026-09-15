@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate's last words are no longer cut off at the end of their turn.** On a
+commit the server sent the final transcript at once and closed the turn, before the model
+had processed the commit. The model interface says a commit makes the recogniser settle
+before its answer is safe, which is when a streaming recogniser confirms its last words,
+and anything it confirmed then arrived with no turn open and was dropped by design.
+Through the real client and server with a stand-in recogniser, a candidate who answered
+"yes" produced an empty final transcript that the client discarded, so consent could
+never have been taken, and a four-word answer lost its last word. Only the box can show
+how the real recogniser settles, but the server finalised before it could.
+
+The server now holds a committed turn open while the model settles, keeps crediting
+recognised words to it, and sends the final transcript when the model opens its reply,
+ahead of the reply itself, so the interview hears the answer first. A settle limit, a new
+turn or the session closing also finalise it, so a model that never replies cannot strand
+a transcript. The limit is a guess until the box.
+
 **Only what the agent actually said reaches the transcript.** The backend contract
 defines a final agent text as a record of what was actually spoken, and both backends
 broke that. The real client turned any reply text into a final line when the reply ended,

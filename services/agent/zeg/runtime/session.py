@@ -33,6 +33,12 @@ TRAILING_SILENCE_FRAMES = 12
 #: well inside the client's watchdog window and cheap enough to ignore.
 PROGRESS_EVERY = 25
 
+#: The longest a committed turn waits for the recogniser to settle before its final
+#: transcript goes out anyway. The model opening its reply is the real signal; this
+#: only covers a model that never replies. 25 frames is 2 s, and like every number in
+#: this runtime it is a guess until the box.
+SETTLE_FRAMES_MAX = 25
+
 
 @dataclass
 class FrameResult:
@@ -156,6 +162,13 @@ class ServerSession:
         self._turn_index = 0
         self._turn_text = ""
         self._turn_text_sent = 0
+
+        #: A committed turn whose recogniser has not settled yet. Its final transcript
+        #: waits until the model opens its reply.
+        self._settling_turn_id: Optional[str] = None
+        self._settling_text = ""
+        self._settling_sent = 0
+        self._settling_frames = 0
 
         self._response_id: Optional[str] = None
         self._response_index = 0
@@ -289,6 +302,9 @@ class ServerSession:
                 "turn %d started while turn %d is open" % (turn, self._turn),
             )
         out: List[Dict[str, Any]] = []
+        # A candidate who carries on talking before the model has settled starts a new
+        # turn. The previous one is finished first, with whatever it heard.
+        out.extend(self._finish_settling())
         if self._response_id is not None:
             # One response per turn, always terminated. A response left open while a
             # new turn starts is a model that thinks it is still mid-sentence.
@@ -310,7 +326,11 @@ class ServerSession:
             )
         turn_id = self._turn_id or ""
         out = [self.wire.turn_committed(turn, turn_id)]
-        out.extend(self._finish_turn())
+        # The final transcript waits. The commit makes the recogniser settle, and a
+        # streaming recogniser confirms its last words while it does. Finalising here
+        # sent the transcript without them and dropped them when they arrived, so a
+        # candidate who answered "yes" produced an empty final.
+        self._settle_turn()
         # Authoritative even if the recognizer decoded nothing: one commit, one
         # turn transition. The loop settles the model and opens the response.
         self.actions.append(Action("commit", turn_id))
@@ -322,6 +342,33 @@ class ServerSession:
         out = [self.wire.transcript_final(self._turn_id or "", self._turn_text)]
         self._turn = None
         self._turn_id = None
+        return out
+
+    def _settle_turn(self) -> None:
+        """Set the committed turn aside until the recogniser has settled."""
+        self._settling_turn_id = self._turn_id
+        self._settling_text = self._turn_text
+        self._settling_sent = self._turn_text_sent
+        self._settling_frames = 0
+        self._turn = None
+        self._turn_id = None
+
+    def _settling_transcript(self, text: str) -> List[Dict[str, Any]]:
+        delta = text[self._settling_sent:] if text.startswith(self._settling_text) else text
+        self._settling_text = text
+        self._settling_sent = len(text)
+        if not delta:
+            return []
+        return [self.wire.transcript_delta(self._settling_turn_id or "", delta, text)]
+
+    def _finish_settling(self) -> List[Dict[str, Any]]:
+        if self._settling_turn_id is None:
+            return []
+        out = [self.wire.transcript_final(self._settling_turn_id, self._settling_text)]
+        self._settling_turn_id = None
+        self._settling_text = ""
+        self._settling_sent = 0
+        self._settling_frames = 0
         return out
 
     def _cancel(self, reason: str) -> List[Dict[str, Any]]:
@@ -346,10 +393,23 @@ class ServerSession:
 
         out: List[Dict[str, Any]] = []
 
+        # Recognised words first, so a step that carries both the last word and the
+        # reply opening still puts the word in the transcript before the reply starts.
+        if result.user_text:
+            if self._turn_id is not None:
+                if result.user_text != self._turn_text:
+                    out.extend(self._transcript(result.user_text))
+            elif self._settling_turn_id is not None and result.user_text != self._settling_text:
+                out.extend(self._settling_transcript(result.user_text))
+        if self._settling_turn_id is not None:
+            self._settling_frames += 1
+            # The model opening its reply means it has settled. The final goes out ahead
+            # of the reply, so the interview hears the answer before the agent answers
+            # it. A model that never replies is finalised by the limit instead.
+            if result.control == "response_open" or self._settling_frames >= SETTLE_FRAMES_MAX:
+                out.extend(self._finish_settling())
         if result.control == "response_open" and self._response_id is None:
             out.append(self._open_response())
-        if result.user_text and result.user_text != self._turn_text:
-            out.extend(self._transcript(result.user_text))
         if result.text_delta and self._response_id is not None:
             self._response_text += result.text_delta
             out.append(
@@ -416,6 +476,7 @@ class ServerSession:
         if self.closed:
             return []
         out: List[Dict[str, Any]] = []
+        out.extend(self._finish_settling())
         out.extend(self._finish_turn())
         out.extend(self._close_response("cancelled", reason))
         self.closed = True

@@ -129,3 +129,45 @@ class LoopbackLink:
 
     def errors(self):
         return [m for m in self.received if m["type"] == p.ERROR]
+
+
+from zeg.runtime.model import SilenceModel  # noqa: E402 - kept beside the one class that needs it
+
+
+class SettlingRecogniser(SilenceModel):
+    """A stand-in recogniser that settles the way the model interface describes.
+
+    It reveals words while the candidate is speaking but confirms the last one only while
+    it settles after the commit, and it opens its reply only once it has settled. A model
+    stand-in that emits no recognised words at all cannot show what happens to words
+    confirmed late, which is how their loss went unnoticed.
+    """
+
+    def __init__(self, words, settle_frames=3, reply_frames=0, never_reply=False):
+        super().__init__(reply_frames=reply_frames)
+        self.words = list(words)
+        self.settle_frames = settle_frames
+        self.never_reply = never_reply
+        self.heard = 0
+        self.loud_steps = 0
+        self.settle = 0
+
+    def step(self, pcm):
+        if self.settle > 0:
+            self.settle -= 1
+            if self.settle == 0:
+                self.heard = len(self.words)
+                if not self.never_reply:
+                    self._opened = True
+                    self._remaining = max(self.reply_frames, 2)
+        result = super().step(pcm)
+        if any(pcm):
+            self.loud_steps += 1
+            if self.loud_steps % 2 == 0 and self.heard < len(self.words) - 1:
+                self.heard += 1
+        result.user_text = " ".join(self.words[: self.heard])
+        return result
+
+    def commit_turn(self):
+        # Settle first. The reply opens only after, which is what the interface promises.
+        self.settle = self.settle_frames
