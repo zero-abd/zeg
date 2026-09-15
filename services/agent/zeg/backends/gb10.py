@@ -36,6 +36,7 @@ from typing import Any, Deque, Dict, Iterator, List, Optional
 
 from ..audio import AudioFrame, rms
 from ..config import AudioConfig, BackendConfig
+from ..hesitation import is_hesitation
 from ..runtime import protocol as p
 from .base import (
     AgentAudio,
@@ -76,6 +77,12 @@ class GB10Config:
     #: shorter than a thought. 640 ms is a compromise and should be tuned per role:
     #: a systems question earns longer pauses than a behavioural one.
     endpoint_silence_ms: int = 640
+
+    #: Silence before committing a turn that so far holds only a hesitation. "um" and a
+    #: pause is someone thinking, and committing it made the model answer them mid-
+    #: thought. Still finite, so a candidate who says "um" and nothing else does not hold
+    #: the line open. Like the endpoint above, the number wants tuning on the box.
+    hesitation_hold_ms: int = 2000
 
     #: How many already-sent model frames to mark as part of a turn when it opens.
     #: The gate always fires after speech has started, so without this the model
@@ -264,6 +271,11 @@ class GB10Session(VoiceSession):
         self._silence_frames = 0
         self._loud_run = 0
         self._onset_model_frame: Optional[int] = None
+        #: The runtime's id for the open turn, and what it has heard in it so far. Only
+        #: text carrying this id counts, because the previous turn keeps settling, and
+        #: sending transcript, for a while after the next one opens.
+        self._open_turn_id: Optional[str] = None
+        self._open_turn_text = ""
 
         # Frame accounting. Transport frames are 20 ms; model frames are 80 ms.
         self._transport_buffer = b""
@@ -412,12 +424,25 @@ class GB10Session(VoiceSession):
             return
 
         self._silence_frames += 1
-        if self._silence_frames * self._audio.frame_ms >= self._cfg.endpoint_silence_ms:
+        if self._silence_frames * self._audio.frame_ms >= self._endpoint_ms():
             self._commit_turn()
+
+    def _endpoint_ms(self) -> int:
+        """How much silence ends the open turn. Longer while all it holds is a hesitation.
+
+        No transcript yet is not a hesitation. Holding on an empty turn would slow every
+        turn whose recognition lags, which is most of them.
+        """
+        heard = self._open_turn_text.strip()
+        if heard and is_hesitation(heard):
+            return max(self._cfg.endpoint_silence_ms, self._cfg.hesitation_hold_ms)
+        return self._cfg.endpoint_silence_ms
 
     def _open_turn(self) -> None:
         self._turn += 1
         self._turn_open = True
+        self._open_turn_id = None
+        self._open_turn_text = ""
         preroll = 0
         if self._onset_model_frame is not None:
             preroll = min(
@@ -432,6 +457,8 @@ class GB10Session(VoiceSession):
         self._silence_frames = 0
         self._loud_run = 0
         self._onset_model_frame = None
+        self._open_turn_id = None
+        self._open_turn_text = ""
         # Lines held while the caller talked go out now, in order, after the commit so
         # the server has already seen the turn close.
         held, self._deferred_says = self._deferred_says, []
@@ -530,7 +557,14 @@ class GB10Session(VoiceSession):
             self._configured = True
             return
 
+        if kind == p.TURN_STARTED:
+            if self._turn_open and msg.get("turn") == self._turn:
+                self._open_turn_id = msg.get("turn_id")
+            return
+
         if kind == p.TRANSCRIPT_DELTA:
+            if self._open_turn_id is not None and msg.get("turn_id") == self._open_turn_id:
+                self._open_turn_text = msg.get("text") or ""
             self._pending.append(UserTranscript(msg.get("text") or "", final=False))
             return
 

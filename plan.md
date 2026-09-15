@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The client does not end a turn on "um".** The client commits a turn after 640 ms of
+silence, and the runtime answers every committed turn. A candidate who said "um" and
+paused to think had the turn ended under them, and the model started talking mid-thought.
+The interview layer already ignored the hesitation, but the model's reply had already
+started. The client now tracks the runtime's id for the open turn, from the turn
+acknowledgement, and the text heard in that turn. While that text is only a hesitation, the
+turn waits `hesitation_hold_ms` (2000 ms) of silence instead. If they carry on, the text
+has words in it and the usual endpoint applies. If they say nothing more, the turn still
+commits when the hold runs out. A turn with no text yet is not held, because recognition
+lags and holding on that would slow every turn. Text for the previous turn, which keeps
+settling after the next one opens, does not count. Barge-in is unchanged. The 2000 ms figure
+is a guess, like the endpoint itself, and wants tuning on the box. The mock backend has its
+own fixed endpoint and does not do this. On the old client, with the new setting removed
+from the tests, the three tests that need the hold failed and the three guard tests passed.
+
 **Genuine quotes are no longer voided over punctuation.** The made-up-quote guard compared
 text with only case and spacing ignored. A judge quoting speech adds and drops punctuation
 and writes straight apostrophes, so real quotes were rejected and their scores voided: one

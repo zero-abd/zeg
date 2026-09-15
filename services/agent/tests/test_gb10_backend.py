@@ -131,6 +131,80 @@ def test_a_short_pause_does_not_commit_a_turn(audio):
     assert not link.of_type(p.TURN_COMMIT)
 
 
+# --- a candidate thinking out loud ---------------------------------------------------
+
+
+def open_turn_hearing(link, sess, audio, text, turn=1, turn_id="turn_s1_1"):
+    """Speech opens a turn, the runtime acknowledges it and reports what it heard."""
+    drive(sess, audio, 10, speaking=True)
+    link.deliver(link.wire.turn_started(turn, turn_id))
+    link.deliver(link.wire.transcript_delta(turn_id, text, text))
+
+
+def test_a_turn_holding_only_a_hesitation_is_not_committed_at_the_usual_pause(audio):
+    """"um" and a pause is thinking. Committing it made the model answer mid-thought."""
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, "um")
+    drive(sess, audio, 20)  # 400 ms, twice the usual endpoint
+    assert not link.of_type(p.TURN_COMMIT)
+
+
+def test_a_hesitation_still_commits_once_the_hold_runs_out(audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, "um")
+    drive(sess, audio, 52)  # just over a second
+    assert link.of_type(p.TURN_COMMIT)
+
+
+def test_a_turn_with_words_in_it_commits_at_the_usual_pause(audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, "a race in the reconciler")
+    drive(sess, audio, 11)
+    assert link.of_type(p.TURN_COMMIT)
+
+
+def test_a_turn_with_nothing_heard_yet_is_not_held(audio):
+    """Recognition lags. An empty turn is not a hesitation, or every turn would wait."""
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    drive(sess, audio, 10, speaking=True)
+    drive(sess, audio, 11)
+    assert link.of_type(p.TURN_COMMIT)
+
+
+def test_carrying_on_after_a_hesitation_ends_the_turn_at_the_usual_pause(audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, "um")
+    drive(sess, audio, 20)
+    drive(sess, audio, 10, speaking=True)
+    link.deliver(link.wire.transcript_delta("turn_s1_1", " we sharded it", "um we sharded it"))
+    drive(sess, audio, 11)
+    assert len(link.of_type(p.TURN_COMMIT)) == 1
+
+
+def test_a_hesitation_from_the_previous_turn_does_not_hold_this_one(audio):
+    """The last turn keeps settling after the next opens, and its text arrives late."""
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, "a race in the reconciler")
+    drive(sess, audio, 11)
+    assert len(link.of_type(p.TURN_COMMIT)) == 1
+    drive(sess, audio, 10, speaking=True)
+    link.deliver(link.wire.turn_started(2, "turn_s1_2"))
+    link.deliver(link.wire.transcript_delta("turn_s1_1", " um", "a race in the reconciler um"))
+    link.deliver(link.wire.transcript_delta("turn_s1_2", "um", "um"))
+    link.deliver(link.wire.transcript_delta("turn_s1_1", " so", "so"))
+    drive(sess, audio, 20)
+    assert len(link.of_type(p.TURN_COMMIT)) == 1, "turn 2 held on its own hesitation"
+    link.deliver(link.wire.transcript_delta("turn_s1_2", " the lock", "um the lock"))
+    drive(sess, audio, 11)
+    assert len(link.of_type(p.TURN_COMMIT)) == 2
+
+
 def test_turns_are_numbered_in_order(audio):
     link = FakeLink()
     sess = session(link, audio, endpoint_silence_ms=200)
