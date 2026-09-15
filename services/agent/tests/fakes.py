@@ -57,3 +57,75 @@ class FakeLink:
 def agent_frame(link, response_id="r1", frame=1):
     """One 80 ms frame of agent audio, as the runtime would send it."""
     return link.wire.response_audio(response_id, b"\x11\x22" * p.OUTPUT_FRAME_SAMPLES, frame)
+
+
+class LoopbackLink:
+    """The real client session wired to the real server session, in memory.
+
+    Every message is serialised with the protocol's own dumps and parsed with its own
+    parse in both directions, the model is stepped by the real frame loop, and actions
+    go through the server's real dispatcher. A field the two halves disagree on fails
+    here instead of on the box. No socket, no thread.
+    """
+
+    def __init__(self, model=None):
+        from zeg.runtime.loop import FrameLoop
+        from zeg.runtime.model import SilenceModel
+        from zeg.runtime.server import RuntimeServer
+        from zeg.runtime.session import ServerSession
+
+        self.model = model or SilenceModel()
+        self.server = ServerSession("s1")
+        self._results = collections.deque()
+        self.loop = FrameLoop(self.model, self._results.append)
+        # The dispatcher reads nothing from the server object, so no socket is needed.
+        self._dispatcher = RuntimeServer.__new__(RuntimeServer)
+        self._inbox = collections.deque()
+        self.sent = []
+        self.received = []
+        self.closed = False
+        self._to_client(self.server.ready())  # the server greets on connect
+
+    # --- the Link interface ---------------------------------------------------
+
+    def send(self, msg):
+        self.sent.append(msg)
+        for out in self.server.on_client(p.parse(p.dumps(msg))):
+            if out["type"] == p.CONFIGURED:
+                self.model.prefill(self.server.instructions)
+            self._to_client(out)
+        self._pump()
+
+    def drain(self):
+        out = list(self._inbox)
+        self._inbox.clear()
+        self.received.extend(out)
+        return out
+
+    def close(self):
+        self.closed = True
+
+    # --- internals ------------------------------------------------------------
+
+    def _to_client(self, msg):
+        self._inbox.append(p.parse(p.dumps(msg)))
+
+    def _pump(self):
+        """Dispatch, step the model, feed each frame back, and repeat until quiet."""
+        for _ in range(10_000):
+            self._dispatcher._dispatch(self.server, self.loop)
+            handled = self.loop.run_pending()
+            while self._results:
+                for out in self.server.on_frame(self._results.popleft()):
+                    self._to_client(out)
+            if not handled and not self._results and not self.server.actions:
+                return
+        raise RuntimeError("loopback did not settle")
+
+    # --- test helpers ---------------------------------------------------------
+
+    def received_types(self):
+        return [m["type"] for m in self.received]
+
+    def errors(self):
+        return [m for m in self.received if m["type"] == p.ERROR]

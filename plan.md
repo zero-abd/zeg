@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The real client and the real server have now talked to each other.** Both halves of
+the wire were built against the same protocol and tested only against their own fakes:
+the client against a fake connection that said whatever a test told it to, the server
+against messages built by hand. Nothing had ever passed one half's real output to the
+other. An in-memory loopback now does, serialising every message in both directions,
+stepping the model stand-in with the real frame loop and routing through the real
+dispatcher.
+
+It found no protocol mismatch. The handshake, audio framing, a whole turn with an
+audible reply, steer, say, barge-in and close all agree across the wire, and the server
+raises no error in any of them. One of my own assertions was wrong: it expected no agent
+audio at all after a barge-in, and failed because the agent correctly answered the
+interruption once the candidate stopped. Checking the message sequence showed the old
+reply cancelled and a new one started, and the test now asserts that instead.
+
 **A replaced session stops being read.** Making the real backend discard its queue on
 close only covered one backend. The mock and the speaking backend take a snapshot of
 their queue when reading starts, so when a rollover replaced a session partway through,
