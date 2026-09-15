@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A contracted prohibited question no longer gets through.** The prohibited-question
+rules are written mostly in full forms, "where are you" and "do you have", and a model
+phrasing a question conversationally uses contractions. Replaying every question in the
+red-team suite with each applicable contraction applied one at a time, 5 of 12 contracted
+variants got through: "Where're you originally from?", "What're you being paid right
+now?", "D'you have any children at home?", "Do you've any children at home?" and "D'you
+attend church regularly?". No contracted ordinary question was wrongly blocked.
+
+The filter now expands the contractions that have one meaning before it matches, after
+typography is folded: "'re" to "are", "'ve" to "have", "d'you" to "do you", and "'s" to
+"is" after question words and pronouns only, so a possessive is never rewritten. "'d" and
+"n't" are left alone. The first can mean would or had and no rule needs it, and expanding
+the second would put "not" inside a question's word order. The replay is now a test, and
+every contracted variant must reach the same decision as its full form. The consent check
+relies on contracted forms of its own and was not changed.
+
 **How a character is typed no longer changes a compliance decision.** The consent
 check and the prohibited-question gate are regular expressions written with keyboard
 apostrophes and ordinary spaces, and neither normalised its input. Speech recognisers and

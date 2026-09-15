@@ -50,6 +50,24 @@ _RULES: List[Tuple[str, str, str]] = [
 
 _COMPILED = [(name, re.compile(pat, re.I), why) for name, pat, why in _RULES]
 
+#: Contractions a model uses when it phrases a question conversationally, mapped to the
+#: full forms the rules are written in. Only the unambiguous ones. "'s" is expanded after
+#: question words and pronouns only, so a possessive is never rewritten. "'d" is left
+#: alone because it can mean would or had and no rule needs it. "n't" is left alone
+#: because expanding it would put "not" inside a question's word order.
+_EXPANSIONS = [
+    (re.compile(r"\bd'you\b", re.I), "do you"),
+    (re.compile(r"'re\b", re.I), " are"),
+    (re.compile(r"'ve\b", re.I), " have"),
+    (re.compile(r"\b(what|who|where|how|that|it|there|here)'s\b", re.I), r"\1 is"),
+]
+
+
+def _expand_contractions(text: str) -> str:
+    for pattern, full in _EXPANSIONS:
+        text = pattern.sub(full, text)
+    return text
+
 
 @dataclass(frozen=True)
 class Violation:
@@ -75,6 +93,11 @@ def check(text: str) -> Optional[Violation]:
     # typographic apostrophe let "what's your nationality" through, and a non-breaking
     # space let every multi-word rule through.
     text = fold(text)
+    # The rules are written in full forms and a model phrases questions with
+    # contractions. "Where're you originally from?" got through while "Where are you
+    # originally from?" was blocked. Expanded after folding, so a typographic
+    # apostrophe inside a contraction is already plain.
+    text = _expand_contractions(text)
     for allowed in _ALLOWED:
         if allowed.search(text):
             # Strip the permitted phrasing so it cannot shield a prohibited clause
