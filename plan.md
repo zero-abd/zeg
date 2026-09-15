@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Plain agreement counts as consent.** The consent check only took a yes that used one of
+a short list of words. Run over 17 clear yeses, it refused 12 of them, among them
+"Alright", "Sounds good", "I agree", "I consent", "Works for me" and a bare "Fine". Each of
+those ended the interview for someone who had agreed. The list now includes them, and the
+refusal rules now include the negation of each ("I don't agree", "That doesn't sound good",
+"I can't agree to that", "I disagree"), which are checked first. Twelve new yeses and
+fourteen negated forms were added to the consent fixtures. On the old check the new tests
+failed 15 times, every one a refused yes. All the negated forms were already refused and
+still are. "Mm-hmm", "uh-huh" and "right" are still not taken as consent, and a test now
+keeps it that way. The earlier slow run (30 s) was noise: the suite runs in about 18 s.
+
 **Scoring pairs a question with its real answer, not with a hesitation.** Scoring matches
 each agent line with the reply that follows it. A candidate who said "um" before answering
 had "um" recorded as the answer to the question, and their real answer paired with

@@ -50,6 +50,18 @@ AFFIRMATIVE: Sequence[Answer] = (
     Answer("Yes, recording's fine.", True, "affirms the recording"),
     Answer("Sure, it's fine if you record.", True, "affirms the recording in a form no list names"),
     Answer("Yeah, record whatever you need.", True, "affirms the recording in a form no list names"),
+    Answer("Alright.", True, "plain agreement with no yes in it"),
+    Answer("Sounds good.", True, "plain agreement with no yes in it"),
+    Answer("That's alright with me.", True, "plain agreement with no yes in it"),
+    Answer("I agree.", True, "plain agreement with no yes in it"),
+    Answer("I consent.", True, "plain agreement with no yes in it"),
+    Answer("Please do.", True, "plain agreement with no yes in it"),
+    Answer("Go for it.", True, "plain agreement with no yes in it"),
+    Answer("Works for me.", True, "plain agreement with no yes in it"),
+    Answer("Fine.", True, "plain agreement with no yes in it"),
+    Answer("Certainly.", True, "plain agreement with no yes in it"),
+    Answer("Definitely.", True, "plain agreement with no yes in it"),
+    Answer("I'm happy with that.", True, "plain agreement with no yes in it"),
 )
 
 #: A clear no. Every one of these must end the call.
@@ -90,6 +102,20 @@ REFUSAL: Sequence[Answer] = (
     Answer("Yes, pause the recording.", False, "refuses the recording as an instruction"),
     Answer("Sure, recording off please.", False, "refuses the recording as an instruction"),
     Answer("Okay, I'd prefer no recording.", False, "refuses the recording as an instruction"),
+    Answer("Not alright.", False, "negates a plain agreement"),
+    Answer("That doesn't sound good.", False, "negates a plain agreement"),
+    Answer("That's not alright with me.", False, "negates a plain agreement"),
+    Answer("I don't agree.", False, "negates a plain agreement"),
+    Answer("I do not consent.", False, "negates a plain agreement"),
+    Answer("I can't agree to that.", False, "negates a plain agreement"),
+    Answer("I won't consent to that.", False, "negates a plain agreement"),
+    Answer("That doesn't work for me.", False, "negates a plain agreement"),
+    Answer("Not fine.", False, "negates a plain agreement"),
+    Answer("Certainly not.", False, "negates a plain agreement"),
+    Answer("Definitely not.", False, "negates a plain agreement"),
+    Answer("I'm not happy with that.", False, "negates a plain agreement"),
+    Answer("I disagree.", False, "negates a plain agreement"),
+    Answer("Please don't.", False, "negates a plain agreement"),
 )
 
 #: Not a clear yes, so not consent. These are the dangerous ones: a gate that accepts

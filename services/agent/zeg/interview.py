@@ -39,7 +39,13 @@ _AGREEMENT_IDIOM = re.compile(
 
 _YES = re.compile(
     r"\b(yes|yeah|yep|yup|sure|absolutely|of course|go ahead|okay|ok)\b"
-    r"|\bthat'?s fine\b|\bthat is fine\b|\bfine (by|with) me\b|\bthat works\b",
+    r"|\bthat'?s fine\b|\bthat is fine\b|\bfine (by|with) me\b|\bthat works\b"
+    # Plain agreement that named none of the words above, and was refused. "Alright",
+    # "Sounds good", "I agree" and "I consent" each ended the interview for someone who
+    # had said yes. Every one has its negation in _NO, which is checked first.
+    r"|\b(alright|all right|fine|certainly|definitely|agreed)\b"
+    r"|\bsounds? good\b|\bi (fully |completely |totally )?(agree|consent)\b"
+    r"|\bplease do\b|\bgo for it\b|\bworks for me\b|\bhappy with that\b",
     re.I,
 )
 
@@ -51,7 +57,12 @@ _NO = re.compile(
     # A negated agreement is a refusal. "Absolutely not" and "I'm not okay with that"
     # each contain a word from the agreement list, and both were read as consent.
     r"|\b(absolutely|of course|sure|certainly|definitely) not\b"
-    r"|\bnot (okay|ok|fine|comfortable|happy|alright|all right)\b",
+    r"|\bnot (okay|ok|fine|comfortable|happy|alright|all right)\b"
+    # The negations of the plainer agreements, so widening the list cannot turn
+    # "I don't agree" or "That doesn't sound good" into consent.
+    r"|\b(do|does|did|ca|can|could|would|wo|will)(n'?t| not) (really )?"
+    r"(agree|consent|sound good|work for me)\b"
+    r"|\bcannot (agree|consent)\b|\bnever (agree|consent)|\bdisagree\b",
     re.I,
 )
 

@@ -128,6 +128,37 @@ def test_a_genuine_yes_that_mentions_the_recording_is_still_a_yes():
     assert reads_as_consent("Yeah, record whatever you need.")
 
 
+# --- agreement that never says yes ---------------------------------------------------
+
+
+def test_plain_agreement_without_a_yes_word_is_consent():
+    """Each was read as a refusal, and each ended the interview for someone who agreed."""
+    for text in ["Alright.", "Sounds good.", "I agree.", "I consent.", "Works for me.", "Fine."]:
+        assert reads_as_consent(text), text
+
+
+def test_the_negation_of_each_plain_agreement_is_still_a_refusal():
+    """Widening the agreement list must not widen what gets recorded."""
+    for text in ["Not alright.", "That doesn't sound good.", "I don't agree.",
+                 "I do not consent.", "That doesn't work for me.", "Not fine.",
+                 "I disagree.", "I can't agree to that.", "I won't consent to that."]:
+        assert not reads_as_consent(text), text
+
+
+def test_plain_agreement_lets_the_interview_proceed():
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("Sounds good.", final=True), 5)
+    assert iv.record.consent is True
+    assert iv.record.ended is None
+
+
+def test_a_backchannel_is_still_not_consent():
+    """"mm-hmm" often means yes, but not clearly enough to record someone on."""
+    for text in ["Mm-hmm.", "Uh-huh.", "Right."]:
+        assert not reads_as_consent(text), text
+
+
 @pytest.mark.xfail(strict=True, reason="a condition that never mentions recording is "
                    "invisible to a rule keyed on the word")
 def test_a_retention_condition_that_never_says_record_is_not_consent():
