@@ -206,8 +206,17 @@ multi-word rule tested failed to match, "How old are you?" included.
 
 Both gates now fold typographic apostrophes, quotes and every kind of whitespace to plain
 characters before matching. Every probe in both red-team suites is replayed in
-typographic form and must reach exactly the decision its plain form is labelled with. The
-same probing turned up a separate gap that typography did not cause: "Where're you
+typographic form and must reach exactly the decision its plain form is labelled with.
+
+On the old gates that replay failed 29 times. 19 of the 23 prohibited questions were let
+through, and 8 consent answers changed decision. Six of those were plain yeses read as
+refusals. Two were false consent: "yes I understand, but I'd rather not be recorded", and
+"well, okay, I guess", where a non-breaking space inside "I guess" hid the hedge. No
+ordinary question was wrongly blocked. The first commit message for this fix gave larger
+counts than these, because it counted every line of test output that named a test and each
+failure is named on more than one line. These are the verified figures.
+
+The same probing turned up a separate gap that typography did not cause: "Where're you
 originally from?" is not caught even when typed plainly. That is the next step.
 
 **A candidate's last words are no longer cut off at the end of their turn.** On a
