@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A rolled session is told what was asked, and keeps the figure an answer ends on.** When
+the call rolls to a fresh session, the seed carries the last exchange so the model can
+pick up the thread. It was the last two transcript turns, whoever spoke them. A candidate
+who paused mid-answer, or said "um" before answering, filled both lines, so the new session
+got half an answer and never the question. Long answers were cut from the end, which kept
+the lead-in and dropped the number ("which took p99 from 400 milliseconds down to 30"). The
+seed is now the last agent line plus everything the candidate said after it, joined, with
+hesitations left out, and long text is shortened from the middle. On the old code the three
+new tests failed.
+
 **Plain agreement counts as consent.** The consent check only took a yes that used one of
 a short list of words. Run over 17 clear yeses, it refused 12 of them, among them
 "Alright", "Sounds good", "I agree", "I consent", "Works for me" and a bare "Fine". Each of

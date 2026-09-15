@@ -21,6 +21,8 @@ interview was following.
 from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
+from .hesitation import is_hesitation
+
 #: 80 ms frames, so 12.5 per second of conversation.
 FRAMES_PER_SECOND = 12.5
 
@@ -107,19 +109,43 @@ class SessionSeed:
         return "\n".join([self.system_prompt.rstrip(), "", self.context()])
 
 
-def last_exchange(transcript: Sequence, turns: int = 2) -> List[str]:
-    """The tail of the conversation, rendered for a seed.
+def last_exchange(transcript: Sequence) -> List[str]:
+    """The last question and everything the candidate said back, rendered for a seed.
 
-    Two turns by default. Enough to continue without a seam the candidate can hear,
-    short enough that the prefill stays cheap.
+    At most two lines. Enough to continue without a seam the candidate can hear, short
+    enough that the prefill stays cheap.
+
+    It used to be the last two turns, whoever spoke them. A candidate who paused
+    mid-answer, or said "um" first, fills both, so the fresh session was handed half an
+    answer and never the question it answered. The candidate's replies since the last
+    agent line are joined into one, and hesitations are left out.
     """
+    replies: List[str] = []
+    question = None
+    for t in reversed(list(transcript)):
+        if t.speaker == "agent":
+            question = t.text
+            break
+        if t.speaker == "caller" and not is_hesitation(t.text):
+            replies.append(t.text)
     out = []
-    for t in list(transcript)[-turns:]:
-        who = "Interviewer" if t.speaker == "agent" else "Candidate"
-        out.append("%s: %s" % (who, _trim(t.text)))
+    if question is not None:
+        out.append("Interviewer: %s" % _trim(question))
+    if replies:
+        out.append("Candidate: %s" % _trim(" ".join(reversed(replies))))
     return out
 
 
 def _trim(text: str, limit: int = 160) -> str:
+    """Shorten from the middle.
+
+    An answer ends on its point: "which took p99 from 400 milliseconds down to 30". Cut
+    from the end, the seed kept the lead-in and lost the figure the next question
+    follows up on.
+    """
     text = " ".join(text.split())
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+    if len(text) <= limit:
+        return text
+    head = limit // 3
+    tail = limit - head - 3
+    return "%s … %s" % (text[:head].rstrip(), text[-tail:].lstrip())

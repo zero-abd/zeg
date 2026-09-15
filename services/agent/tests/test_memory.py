@@ -84,13 +84,57 @@ def test_last_exchange_labels_both_speakers():
 
 def test_last_exchange_is_short_by_design():
     """Enough to continue naturally, cheap enough that the prefill is not the cost."""
-    turns = [Turn(i, "caller", "line %d" % i) for i in range(20)]
-    assert len(last_exchange(turns)) == 2
+    turns = [Turn(0, "agent", "What broke?")] + [
+        Turn(i, "caller", "line %d" % i) for i in range(1, 60)
+    ]
+    lines = last_exchange(turns)
+    assert len(lines) == 2
+    assert all(len(line) < 200 for line in lines)
 
 
 def test_a_very_long_turn_is_trimmed():
     long = Turn(0, "caller", "x" * 500)
     assert len(last_exchange([long])[0]) < 200
+
+
+# --- the exchange a candidate is actually in ------------------------------------------
+
+Q = "What was the p99 latency before and after the fix?"
+
+
+def test_an_answer_split_by_a_pause_keeps_its_question():
+    """Two caller turns filled both lines, so the seed never said what was asked."""
+    lines = last_exchange([
+        Turn(0, "agent", Q),
+        Turn(4, "caller", "so before the fix it was"),
+        Turn(7, "caller", "about 400 milliseconds, and after it was 30"),
+    ])
+    assert lines == [
+        "Interviewer: " + Q,
+        "Candidate: so before the fix it was about 400 milliseconds, and after it was 30",
+    ]
+
+
+def test_a_hesitation_does_not_push_the_question_out_of_the_seed():
+    lines = last_exchange([
+        Turn(0, "agent", Q),
+        Turn(4, "caller", "um"),
+        Turn(7, "caller", "400 before, 30 after"),
+    ])
+    assert lines == ["Interviewer: " + Q, "Candidate: 400 before, 30 after"]
+
+
+def test_a_long_answer_keeps_the_figure_it_ends_on():
+    """Cut from the end, the seed kept the lead-in and dropped the number."""
+    answer = (
+        "we had a race in the payment reconciler where two workers picked up the same "
+        "batch, and after a lot of digging I added an advisory lock keyed on the batch "
+        "id, which took p99 from 400 milliseconds down to 30"
+    )
+    candidate = last_exchange([Turn(0, "agent", Q), Turn(5, "caller", answer)])[1]
+    assert candidate.startswith("Candidate: we had a race")
+    assert candidate.endswith("down to 30")
+    assert len(candidate) < 200
 
 
 # --- rollover in a live interview ---------------------------------------------
