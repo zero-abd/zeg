@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
 
 from .engine import DIMENSIONS, Evidence
+from .hesitation import is_hesitation
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
 #: is a presentation of the same judgement, not a finer one.
@@ -110,12 +111,24 @@ def to_qa_units(transcript: Sequence, window: Optional[Sequence[float]] = None) 
     """
     units: List[QAUnit] = []
     pending = None
+    after_hesitation = False
     for entry in transcript:
         if entry.speaker == "agent":
+            if pending is not None and after_hesitation and "?" not in entry.text:
+                # Encouragement after a hesitation, like "take your time", is not a new
+                # question. The question before it is still the one being answered.
+                continue
             pending = entry
+            after_hesitation = False
             continue
         if entry.speaker != "caller":
             continue
+        if is_hesitation(entry.text):
+            # A candidate thinking out loud has not answered. Taken as the answer, "um"
+            # got the question and the real answer was paired with whatever came next.
+            after_hesitation = after_hesitation or pending is not None
+            continue
+        after_hesitation = False
         if pending is not None:
             units.append(
                 QAUnit(

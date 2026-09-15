@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Scoring pairs a question with its real answer, not with a hesitation.** Scoring matches
+each agent line with the reply that follows it. A candidate who said "um" before answering
+had "um" recorded as the answer to the question, and their real answer paired with
+whatever the agent said in between, such as "Take your time." The heuristic judge reads
+only answers, so scores did not change, but the pairing was wrong and a model judge would
+have seen it.
+
+A reply that is only a hesitation is now skipped when pairing. An agent line that follows
+a hesitation and is not itself a question does not replace the question still waiting for
+an answer. A question the candidate only ever answered with "um" has no answer. If the
+agent asked a real follow-up question after the hesitation, the next reply is paired with
+that question, because that is what the candidate was then answering. That distinction
+rests on the question mark, so a rephrased question without one would not replace the
+original. The hesitation check moved into its own module, so the interview and scoring
+share one definition.
+
 **A candidate thinking mid-answer no longer moves the interview on.** The client closes a
 turn after 640 ms of silence, so "um" and a pause in the middle of an answer reach the
 interview as a complete answer. In a diagnostic, the probe ladder counted that "um" as

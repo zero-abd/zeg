@@ -333,3 +333,49 @@ def test_the_wrap_up_itself_is_outside_the_interview():
 def test_without_a_window_every_exchange_is_still_paired():
     """What the evals rely on, and what used to happen to every live call."""
     assert len(to_qa_units(_with_consent_and_closing())) == 5
+
+
+# --- a hesitation is not an answer ---------------------------------------------------
+
+
+def test_a_hesitation_is_not_taken_as_the_answer_to_a_question():
+    """"um" was recorded as the answer, and the real answer was paired with the agent's
+    "take your time" as though that were the question."""
+    units = to_qa_units([
+        T(30, "agent", "What did you personally do there?"),
+        T(32, "caller", "um"),
+        T(34, "agent", "Take your time."),
+        T(40, "caller", "I wrote the advisory lock fix myself"),
+    ])
+    assert [(u.question, u.answer) for u in units] == [
+        ("What did you personally do there?", "I wrote the advisory lock fix myself"),
+    ]
+
+
+def test_a_real_question_after_a_hesitation_is_what_gets_answered():
+    """If the agent asks something new after the hesitation, the reply answers that."""
+    units = to_qa_units([
+        T(30, "agent", "What did you personally do there?"),
+        T(32, "caller", "um"),
+        T(34, "agent", "Which part of the fix did you write?"),
+        T(40, "caller", "the advisory lock"),
+    ])
+    assert [(u.question, u.answer) for u in units] == [
+        ("Which part of the fix did you write?", "the advisory lock"),
+    ]
+
+
+def test_a_hesitation_after_an_answer_is_not_merged_into_it():
+    units = to_qa_units([
+        T(30, "agent", "What did you personally do there?"),
+        T(40, "caller", "I wrote the advisory lock fix myself"),
+        T(45, "caller", "um"),
+    ])
+    assert units[0].answer == "I wrote the advisory lock fix myself"
+
+
+def test_a_question_answered_only_with_a_hesitation_has_no_answer():
+    assert to_qa_units([
+        T(30, "agent", "What did you personally do there?"),
+        T(32, "caller", "um"),
+    ]) == []

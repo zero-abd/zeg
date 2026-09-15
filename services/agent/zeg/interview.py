@@ -16,6 +16,7 @@ from typing import List, Optional, Sequence
 
 from .backends.base import AgentInterrupted, AgentText, UserTranscript
 from .blocklist import ProhibitedQuestion
+from .hesitation import is_hesitation
 from .textnorm import fold
 from .config import CallConfig
 from .engine import InterviewEngine
@@ -81,21 +82,10 @@ _UNSURE = re.compile(
 )
 
 
-#: A consent reply that is nothing but a hesitation. The client ends a turn after 640 ms
-#: of silence, so "um" and a pause arrive as a complete answer, and reading that as a
-#: refusal ended the interview before the candidate had answered. "mm-hmm" and "uh-huh"
-#: are left out on purpose: they often mean yes, so they are judged, not waited on.
-_HESITATION = re.compile(r"(u+m+|u+h+|e+r+m*|a+h+|h+m+|well|so)", re.I)
-
-#: How many hesitations are waited through before a reply is judged the usual way, so a
-#: candidate who never answers cannot hold a silent call open until the time limit.
+#: How many hesitations are waited through before a consent reply is judged the usual
+#: way, so a candidate who never answers cannot hold a silent call open until the time
+#: limit. What counts as a hesitation lives in hesitation.py, shared with scoring.
 MAX_HESITATIONS_BEFORE_CONSENT = 2
-
-
-def is_hesitation(text: str) -> bool:
-    """True when a reply holds no words beyond hesitation sounds, or no words at all."""
-    words = re.findall(r"[a-z']+", fold(text).lower())
-    return all(_HESITATION.fullmatch(w) for w in words)
 
 
 def reads_as_consent(text: str) -> bool:
