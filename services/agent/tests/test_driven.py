@@ -349,3 +349,21 @@ def test_a_non_fatal_backend_error_is_recorded_and_the_call_goes_on():
     assert result.ended is None
     assert result.errors == ["bad agent audio"]
     assert len(stub.seen) == 1
+
+
+def test_audio_is_still_counted_once_the_call_has_already_ended():
+    """The end of a call waits for its final line by counting agent audio. Reading
+    stopped after the first event of every batch once the call had ended, so audio
+    behind a text event was never counted, and the wait could give up mid-sentence."""
+    from zeg.audio import AudioFrame
+    from zeg.backends import AgentAudio, AgentText
+    from zeg.conversation import DrivenResult, _VirtualClock
+
+    frame = AudioFrame.silence(22050, 441)
+    runner = InterviewRunner(MockBackend(), interview=_Stub(None))
+    runner._session = _OldSession([AgentText("That is completely fine.", final=True),
+                                   AgentAudio(frame), AgentAudio(frame)])
+    runner._saying = None
+    result = DrivenResult(ended="consent declined")
+    runner._consume(_VirtualClock(runner.audio.frame_ms), result, lambda actions: None)
+    assert result.agent_audio_frames == 2

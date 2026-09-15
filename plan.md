@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who declines now hears the decline.** Holding a mid-turn line on the
+client was only half of it. The runner closed the session the moment the call ended, so
+a line the client was holding, or one the server had just accepted, never got the audio
+frames it needed to play. When a call ends on a spoken line the runner now keeps the
+session open until that line has played. It first waits for the line to start, because a
+line the client is holding only goes out once the candidate's turn closes, and the old
+wait gave up after 300 ms of silence, two frames short of that happening. It also keeps
+counting the agent's audio after the call has ended, which it had stopped doing after the
+first event of each batch. An end with nothing to say, like the time
+limit, still closes at once, and so does a backend failure. The decline is now voiced
+through the real client and server after both a short pause and an ordinary one.
+
 **A fixed line asked for mid-turn is held until the turn ends.** The server refuses a
 fixed line while the candidate's turn is still open. On a declined consent with a short
 pause, the decline line hit exactly that: the client sent it, the server refused it as

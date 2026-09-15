@@ -265,6 +265,12 @@ class DrivenResult:
         return "\n".join(lines)
 
 
+#: How long the end of a call waits for a final spoken line to start before it gives up
+#: on it. A line the client is holding only goes out once the candidate's turn has
+#: closed, which takes the endpoint's silence plus the model's time to first audio.
+FAREWELL_START_TIMEOUT_S = 5.0
+
+
 class InterviewRunner:
     """Runs a simulated caller against a backend with the interview engine in charge.
 
@@ -299,8 +305,12 @@ class InterviewRunner:
         # What the simulated caller is currently saying. It has to outlive the speech
         # itself, because the endpoint fires during the silence that follows.
         self._saying: Optional[str] = None
+        # Whether the call ended on a spoken line that still has to be heard.
+        self._farewell = False
 
         def perform(actions):
+            actions = list(actions)
+            spoke = any(isinstance(a, Speak) for a in actions)
             for a in actions:
                 if isinstance(a, Speak):
                     self._session.say(a.text)
@@ -315,6 +325,7 @@ class InterviewRunner:
                     self._roll(a.seed)
                 elif isinstance(a, EndCall):
                     result.ended = a.reason
+                    self._farewell = spoke
 
         try:
             perform(self.interview.start())
@@ -330,8 +341,13 @@ class InterviewRunner:
                     break
                 self._speak(clock, result, perform, turn)
                 self._silence(clock, result, perform, turn.pause_after_s)
-            if not result.ended:
-                self._drain(clock, result, perform)
+            if not result.failed and (not result.ended or self._farewell):
+                # A call that ended on a spoken line, such as a declined consent, has to
+                # let that line play. Closing at once cut it off, so the one sentence owed
+                # to a candidate who said no was never heard. An end with nothing left to
+                # say, like the time limit, still closes straight away.
+                wait = FAREWELL_START_TIMEOUT_S if result.ended else 0.0
+                self._drain(clock, result, perform, wait_for_start_s=wait)
         finally:
             self._session.close()
 
@@ -403,7 +419,8 @@ class InterviewRunner:
         result.synthesised_turns += 1
         perform(self.interview.on_event(UserTranscript(text, final=True), clock.now))
 
-    def _drain(self, clock, result, perform, max_s: float = 40.0) -> None:
+    def _drain(self, clock, result, perform, max_s: float = 40.0,
+               wait_for_start_s: float = 0.0) -> None:
         """Wait for the agent to stop speaking.
 
         Watch the audio, not the transcript. The transcript grows once per utterance,
@@ -412,7 +429,9 @@ class InterviewRunner:
         single turn.
         """
         idle = 0
-        for _ in range(int(max_s * 1000 / self.audio.frame_ms)):
+        started = False
+        patience = int(wait_for_start_s * 1000 / self.audio.frame_ms)
+        for frame in range(int(max_s * 1000 / self.audio.frame_ms)):
             if result.failed:
                 return
             before = result.agent_audio_frames
@@ -421,7 +440,15 @@ class InterviewRunner:
                                    self.audio.input_frame_samples, clock.now))
             clock.tick()
             self._consume(clock, result, perform)
-            idle = 0 if result.agent_audio_frames > before else idle + 1
+            if result.agent_audio_frames > before:
+                started, idle = True, 0
+            else:
+                idle += 1
+            if not started and frame < patience:
+                # The line may not have been sent yet. Watching for silence before it
+                # starts gave up after 300 ms, two frames short of the candidate's turn
+                # closing, so a held decline was discarded unheard.
+                continue
             if idle >= 15:
                 return
 
@@ -429,6 +456,7 @@ class InterviewRunner:
         from .backends.base import AgentAudio, AgentInterrupted, BackendError, UserTranscript
 
         source = self._session
+        already_ended = result.ended
         for ev in source.poll():
             if isinstance(ev, BackendError):
                 result.errors.append(ev.message)
@@ -453,7 +481,7 @@ class InterviewRunner:
                 ev = UserTranscript(self._saying, final=True)
                 self._saying = None
             perform(self.interview.on_event(ev, clock.now))
-            if self._session is not source or result.ended:
+            if self._session is not source or (result.ended and not already_ended):
                 # The session these events came from was replaced, or the call is over.
                 # Anything else it had queued describes speech nobody will hear, and a
                 # backend that snapshots its queue would otherwise keep delivering it.

@@ -88,3 +88,43 @@ def test_a_backend_failure_mid_call_ends_it_instead_of_crashing_it():
     assert result.ended.startswith("backend failed")
     assert result.errors
     assert result.transcript, "what was said before the failure still comes back"
+
+
+# --- a candidate who declines has to hear why the call is ending --------------------
+
+
+def voiced(link, line):
+    """Whether the server actually spoke this line.
+
+    Counting replies was not enough. The stand-in answers every committed turn on its
+    own, so a second reply could be its canned line while the decline was never spoken,
+    and a test counting replies passed on the code that never voiced it.
+    """
+    return any(line in (m.get("text") or "") for m in link.received if m["type"] == p.RESPONSE_TEXT)
+
+
+def test_a_candidate_who_declines_with_a_short_pause_hears_the_decline_line():
+    """Two things lost this line. The server refused it because the candidate's turn
+    was still open, and the runner closed the session the instant the call ended, so
+    even a line that was accepted never played. The client now holds the line until
+    the turn commits, and the runner lets it play before closing."""
+    from zeg.conversation import CallerTurn
+
+    result, links = run_stack([CallerTurn("no, I'd rather not", speak_s=1.5, pause_after_s=0.3)])
+    assert result.consent is False
+    from zeg.prompts import CONSENT_DECLINED
+
+    assert len([m for m in links[0].sent if m["type"] == p.SAY]) == 2, "greeting and decline"
+    assert voiced(links[0], CONSENT_DECLINED), "the decline was never voiced"
+    assert not links[0].errors()
+
+
+def test_the_decline_line_plays_after_an_ordinary_pause_too():
+    from zeg.conversation import CallerTurn
+
+    from zeg.prompts import CONSENT_DECLINED
+
+    result, links = run_stack([CallerTurn("no thank you", speak_s=1.5)])
+    assert result.consent is False
+    assert voiced(links[0], CONSENT_DECLINED), "the decline was never voiced"
+    assert not links[0].errors()
