@@ -496,6 +496,10 @@ class GB10Session(VoiceSession):
     # --- agent audio ----------------------------------------------------------
 
     @property
+    def caller_speaking(self) -> bool:
+        return self._turn_open
+
+    @property
     def _speaking(self) -> bool:
         return bool(self._playout) or self._response_id is not None
 

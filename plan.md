@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A rollover waits for the candidate to finish their turn.** The runner replaced the session
+the moment the interview asked for a rollover. What prompts one is a final transcript, and
+on the real server a turn's final transcript is released as soon as the candidate starts
+their next turn. So a candidate who carried on talking could have the session closed under
+them: what it had heard of their new sentence was thrown away, and the new session heard the
+rest starting mid-word. The backend contract now has a read-only `caller_speaking`
+property, true while the caller's turn is open. It defaults to False, so a driver or backend
+that does not know about it behaves exactly as before. The real client reports its open
+turn, and the mock its open utterance. The runner holds the seed and rolls on the first
+frame after the turn ends. It counts a rollover only when one actually happens. A test
+backend records, for every session closed, whether the caller was mid-turn. On the old
+runner one of those closes was mid-turn. On the new one none are. The gateway's driver is
+not touched. It will want the same check when the tracks merge.
+
 **The client does not end a turn on "um".** The client commits a turn after 640 ms of
 silence, and the runtime answers every committed turn. A candidate who said "um" and
 paused to think had the turn ended under them, and the model started talking mid-thought.

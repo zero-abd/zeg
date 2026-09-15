@@ -131,6 +131,18 @@ def test_a_short_pause_does_not_commit_a_turn(audio):
     assert not link.of_type(p.TURN_COMMIT)
 
 
+def test_the_session_reports_an_open_turn_as_the_caller_speaking(audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200)
+    assert not sess.caller_speaking
+    drive(sess, audio, 10, speaking=True)
+    assert sess.caller_speaking
+    drive(sess, audio, 5)  # a pause shorter than the endpoint is still the same turn
+    assert sess.caller_speaking
+    drive(sess, audio, 6)
+    assert not sess.caller_speaking
+
+
 # --- a candidate thinking out loud ---------------------------------------------------
 
 

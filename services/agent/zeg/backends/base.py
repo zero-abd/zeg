@@ -117,6 +117,21 @@ class VoiceSession(abc.ABC):
     def close(self) -> None:
         """Release the session. Safe to call twice."""
 
+    @property
+    def caller_speaking(self) -> bool:
+        """True while the caller's turn is open: they have started and not yet paused
+        long enough to end it.
+
+        A driver about to replace this session checks it first. Closing a session mid-
+        turn throws away the speech it has heard so far, and the new session hears the
+        rest starting mid-word. The final transcript that prompts a rollover can arrive
+        after the candidate has already started their next sentence.
+
+        A backend that cannot tell returns False, which is how every driver behaved
+        before this existed.
+        """
+        return False
+
     def __enter__(self):
         return self
 

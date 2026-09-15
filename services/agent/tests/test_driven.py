@@ -6,6 +6,7 @@ the parts agree with each other, which is where the last two real bugs were hidi
 
 import pytest
 
+from zeg.audio import AudioFrame, tone
 from zeg.backends import MockBackend
 from zeg.config import CallConfig
 from zeg.conversation import CallerTurn, InterviewRunner
@@ -203,6 +204,52 @@ def long_call_on(backend):
                                    speak_s=8.0, pause_after_s=2.0)] * 8
     iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
     return InterviewRunner(backend, interview=iv).run(slow), len(slow)
+
+
+class RecordsCloses(OneAtATime):
+    """Notes, for every session closed, whether the caller was mid-turn at the time."""
+
+    def __init__(self):
+        super().__init__()
+        self.closed_mid_turn = []
+
+    def start_session(self, system_prompt, greeting=None):
+        session = super().start_session(system_prompt, greeting=greeting)
+        close = session.close
+
+        def recording_close():
+            if not session._closed:
+                self.closed_mid_turn.append(session.caller_speaking)
+            close()
+
+        session.close = recording_close
+        return session
+
+
+def test_a_rollover_waits_for_the_caller_to_finish_their_turn():
+    """The rollover ran the moment it was asked for. A candidate who had carried on
+    talking had the session closed under them, and what it had heard was lost."""
+    backend = RecordsCloses()
+    quick = [CONSENT] + [CallerTurn("we rewrote the payment reconciler after an outage",
+                                    speak_s=8.0, pause_after_s=0.1)] * 8
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    r = InterviewRunner(backend, interview=iv).run(quick)
+
+    assert r.rollovers >= 1, "the call never rolled, so this proves nothing"
+    assert True not in backend.closed_mid_turn, backend.closed_mid_turn
+    assert len(backend.sessions) == r.rollovers + 1
+    assert len(caller_turns(r)) == len(quick)
+
+
+def test_a_session_reports_whether_the_caller_is_mid_turn():
+    session = MockBackend().start_session("sys")
+    assert not session.caller_speaking
+    loud = tone(16000, 320, amplitude=0.3)
+    session.push_audio(loud)
+    assert session.caller_speaking
+    for _ in range(15):
+        session.push_audio(AudioFrame.silence(16000, 320))
+    assert not session.caller_speaking
 
 
 def test_rollover_works_when_only_one_session_may_be_live():

@@ -306,6 +306,8 @@ class InterviewRunner:
         self.backend = backend
         self.audio = audio or AudioConfig()
         self.interview = interview or Interview()
+        # A rollover asked for while the caller was mid-turn, waiting for them to stop.
+        self._pending_seed = None
 
     def run(self, caller: Sequence[CallerTurn] = DEFAULT_CALLER) -> DrivenResult:
         from .interview import Brief, EndCall, Probe, Rollover, Speak
@@ -321,6 +323,7 @@ class InterviewRunner:
         self._saying: Optional[str] = None
         # Whether the call ended on a spoken line that still has to be heard.
         self._farewell = False
+        self._pending_seed = None
 
         def perform(actions):
             actions = list(actions)
@@ -335,8 +338,8 @@ class InterviewRunner:
                     result.probes.append(a.instruction)
                     self._session.steer(a.instruction)
                 elif isinstance(a, Rollover):
-                    result.rollovers += 1
-                    self._roll(a.seed)
+                    self._pending_seed = a.seed
+                    self._roll_if_due(result)
                 elif isinstance(a, EndCall):
                     result.ended = a.reason
                     self._farewell = spoke
@@ -375,6 +378,22 @@ class InterviewRunner:
         result.wrapped_up_s = self.interview.record.wrapped_up_s
         result.duration_s = clock.now
         return result
+
+    def _roll_if_due(self, result) -> None:
+        """Roll to the waiting seed, unless the caller is mid-turn.
+
+        The rollover used to happen the moment it was asked for. The final transcript
+        that prompts one can arrive after the candidate has started their next sentence,
+        and closing the session then threw away what it had heard of it. Checked on
+        every frame, so it runs on the first frame after the turn ends.
+        """
+        if self._pending_seed is None or result.ended:
+            return
+        if self._session.caller_speaking:
+            return
+        seed, self._pending_seed = self._pending_seed, None
+        result.rollovers += 1
+        self._roll(seed)
 
     def _roll(self, seed) -> None:
         """Swap in a fresh session primed with `seed`.
@@ -471,6 +490,7 @@ class InterviewRunner:
     def _consume(self, clock, result, perform) -> None:
         from .backends.base import AgentAudio, AgentInterrupted, BackendError, UserTranscript
 
+        self._roll_if_due(result)
         source = self._session
         already_ended = result.ended
         for ev in source.poll():
