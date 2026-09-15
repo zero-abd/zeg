@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who hesitates before answering the consent question is no longer turned
+away.** The client ends a candidate's turn after 640 ms of silence, so "um" followed by a
+pause arrives as a complete answer. The consent check reads anything short of a clear yes
+as a refusal, so the interview spoke the decline line and ended the call before the
+candidate had answered. In a diagnostic, "um", "uh...", "hmm", "well", "so um" and "Um."
+all did this, and "um" reached the interview the same way through the real client and
+server.
+
+Waiting grants no more consent than declining does. A reply that is only a hesitation, or
+empty, now leaves consent unresolved, and the interview waits for the real answer. Only
+two hesitations are waited through, so a candidate who never answers cannot hold a silent
+call open until the time limit. "mm-hmm" and "uh-huh" are not treated as hesitation,
+because they often mean yes. They are still judged as before and read as not consent,
+which is a separate question.
+
 **Only the interview itself is scored.** The scoring pass pairs every agent line with the
 reply that follows it, and nothing marked where the interview began or ended. So the
 recording disclosure and the wrap-up were paired like interview questions. In a

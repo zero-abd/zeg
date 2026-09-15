@@ -55,9 +55,13 @@ def test_consent_refused_ends_the_call(iv):
 
 
 def test_an_ambiguous_answer_is_not_consent(iv):
-    """Silence and hedging are not agreement."""
+    """Silence and hedging are not agreement. A bare hesitation is now waited through
+    rather than read as a refusal, so it must simply never grant consent; a real hedge
+    is still judged, and judged as not consent."""
     iv.start()
     iv.on_event(UserTranscript("hmm", final=True), 5)
+    assert iv.record.consent is not True
+    iv.on_event(UserTranscript("I guess so", final=True), 8)
     assert iv.record.consent is False
 
 
@@ -286,3 +290,51 @@ def test_the_record_marks_when_the_interview_wrapped_up(iv):
     consented(iv)
     iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 815)
     assert iv.record.wrapped_up_s == 815
+
+
+# --- hesitating before answering the consent question ----------------------------
+
+
+@pytest.mark.parametrize("sound", ["um", "uh...", "hmm", "well", "so um", "Um.", ""])
+def test_a_hesitation_does_not_end_the_call_before_the_candidate_answers(sound):
+    """The client ends a turn after 640 ms of silence, so "um" and a pause arrive as a
+    complete answer. Read as a refusal, it ended the interview before they answered."""
+    iv = Interview()
+    iv.start()
+    actions = iv.on_event(UserTranscript(sound, final=True), 5.0)
+    assert not any(isinstance(a, EndCall) for a in actions)
+    assert iv.record.consent is None
+
+
+def test_the_answer_after_a_hesitation_is_the_one_that_counts(iv):
+    iv.start()
+    iv.on_event(UserTranscript("um", final=True), 5.0)
+    iv.on_event(UserTranscript("yes that is fine", final=True), 8.0)
+    assert iv.record.consent is True
+
+
+def test_hesitating_without_ever_answering_does_not_hold_the_call_open(iv):
+    """Checks the outcome, not which reply produced it: the old interview ended the call
+    on the first hesitation, the fixed one on the third, and both must end it."""
+    iv.start()
+    for t in (5.0, 8.0, 11.0):
+        iv.on_event(UserTranscript("um", final=True), t)
+    assert iv.record.consent is False
+    assert iv.record.ended == "consent declined"
+
+
+def test_a_reply_that_starts_with_a_hesitation_is_still_an_answer(iv):
+    iv.start()
+    iv.on_event(UserTranscript("um, no thanks", final=True), 5.0)
+    assert iv.record.consent is False
+    other = Interview()
+    other.start()
+    other.on_event(UserTranscript("uh, yes", final=True), 5.0)
+    assert other.record.consent is True
+
+
+def test_an_acknowledgement_that_may_mean_yes_is_judged_not_waited_on(iv):
+    """mm-hmm often means yes, so the hesitation rule must not swallow it."""
+    iv.start()
+    iv.on_event(UserTranscript("mm-hmm", final=True), 5.0)
+    assert iv.record.consent is not None

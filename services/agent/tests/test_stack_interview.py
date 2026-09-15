@@ -260,3 +260,21 @@ def test_a_reply_the_candidate_talked_over_is_not_recorded_as_said():
     assert result.interruptions >= 1, "the candidate never cut in, so this proves nothing"
     assert agent_lines(result, REPLY) == completed_reply_count(links[0], REPLY)
     assert not links[0].errors()
+
+
+# --- hesitating before answering, over the real wire --------------------------------
+
+
+def test_a_candidate_who_hesitates_before_answering_is_not_turned_away():
+    """A hesitation and a pause reach the interview as a complete answer, and it used to
+    end the call with the decline line before the candidate had said anything."""
+    from zeg.conversation import CallerTurn
+    from zeg.prompts import CONSENT_DECLINED
+
+    result, links = run_stack([
+        CallerTurn("um", speak_s=0.5),
+        CallerTurn("yes that is fine", speak_s=1.5),
+    ])
+    assert result.consent is True
+    assert result.ended is None
+    assert not [m for m in links[0].sent if m["type"] == p.SAY and m["text"] == CONSENT_DECLINED]
