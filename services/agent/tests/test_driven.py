@@ -318,3 +318,34 @@ def test_events_queued_after_the_call_ends_never_reach_the_interview():
     ])
     assert result.ended == "consent declined"
     assert len(stub.seen) == 1
+
+
+# --- backend errors ----------------------------------------------------------------
+
+
+def test_a_fatal_backend_error_ends_the_call_and_stops_reading():
+    from zeg.backends import AgentText, BackendError
+
+    stub = _Stub(None)
+    result = _consume_once(stub, [
+        BackendError("the speech runtime closed the session", fatal=True),
+        AgentText("anything after the failure", final=True),
+    ])
+    assert result.failed
+    assert result.ended.startswith("backend failed")
+    assert result.errors == ["the speech runtime closed the session"]
+    assert stub.seen == []
+
+
+def test_a_non_fatal_backend_error_is_recorded_and_the_call_goes_on():
+    from zeg.backends import AgentText, BackendError
+
+    stub = _Stub(None)
+    result = _consume_once(stub, [
+        BackendError("bad agent audio", fatal=False),
+        AgentText("still here", final=True),
+    ])
+    assert not result.failed
+    assert result.ended is None
+    assert result.errors == ["bad agent audio"]
+    assert len(stub.seen) == 1

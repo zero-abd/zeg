@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A backend failure no longer crashes the interview.** The whole interview now runs
+through the real client and the real server over the loopback, and on the normal path
+the layers agree: consent is taken over the wire, the disclosure comes back as audio
+from the server, steers reach the model, every turn is delivered and no server error is
+raised. The stand-in model has no language model, so every reply is its one fixed line;
+what that proves is agreement between layers, not a good interview.
+
+Pointing it at a failure found a crash. When the runtime closed a session at its frame
+cap, the client queued a fatal error that the interview runner never read, and the next
+frame went into the closed session and raised. On the box, any runtime failure part way
+through an interview would have ended with no transcript and no report. The runner now
+records backend errors, and on a fatal one ends the call with the reason and stops
+pushing audio, while keeping everything said before the failure.
+
 **The real client and the real server have now talked to each other.** Both halves of
 the wire were built against the same protocol and tested only against their own fakes:
 the client against a fake connection that said whatever a test told it to, the server

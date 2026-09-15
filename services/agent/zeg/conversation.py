@@ -252,6 +252,10 @@ class DrivenResult:
     ended: Optional[str] = None
     duration_s: float = 0.0
     interruptions: int = 0
+    #: What the backend reported going wrong, fatal or not.
+    errors: List[str] = field(default_factory=list)
+    #: The backend failed and shut itself down. Nothing more can be pushed into it.
+    failed: bool = False
 
     def render(self) -> str:
         lines = []
@@ -358,6 +362,8 @@ class InterviewRunner:
     def _speak(self, clock, result, perform, turn: CallerTurn) -> None:
         n = int(turn.speak_s * 1000 / self.audio.frame_ms)
         for _ in range(n):
+            if result.failed:
+                return
             f = tone(self.audio.input_sample_rate, self.audio.input_frame_samples,
                      freq_hz=180.0, amplitude=0.3)
             self._session.push_audio(AudioFrame(f.pcm, f.sample_rate, clock.now))
@@ -367,12 +373,15 @@ class InterviewRunner:
 
     def _silence(self, clock, result, perform, seconds: float) -> None:
         for _ in range(int(seconds * 1000 / self.audio.frame_ms)):
+            if result.failed:
+                return
             self._session.push_audio(
                 AudioFrame.silence(self.audio.input_sample_rate,
                                    self.audio.input_frame_samples, clock.now))
             clock.tick()
             self._consume(clock, result, perform)
-        self._deliver_pending(clock, result, perform)
+        if not result.ended:
+            self._deliver_pending(clock, result, perform)
 
     def _deliver_pending(self, clock, result, perform) -> None:
         """Tell the interview the caller finished, if the backend never did.
@@ -404,6 +413,8 @@ class InterviewRunner:
         """
         idle = 0
         for _ in range(int(max_s * 1000 / self.audio.frame_ms)):
+            if result.failed:
+                return
             before = result.agent_audio_frames
             self._session.push_audio(
                 AudioFrame.silence(self.audio.input_sample_rate,
@@ -415,10 +426,20 @@ class InterviewRunner:
                 return
 
     def _consume(self, clock, result, perform) -> None:
-        from .backends.base import AgentAudio, AgentInterrupted, UserTranscript
+        from .backends.base import AgentAudio, AgentInterrupted, BackendError, UserTranscript
 
         source = self._session
         for ev in source.poll():
+            if isinstance(ev, BackendError):
+                result.errors.append(ev.message)
+                if ev.fatal:
+                    # The session has already shut itself down. This runner used to
+                    # ignore the error, push the next frame into the closed session and
+                    # raise, so a runtime failure left no transcript and no report.
+                    result.failed = True
+                    result.ended = "backend failed: %s" % ev.message
+                    return
+                continue
             if isinstance(ev, AgentAudio):
                 result.agent_audio_frames += 1
             if isinstance(ev, AgentInterrupted):
