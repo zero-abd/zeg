@@ -206,6 +206,31 @@ def long_call_on(backend):
     return InterviewRunner(backend, interview=iv).run(slow), len(slow)
 
 
+# --- the clock runs when nobody is talking ----------------------------------------------
+
+
+def test_the_interview_ends_at_the_limit_with_nothing_said():
+    from zeg.interview import EndCall
+
+    iv = Interview()
+    iv.start()
+    assert iv.tick(899.9) == []
+    actions = iv.tick(900)
+    assert [type(a) for a in actions] == [EndCall]
+    assert iv.record.ended == "time limit reached"
+    assert iv.tick(901) == []
+
+
+def test_a_silent_candidate_cannot_hold_the_call_past_the_limit():
+    """The limit was only checked when an event arrived. With the candidate silent and
+    the agent done, no events came, and this call ran to 1029 seconds."""
+    caller = [CONSENT, CallerTurn("we rewrote the payment reconciler after an outage",
+                                  speak_s=4.0, pause_after_s=1000.0)]
+    r = run(caller)
+    assert r.ended == "time limit reached"
+    assert r.duration_s <= 901
+
+
 class RecordsCloses(OneAtATime):
     """Notes, for every session closed, whether the caller was mid-turn at the time."""
 
@@ -313,6 +338,9 @@ class _Stub:
     def on_event(self, ev, t_s):
         self.seen.append(ev)
         return [self.first_action] if len(self.seen) == 1 else []
+
+    def tick(self, t_s):
+        return []
 
 
 def _consume_once(stub, events):

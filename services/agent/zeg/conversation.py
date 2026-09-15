@@ -413,7 +413,7 @@ class InterviewRunner:
     def _speak(self, clock, result, perform, turn: CallerTurn) -> None:
         n = int(turn.speak_s * 1000 / self.audio.frame_ms)
         for _ in range(n):
-            if result.failed:
+            if result.failed or result.ended:
                 return
             f = tone(self.audio.input_sample_rate, self.audio.input_frame_samples,
                      freq_hz=180.0, amplitude=0.3)
@@ -424,7 +424,7 @@ class InterviewRunner:
 
     def _silence(self, clock, result, perform, seconds: float) -> None:
         for _ in range(int(seconds * 1000 / self.audio.frame_ms)):
-            if result.failed:
+            if result.failed or result.ended:
                 return
             self._session.push_audio(
                 AudioFrame.silence(self.audio.input_sample_rate,
@@ -491,6 +491,11 @@ class InterviewRunner:
         from .backends.base import AgentAudio, AgentInterrupted, BackendError, UserTranscript
 
         self._roll_if_due(result)
+        if not result.ended:
+            # The clock runs whether or not anyone speaks.
+            perform(self.interview.tick(clock.now))
+            if result.ended:
+                return
         source = self._session
         already_ended = result.ended
         for ev in source.poll():

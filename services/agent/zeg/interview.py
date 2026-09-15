@@ -236,6 +236,18 @@ class Interview:
         self._asked_consent = True
         return self._say(self.greeting, 0.0)
 
+    def tick(self, t_s: float) -> List[Action]:
+        """The clock, with nothing said. Call it on every frame.
+
+        The time limit was only checked when an event arrived. A candidate who went
+        quiet while the agent was not speaking produced no events, so nothing ended
+        the call: a mock call with the candidate silent after one answer ran to 1029
+        seconds against a 900 second limit.
+        """
+        if self.record.ended or not self.engine.is_over(t_s):
+            return []
+        return self._end("time limit reached")
+
     def on_event(self, event, t_s: float) -> List[Action]:
         """Translate one backend event into what should happen next."""
         if self.record.ended:

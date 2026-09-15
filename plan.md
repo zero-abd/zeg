@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The time limit ends a call even when nobody is talking.** The interview only checked the
+clock when a backend event arrived. A candidate who went quiet while the agent was not
+speaking produced no events, so nothing ended the call. A mock call with the candidate
+silent after one answer ran to 1029 seconds against a 900 second limit, and never wrapped up.
+The interview now has `tick(t_s)`, which a driver calls on every frame and which ends the
+call at the limit. The runner calls it each frame, and its speaking and silence loops stop
+pushing audio once the call has ended (a closing line still gets its farewell drain). On the
+old code both new tests failed. The spoken wrap-up at 13:30 still waits for a caller turn,
+so a silent candidate reaches the end without hearing it. That is the next thing. The
+gateway's driver will need to call `tick` too when the tracks merge.
+
+Two full-suite runs this round looked hung. pytest's own timer said 18.65 s while the command
+took 943 s, and the power log shows the Mac in maintenance sleep across exactly those
+windows. The suite itself was fine.
+
 **A rollover waits for the candidate to finish their turn.** The runner replaced the session
 the moment the interview asked for a rollover. What prompts one is a final transcript, and
 on the real server a turn's final transcript is released as soon as the candidate starts
