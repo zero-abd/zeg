@@ -166,3 +166,19 @@ def test_the_final_rung_is_in_progress_until_the_candidate_answers_it(eng):
     eng.note_caller("a downstream report started double counting", 120)
     assert not eng.probe_in_progress
     assert eng.next_probe() is None
+
+
+def test_a_ladder_the_engine_has_abandoned_is_not_in_progress(eng):
+    """Two vague answers stop the questions, but the guard still reported the ladder
+    as live. The rollover policy trusts that guard, so rollover stopped for good."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    eng.next_probe()
+    eng.note_caller("I wrote the advisory lock fix myself", 110)
+    eng.next_probe()
+    eng.note_caller("we basically did various things", 120)
+    eng.next_probe()
+    eng.note_caller("pretty much just stuff", 130)
+
+    assert eng.next_probe() is None
+    assert not eng.probe_in_progress, "the questions stopped but the guard says otherwise"
+    assert eng.ladder_stalled

@@ -195,7 +195,7 @@ class InterviewEngine:
         Descending stops when two consecutive answers stayed general. That is itself
         a signal, and it is recorded rather than treated as a failed probe.
         """
-        if self.state.vague_streak >= 2:
+        if self.ladder_stalled:
             return None
         if not self.state.claims:
             return None
@@ -208,6 +208,15 @@ class InterviewEngine:
         return rung
 
     @property
+    def ladder_stalled(self) -> bool:
+        """Two general answers in a row. The engine stops descending and moves on.
+
+        One rule, shared by everything that needs to know, so the question logic and
+        the rollover guard cannot disagree about whether a ladder is still live.
+        """
+        return self.state.vague_streak >= 2
+
+    @property
     def probe_in_progress(self) -> bool:
         """True while a claim is partway down the ladder.
 
@@ -215,6 +224,11 @@ class InterviewEngine:
         session would lose.
         """
         if not self.state.claims:
+            return False
+        if self.ladder_stalled:
+            # An abandoned ladder is finished. Counting it as in progress switched off
+            # rollover for the rest of the call once a candidate went vague part way
+            # down, because vague answers never start a new claim to replace it.
             return False
         # The final rung counts until the candidate has answered it. Checking the rung
         # count alone declared the ladder finished the moment its last question was
@@ -256,7 +270,7 @@ class InterviewEngine:
         missing = self.uncovered()
         if missing:
             lines.append("Still no evidence for: %s." % ", ".join(missing))
-        if self.state.vague_streak >= 2:
+        if self.ladder_stalled:
             lines.append("Two answers in a row stayed general. Change topic.")
         if self.should_wrap_up(t_s):
             lines.append("Time is nearly up. Close the interview.")

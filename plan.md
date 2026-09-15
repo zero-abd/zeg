@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who goes vague part way down a ladder no longer switches rollover off.**
+Two general answers in a row make the engine abandon a probe ladder and tell the model
+to change topic. The rollover guard still counted that ladder as in progress, because it
+only looked at how far down the claim had got, and vague answers never start a new claim
+to replace it. Rollover checks that guard first, so a candidate who went vague mid-ladder
+switched rollover off for the rest of the call. In a diagnostic 300-second call with an
+eager policy, a candidate who stayed vague after stalling got no rollover at all, while
+one who became specific again rolled four times. On a real fifteen-minute call the model
+would have run many times past its two-minute memory with no error anywhere.
+
+The guard now uses the same stall rule that stops the questions, held in one place so
+the two cannot drift apart again. The guard is still checked before frame pressure;
+a single session's frame cap is longer than the longest call, so that order cannot end
+a call, and it was left alone.
+
 **Rollover no longer throws away the last question of the probe ladder.** A long
 interview through the real client and server now rolls its session over the wire
 cleanly: every replaced connection closes, every new one starts from its seed, and no

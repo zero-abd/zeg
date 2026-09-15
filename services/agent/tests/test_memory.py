@@ -158,3 +158,30 @@ def test_rollover_can_be_tuned_without_touching_the_driver():
     eager = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
     consented(eager)
     assert rollovers(run(eager, (30, 40, 50, 60, 70)))
+
+
+def test_a_candidate_who_goes_vague_mid_ladder_does_not_switch_off_rollover():
+    """Two vague answers make the engine abandon a ladder, but the rollover guard still
+    counted it as in progress, and vague answers never start a new claim. So a candidate
+    who went vague part way down switched rollover off for the rest of the call, and the
+    model ran on far past what it can remember."""
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import Interview, Rollover
+    from zeg.memory import RolloverPolicy
+
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    iv.start()
+    iv.on_event(UserTranscript("yes that is fine", final=True), 5)
+    script = [
+        (30, "we rewrote the payment reconciler after an outage"),
+        (40, "I wrote the advisory lock fix myself"),
+        (50, "we basically did various things"),
+        (60, "pretty much just stuff"),
+    ] + [(t, "we basically did various things") for t in range(70, 310, 10)]
+
+    rolled_after_the_stall = []
+    for t, text in script:
+        actions = iv.on_event(UserTranscript(text, final=True), t)
+        if t > 60 and any(isinstance(a, Rollover) for a in actions):
+            rolled_after_the_stall.append(t)
+    assert rolled_after_the_stall, "rollover never fired again once the ladder stalled"
