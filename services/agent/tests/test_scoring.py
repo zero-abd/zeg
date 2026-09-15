@@ -441,3 +441,32 @@ def test_a_long_quote_with_no_marker_keeps_both_ends():
     quote = "we spent the first month " + "arguing about the schema " * 4 + "and shipped in May"
     piece = excerpt(quote, "ownership")
     assert piece.startswith("we spent") and piece.endswith("shipped in May")
+
+
+# --- a vague phrase is not a vague answer --------------------------------------------
+
+
+def test_a_lead_in_phrase_does_not_mark_down_specific_answers():
+    """Each answer opening with "There were a lot of things going on." took this call
+    from 9/10, advance, to 6/10 with reservations, on the same evidence."""
+    padded = [
+        T(e.at_s, e.speaker,
+          e.text if e.speaker == "agent" else "There were a lot of things going on. " + e.text)
+        for e in strong()
+    ]
+    plain, lead_in = score_call(strong()), score_call(padded)
+    assert lead_in.overall == plain.overall
+    assert [d.score for d in lead_in.dimensions] == [d.score for d in plain.dimensions]
+
+
+def test_answers_with_nothing_in_them_still_cost_a_point():
+    units_call = [
+        T(0, "agent", "What did you do?"),
+        T(5, "caller", "I wrote the retry fix because the lock was taken twice."),
+        T(10, "agent", "Anything else?"),
+        T(15, "caller", "we basically did various things"),
+        T(20, "agent", "Specifically?"),
+        T(25, "caller", "pretty much just stuff like that"),
+    ]
+    ownership = next(d for d in score_call(units_call).dimensions if d.dimension == "ownership")
+    assert ownership.score == 2, "one hit is 3, and two content-free answers of three cost 1"

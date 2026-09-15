@@ -303,7 +303,13 @@ class HeuristicJudge(Judge):
                 "Nothing in the transcript speaks to this. Not a low score.",
             )
 
-        vague = sum(1 for u in units if _VAGUE.search(normalise(u.answer)))
+        # Vague means content-free, not containing a word from the list. Counting every
+        # answer with "a lot of" or "things" in it took five specific answers from 9/10
+        # to 6/10 when each opened with "There were a lot of things going on." That is
+        # phrasing, not substance. The engine already judges vagueness this way.
+        vague = sum(
+            1 for u in units if _VAGUE.search(normalise(u.answer)) and not signals(u.answer)
+        )
         score = 2 + min(2, len(hits)) - (1 if vague > len(units) / 2 else 0)
         return DimensionScore(dimension, _clamp(score), hits)
 

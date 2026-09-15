@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A vague phrase no longer marks down a specific answer.** The heuristic judge took a point
+off every dimension when most answers contained a word from its vagueness list ("basically",
+"things", "a lot of"), whatever else the answer said. The same five specific answers scored
+9/10, advance, as given, and 6/10, advance with reservations, when each opened with "There
+were a lot of things going on." Every dimension dropped a point on identical evidence. An
+answer now counts as vague only if it also shows none of the judge's markers, which is how
+the interview engine already judged vagueness live. Answers with nothing in them still cost
+the point. On the old code the lead-in test failed and the content-free guard passed.
+
 **No answer to the consent question ends the call instead of recording for fifteen
 minutes.** Consent was only ever settled by an answer. In a mock call where the candidate
 never spoke after the disclosure, the call ran the full 900 seconds, recorded, with consent
