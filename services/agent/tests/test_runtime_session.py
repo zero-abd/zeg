@@ -260,6 +260,24 @@ def test_a_stalled_response_is_closed_as_failed_and_the_loop_is_told():
     assert [a.kind for a in session.drain_actions()] == ["cancel"]
 
 
+def test_a_response_that_went_quiet_after_speaking_is_closed_as_completed():
+    """It was heard. Closing it as failed told the client it was never spoken, so the
+    agent's whole line was missing from the transcript."""
+    session = configured_session(
+        watchdog=ResponseWatchdog(no_progress_frames=99, trailing_silence_frames=2)
+    )
+    session.on_frame(FrameResult(control="response_open", text_delta="What broke?",
+                                 audio_pcm=SILENCE, audible=True))
+    session.drain_actions()
+    out = session.on_frame(FrameResult(audio_pcm=SILENCE))
+    out += session.on_frame(FrameResult(audio_pcm=SILENCE))
+    done = [m for m in out if m["type"] == p.RESPONSE_DONE]
+    assert len(done) == 1
+    assert done[0]["status"] == "completed"
+    assert done[0]["reason"] == "trailing_silence"
+    assert [a.kind for a in session.drain_actions()] == ["cancel"]
+
+
 def test_the_runtime_never_invents_something_to_say():
     # A stalled response produces a terminal, never text.
     session = configured_session(watchdog=ResponseWatchdog(no_progress_frames=1))

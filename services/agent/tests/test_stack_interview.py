@@ -262,6 +262,42 @@ def test_a_reply_the_candidate_talked_over_is_not_recorded_as_said():
     assert not links[0].errors()
 
 
+# --- a reply the model never marks as finished --------------------------------------
+
+
+class NeverSaysItIsDone(SilenceModel):
+    """Speaks, then goes quiet without ever closing its response."""
+
+    def step(self, pcm):
+        result = super().step(pcm)
+        if result.control == "response_close":
+            result.control = None
+        return result
+
+
+def test_a_line_the_model_never_marks_finished_still_reaches_the_transcript():
+    """The watchdog closed the response for trailing silence as failed, and the client
+    records only completed responses, so a line the candidate heard in full was lost."""
+    from zeg.backends import AgentText
+    from zeg.audio import AudioFrame
+    from zeg.config import AudioConfig
+
+    audio = AudioConfig()
+    backend = GB10Backend(
+        BackendConfig(kind="gb10"),
+        link_factory=lambda: LoopbackLink(NeverSaysItIsDone(reply_frames=6)),
+    )
+    session = backend.start_session("be brief")
+    events = []
+    session.say("What broke afterwards?")
+    for _ in range(200):  # 50 model frames: the line, then well past the silence limit
+        session.push_audio(AudioFrame.silence(audio.input_sample_rate, audio.input_frame_samples))
+        events.extend(session.poll())
+    session.close()
+    finals = [e.text for e in events if isinstance(e, AgentText) and e.final]
+    assert finals == ["What broke afterwards?"]
+
+
 # --- hesitating before answering, over the real wire --------------------------------
 
 

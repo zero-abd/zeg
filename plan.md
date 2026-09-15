@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A line the model never marks finished still reaches the transcript.** The runtime's
+response watchdog closes a response that was audible and then quiet for about a second
+("trailing silence"). That response has been heard. The model just never sent its own close.
+The watchdog closed it with status `failed`, and the client records a response's text only
+when its status is `completed`. So a line the candidate heard in full was missing from the
+transcript, and with it from scoring, the engine's record of what was asked, and the rollover
+seed. Trailing silence now closes as `completed`, still with the reason `trailing_silence`
+and still cancelling the model. A response that made no progress at all is still `failed`.
+On the old runtime both new tests failed: the server-session status test, and a test over
+the real client, server and wire with a model stand-in that speaks a line and never closes
+it.
+
 **A vague phrase no longer marks down a specific answer.** The heuristic judge took a point
 off every dimension when most answers contained a word from its vagueness list ("basically",
 "things", "a lot of"), whatever else the answer said. The same five specific answers scored

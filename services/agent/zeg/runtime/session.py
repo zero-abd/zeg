@@ -425,7 +425,12 @@ class ServerSession:
             # The model is not going to finish this on its own. Close it and tell
             # the loop, rather than leaving the candidate on a live but silent line.
             self.actions.append(Action("cancel", stall))
-            out.extend(self._close_response("failed", stall))
+            # Trailing silence means the response was heard and is acoustically over:
+            # the model just never said so. Closing it as failed told the client it was
+            # not spoken, so a reply the candidate heard in full never reached the
+            # transcript. A response that made no progress is a genuine failure.
+            status = "completed" if stall == "trailing_silence" else "failed"
+            out.extend(self._close_response(status, stall))
 
         if self.frames % PROGRESS_EVERY == 0:
             out.append(
