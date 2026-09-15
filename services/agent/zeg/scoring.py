@@ -266,6 +266,16 @@ _SIGNALS: Dict[str, Sequence] = {
 }
 
 
+def signals(text: str) -> List[str]:
+    """Dimensions whose surface markers appear in what the candidate said.
+
+    Shared with the interview engine, so what the live call counts as covered and what
+    the heuristic judge scores cannot drift apart.
+    """
+    spoken = normalise(text)
+    return [d for d, patterns in _SIGNALS.items() if any(p.search(spoken) for p in patterns)]
+
+
 class HeuristicJudge(Judge):
     """A model-free judge. Deterministic, shallow, and honest about it.
 
@@ -277,11 +287,10 @@ class HeuristicJudge(Judge):
     name = "heuristic"
 
     def score_dimension(self, dimension: str, units: Sequence[QAUnit]) -> DimensionScore:
-        patterns = _SIGNALS.get(dimension, ())
         hits: List[Evidence] = []
         for u in units:
             # Judge the substance. The quote keeps the candidate's own words.
-            if any(p.search(normalise(u.answer)) for p in patterns):
+            if dimension in signals(u.answer):
                 hits.append(Evidence(dimension, u.answer, u.answered_at_s))
 
         if not hits:

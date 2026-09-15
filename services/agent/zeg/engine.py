@@ -176,12 +176,21 @@ class InterviewEngine:
         start a new one. Treating it as new was the bug that kept the ladder pinned to
         its first rung through an entire interview.
         """
-        from .scoring import has_number, normalise  # local: scoring imports engine
+        from .scoring import has_number, normalise, signals  # local: scoring imports engine
 
         spoken = normalise(text)
         specific = bool(_CAUSAL_OR_OUTCOME.search(spoken)) or has_number(spoken)
         vague = bool(_VAGUE.search(spoken)) and not specific
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0
+
+        # Nothing ever recorded evidence during a call, so every briefing said all five
+        # dimensions were still uncovered, and a model told "no evidence for ownership"
+        # straight after "I wrote the fix myself" asks for it again. The same surface
+        # markers the heuristic judge scores on. Scoring still reads the transcript.
+        covered = {e.dimension for e in self.state.evidence}
+        for dimension in signals(text):
+            if dimension not in covered:
+                self.record_evidence(dimension, text, t_s)
 
         if self.state.probe_outstanding:
             self.state.probe_outstanding = False

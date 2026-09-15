@@ -91,7 +91,7 @@ def test_briefing_carries_what_the_model_cannot_remember(eng):
     assert "5:00" in b                  # where we are
     assert "depth_one" in b             # what phase
     assert "reconciler" in b            # what they claimed
-    assert "technical_depth" in b       # what still has no evidence
+    assert "tradeoffs" in b.split("Still no evidence for:")[-1]  # what still has none
     assert "ownership" not in b.split("Still no evidence for:")[-1]
 
 
@@ -110,6 +110,48 @@ def test_briefing_stays_short(eng):
     for i in range(30):
         eng.note_caller("we shipped a thing that cut latency by %d percent" % i, i * 10)
     assert len(eng.briefing(400).splitlines()) <= 10
+
+
+# --- what the call has already covered ------------------------------------------------
+
+
+def still_missing(eng, t_s=300):
+    b = eng.briefing(t_s)
+    return b.split("Still no evidence for:")[-1] if "Still no evidence for:" in b else ""
+
+
+def test_an_answer_that_shows_ownership_takes_it_off_the_missing_list(eng):
+    """Nothing recorded evidence during a call, so the briefing asked for ownership
+    straight after the candidate said they wrote the fix themselves."""
+    eng.note_caller("I wrote the advisory lock fix myself", 100)
+    assert "ownership" not in still_missing(eng)
+    assert "tradeoffs" in still_missing(eng)
+
+
+def test_a_probe_answer_counts_as_evidence_too(eng):
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    probe_and_answer(eng, ["I wrote the advisory lock fix myself",
+                           "it caused eleven double settlements in six weeks",
+                           "we gave up some write throughput to the lock"])
+    missing = still_missing(eng)
+    for dimension in ("ownership", "technical_depth", "tradeoffs"):
+        assert dimension not in missing
+    assert "debugging" in missing
+
+
+def test_a_vague_answer_covers_nothing(eng):
+    eng.note_caller("one of the things we did was basically improve stuff", 100)
+    assert eng.uncovered() == list(DIMENSIONS)
+
+
+def test_live_coverage_matches_what_the_heuristic_judge_scores(eng):
+    """One set of markers, so the call cannot call a dimension covered that scoring
+    then reports as having nothing."""
+    from zeg.scoring import signals
+
+    answer = "we found it because two workers picked up the same batch id"
+    eng.note_caller(answer, 100)
+    assert set(DIMENSIONS) - set(eng.uncovered()) == set(signals(answer))
 
 
 # --- what the probes drew out survives into the briefing ------------------------------

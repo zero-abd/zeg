@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The briefing stops asking for evidence the candidate already gave.** Nothing recorded
+evidence during a call, so every briefing, for the whole fifteen minutes, said all five
+dimensions were still uncovered. A model told "Still no evidence for: ownership" straight
+after "I wrote the advisory lock fix myself" asks for ownership again. Each caller answer,
+including probe answers, now marks the dimensions it shows, using the same surface markers
+the heuristic judge scores on. Those markers are now one shared function, so the live call
+and the report cannot disagree about what an answer showed. Vague answers cover nothing.
+Scoring still reads the transcript, not this. One engine test had expected
+`technical_depth` to stay uncovered after an answer with a figure in it, which was the bug.
+It now checks `tradeoffs` instead. On the old engine the three new tests failed.
+
 **The briefing keeps what the probes drew out.** The engine treated an answer to a probe
 as deepening the claim, then threw the answer away. After a claim and three probe answers
 ("I wrote the advisory lock fix myself", "eleven double settlements in six weeks", "two
