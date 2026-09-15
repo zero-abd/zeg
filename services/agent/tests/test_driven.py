@@ -231,6 +231,51 @@ def test_a_silent_candidate_cannot_hold_the_call_past_the_limit():
     assert r.duration_s <= 901
 
 
+def consented_interview():
+    from zeg.backends.base import UserTranscript
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("yes that is fine", final=True), 5)
+    return iv
+
+
+def test_the_clock_delivers_the_wrap_up_once_both_sides_are_quiet():
+    from zeg.backends.base import AgentAudio
+    from zeg.interview import Speak
+    from zeg.prompts import WRAP_UP
+
+    iv = consented_interview()
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 810.5)
+    assert iv.tick(811.0) == [], "the agent was speaking half a second ago"
+    actions = iv.tick(812.6)
+    assert [a.text for a in actions if isinstance(a, Speak)] == [WRAP_UP]
+    assert iv.record.wrapped_up_s == 812.6
+    assert iv.tick(820) == [], "said once"
+
+
+def test_the_clock_does_not_wrap_up_before_consent_or_before_time():
+    iv = Interview()
+    iv.start()
+    assert iv.tick(850) == [], "no interview was ever started"
+    assert consented_interview().tick(700) == []
+
+
+def test_a_silent_candidate_hears_the_wrap_up_before_the_call_ends():
+    """The wrap-up waited for a caller turn, so a silent candidate reached the limit
+    without being told the interview was closing."""
+    from zeg.prompts import WRAP_UP
+
+    caller = [CONSENT, CallerTurn("we rewrote the payment reconciler after an outage",
+                                  speak_s=4.0, pause_after_s=1000.0)]
+    r = run(caller)
+    wrap = [t for t in r.transcript if t.speaker == "agent" and t.text == WRAP_UP]
+    assert len(wrap) == 1
+    assert 810 <= wrap[0].at_s < 900
+    assert r.wrapped_up_s == wrap[0].at_s
+    assert r.ended == "time limit reached"
+
+
 class RecordsCloses(OneAtATime):
     """Notes, for every session closed, whether the caller was mid-turn at the time."""
 

@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A silent candidate is told the interview is closing.** The spoken wrap-up at 13:30 was
+only issued when a caller turn arrived. A candidate who had gone quiet reached the 15-minute
+limit without hearing it, and the call simply stopped. The interview's `tick` now delivers
+the wrap-up on its own once it is due, consent was given, and both sides have been quiet for
+`QUIET_BEFORE_WRAP_UP_S` (2 s). It notes when the agent's audio or any caller transcript was
+last seen, so the line never lands across the agent's sentence or the candidate's pause. It
+is said once, and it records the wrap-up time that bounds the scored window. On the old code
+the two tests that need it failed, and the guard (no wrap-up before consent or before time)
+passed.
+
 **The time limit ends a call even when nobody is talking.** The interview only checked the
 clock when a backend event arrived. A candidate who went quiet while the agent was not
 speaking produced no events, so nothing ended the call. A mock call with the candidate

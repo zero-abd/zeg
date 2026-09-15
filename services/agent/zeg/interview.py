@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
-from .backends.base import AgentInterrupted, AgentText, UserTranscript
+from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscript
 from .blocklist import ProhibitedQuestion
 from .hesitation import is_hesitation
 from .textnorm import fold
@@ -26,6 +26,11 @@ from .prompts import CONSENT_DECLINED, GREETING, SYSTEM_PROMPT, WRAP_UP
 #: How often the model is re-grounded. Its audio context is roughly two minutes, so a
 #: briefing older than this is worth resending even if nothing changed.
 BRIEFING_INTERVAL_S = 60.0
+
+#: How long both sides must have been quiet before the clock delivers the wrap-up on its
+#: own. Long enough that it never cuts across the agent's sentence or the candidate's
+#: pause; the model's audio arrives every 80 ms while it speaks.
+QUIET_BEFORE_WRAP_UP_S = 2.0
 
 #: Consent detection. The two failure directions are not equally bad, so the rules are
 #: not symmetrical. See `reads_as_consent`.
@@ -227,6 +232,8 @@ class Interview:
         self._disclosure_interrupted = False
         #: Hesitations waited through before consent was settled.
         self._hesitations = 0
+        #: When either side was last heard: agent audio, or any caller transcript.
+        self._last_heard_s = 0.0
 
     # --- lifecycle ------------------------------------------------------------
 
@@ -244,14 +251,32 @@ class Interview:
         the call: a mock call with the candidate silent after one answer ran to 1029
         seconds against a 900 second limit.
         """
-        if self.record.ended or not self.engine.is_over(t_s):
+        if self.record.ended:
             return []
-        return self._end("time limit reached")
+        if self.engine.is_over(t_s):
+            return self._end("time limit reached")
+        if (
+            self.record.consent is True
+            and not self._wrapped
+            and self.engine.should_wrap_up(t_s)
+            and t_s - self._last_heard_s >= QUIET_BEFORE_WRAP_UP_S
+        ):
+            # The wrap-up waited for a caller turn, so a candidate who had gone quiet
+            # reached the limit without being told the interview was closing, and the
+            # call simply stopped. Only once both sides have been quiet for a moment,
+            # so it never lands across the agent's sentence or the candidate's pause.
+            self._wrapped = True
+            self.record.wrapped_up_s = t_s
+            return self._say(WRAP_UP, t_s)
+        return []
 
     def on_event(self, event, t_s: float) -> List[Action]:
         """Translate one backend event into what should happen next."""
         if self.record.ended:
             return []
+
+        if isinstance(event, (AgentAudio, UserTranscript)):
+            self._last_heard_s = max(self._last_heard_s, t_s)
 
         actions: List[Action] = []
 
