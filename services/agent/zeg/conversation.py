@@ -306,8 +306,10 @@ class InterviewRunner:
         self.backend = backend
         self.audio = audio or AudioConfig()
         self.interview = interview or Interview()
-        # A rollover asked for while the caller was mid-turn, waiting for them to stop.
+        # A rollover asked for while someone was still talking, waiting for quiet.
         self._pending_seed = None
+        #: The clock as of the last frame, for work that happens between frames.
+        self._now = 0.0
 
     def run(self, caller: Sequence[CallerTurn] = DEFAULT_CALLER) -> DrivenResult:
         from .interview import Brief, EndCall, Probe, Rollover, Speak
@@ -380,18 +382,25 @@ class InterviewRunner:
         return result
 
     def _roll_if_due(self, result) -> None:
-        """Roll to the waiting seed, unless the caller is mid-turn.
+        """Roll to the waiting seed, once neither side is talking.
 
-        The rollover used to happen the moment it was asked for. The final transcript
-        that prompts one can arrive after the candidate has started their next sentence,
-        and closing the session then threw away what it had heard of it. Checked on
-        every frame, so it runs on the first frame after the turn ends.
+        The rollover used to happen the moment it was asked for. What prompts one is a
+        final transcript, and the runtime releases that as the model opens its reply, so
+        the session was closed mid-reply: the candidate heard the agent cut off, and the
+        fresh session, which answers only a finished caller turn, then waited in silence.
+        Checked on every frame, so it runs on the first frame after both stop.
+
+        The seed is rebuilt here rather than reused from when it was asked for, so it
+        carries the question the agent has just asked.
         """
         if self._pending_seed is None or result.ended:
             return
-        if self._session.caller_speaking:
+        if self._session.caller_speaking or self._session.agent_speaking:
             return
         seed, self._pending_seed = self._pending_seed, None
+        rebuild = getattr(self.interview, "seed", None)
+        if rebuild is not None:
+            seed = rebuild(self._now)
         result.rollovers += 1
         self._roll(seed)
 
@@ -490,6 +499,7 @@ class InterviewRunner:
     def _consume(self, clock, result, perform) -> None:
         from .backends.base import AgentAudio, AgentInterrupted, BackendError, UserTranscript
 
+        self._now = clock.now
         self._roll_if_due(result)
         if not result.ended:
             # The clock runs whether or not anyone speaks.

@@ -178,6 +178,49 @@ def test_rollover_never_closes_a_session_on_a_question_it_did_not_get_to_ask():
         assert not link.errors()
 
 
+def test_a_rollover_never_closes_a_session_while_the_agent_is_speaking():
+    """The runtime releases a turn's final transcript as the model opens its reply, and
+    that transcript is what asks for a rollover. The session was closed mid-reply: the
+    candidate heard the agent cut off, and the fresh session, which answers only a
+    finished caller turn, then waited in silence. Two of three closes, measured."""
+    from fakes import SettlingRecogniser
+    from zeg.conversation import CallerTurn, InterviewRunner
+    from zeg.interview import Interview
+    from zeg.memory import RolloverPolicy
+
+    closed_while_speaking = []
+    backend = GB10Backend(
+        BackendConfig(kind="gb10"),
+        link_factory=lambda: LoopbackLink(
+            SettlingRecogniser(["we", "cut", "latency"], reply_frames=12)
+        ),
+    )
+    start = backend.start_session
+
+    def recording_start(system_prompt, greeting=None):
+        session = start(system_prompt, greeting=greeting)
+        close = session.close
+
+        def recording_close():
+            if not session.closed:
+                closed_while_speaking.append(session.agent_speaking)
+            close()
+
+        session.close = recording_close
+        return session
+
+    backend.start_session = recording_start
+    caller = [CallerTurn("yes that is fine", speak_s=1.5)] + [
+        CallerTurn("we cut reconciler p99 latency from 400ms to 30ms",
+                   speak_s=4.0, pause_after_s=3.0)
+    ] * 12
+    interview = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    result = InterviewRunner(backend, interview=interview).run(caller)
+
+    assert result.rollovers >= 1, "the call never rolled, so this proves nothing"
+    assert True not in closed_while_speaking, closed_while_speaking
+
+
 # --- talking over the disclosure, over the real wire --------------------------------
 
 

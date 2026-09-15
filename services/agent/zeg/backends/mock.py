@@ -155,6 +155,10 @@ class ScriptedSession(VoiceSession):
     def caller_speaking(self) -> bool:
         return self._in_utterance
 
+    @property
+    def agent_speaking(self) -> bool:
+        return self.is_speaking
+
     def _synthesise(self, text: str) -> List[AudioFrame]:
         """Turn text into the right *amount* of audio at the right rate.
 

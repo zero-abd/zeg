@@ -195,6 +195,30 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A rollover waits for the agent to stop talking too, and its seed is built at that
+moment.** The rollover already waited for the candidate's turn to close. It did not wait
+for the agent. The runtime releases a turn's final transcript as the model opens its reply,
+and that transcript is what asks for a rollover, so the session was closed mid-reply:
+measured over the real client, server and wire, two of three closes happened with a response
+in flight and four frames of agent audio still queued. The candidate hears the agent cut off,
+and the fresh session, which answers only a finished caller turn, then waits in silence. The
+backend contract gains `agent_speaking`, the companion to `caller_speaking`, defaulting to
+False so nothing else has to change. The real client reports a response in flight or audio
+queued; the mock reports its own playback. The runner holds the rollover until both are
+quiet.
+
+Because the roll now happens later than it is asked for, the seed is rebuilt at that moment
+(`Interview.seed`), so it carries the question the agent has just asked. That exposed a gap
+in the seed itself: `last_exchange` took only the caller replies after the last agent line,
+so a seed built right after a question held the question and none of the candidate's words.
+It now reaches back for the answer before the question when nothing has answered it yet, in
+the order they were said. An existing test caught this, and it was a real regression rather
+than a stale expectation.
+
+On the old runner the full-stack test failed (two closes mid-reply). On the old memory layer
+the new seed-shape test failed. The gateway's driver will want the same wait when the tracks
+merge.
+
 **A line the model never marks finished still reaches the transcript.** The runtime's
 response watchdog closes a response that was audible and then quiet for about a second
 ("trailing silence"). That response has been heard. The model just never sent its own close.

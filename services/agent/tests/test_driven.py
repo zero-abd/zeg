@@ -366,6 +366,28 @@ def test_a_session_reports_whether_the_caller_is_mid_turn():
     assert not session.caller_speaking
 
 
+def test_a_session_reports_whether_the_agent_is_still_speaking():
+    session = MockBackend().start_session("sys", greeting="hello there")
+    assert session.agent_speaking
+    for _ in range(400):
+        session.push_audio(AudioFrame.silence(16000, 320))
+    assert not session.agent_speaking
+
+
+def test_a_rebuilt_seed_carries_the_question_just_asked():
+    """The rollover happens later than it is asked for, and by then the agent has
+    usually asked the question the fresh session most needs to know about."""
+    from zeg.backends.base import AgentText, UserTranscript
+
+    iv = consented_interview()
+    iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 100)
+    before = iv.seed(101).context()
+    iv.on_event(AgentText("What did you personally do there?", final=True), 102)
+    after = iv.seed(103).context()
+    assert "What did you personally do there?" not in before
+    assert "What did you personally do there?" in after
+
+
 def test_rollover_works_when_only_one_session_may_be_live():
     backend = OneAtATime()
     r, turns = long_call_on(backend)

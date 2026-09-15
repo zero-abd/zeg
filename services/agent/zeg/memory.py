@@ -120,19 +120,39 @@ def last_exchange(transcript: Sequence) -> List[str]:
     answer and never the question it answered. The candidate's replies since the last
     agent line are joined into one, and hesitations are left out.
     """
+    entries = list(transcript)
     replies: List[str] = []
     question = None
-    for t in reversed(list(transcript)):
+    cut = 0
+    for i in range(len(entries) - 1, -1, -1):
+        t = entries[i]
         if t.speaker == "agent":
-            question = t.text
+            question, cut = t.text, i
             break
         if t.speaker == "caller" and not is_hesitation(t.text):
             replies.append(t.text)
+    if question is not None and not replies:
+        # The agent has just asked and nobody has answered yet, which is exactly when a
+        # rollover happens: it waits for both sides to stop. Reaching back for the answer
+        # before the question keeps the candidate's own words in the seed, in the order
+        # they were said. Without this a fresh session got the question and nothing else.
+        for t in reversed(entries[:cut]):
+            if t.speaker != "caller":
+                break
+            if not is_hesitation(t.text):
+                replies.append(t.text)
+        answered_before = bool(replies)
+    else:
+        answered_before = False
+
     out = []
+    answer = "Candidate: %s" % shorten(" ".join(reversed(replies))) if replies else None
+    if answered_before and answer is not None:
+        out.append(answer)
     if question is not None:
         out.append("Interviewer: %s" % shorten(question))
-    if replies:
-        out.append("Candidate: %s" % shorten(" ".join(reversed(replies))))
+    if not answered_before and answer is not None:
+        out.append(answer)
     return out
 
 

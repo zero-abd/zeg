@@ -124,6 +124,32 @@ def test_a_hesitation_does_not_push_the_question_out_of_the_seed():
     assert lines == ["Interviewer: " + Q, "Candidate: 400 before, 30 after"]
 
 
+def test_a_question_nobody_has_answered_yet_keeps_the_answer_before_it():
+    """A rollover waits for both sides to stop talking, so it usually lands just after
+    the agent has asked something. Taking only the replies after the last agent line
+    left the seed with the question and none of the candidate's own words."""
+    lines = last_exchange([
+        Turn(0, "agent", "What was the p99 before the fix?"),
+        Turn(4, "caller", "about 400 milliseconds, 30 after"),
+        Turn(9, "agent", "What did you personally do there?"),
+    ])
+    assert lines == [
+        "Candidate: about 400 milliseconds, 30 after",
+        "Interviewer: What did you personally do there?",
+    ]
+
+
+def test_an_answered_question_still_reads_question_then_answer():
+    lines = last_exchange([
+        Turn(0, "agent", "What did you personally do there?"),
+        Turn(4, "caller", "I wrote the advisory lock fix"),
+    ])
+    assert lines == [
+        "Interviewer: What did you personally do there?",
+        "Candidate: I wrote the advisory lock fix",
+    ]
+
+
 def test_a_long_answer_keeps_the_figure_it_ends_on():
     """Cut from the end, the seed kept the lead-in and dropped the number."""
     answer = (

@@ -437,6 +437,15 @@ class Interview:
             return False
         return False
 
+    def seed(self, t_s: float) -> SessionSeed:
+        """What a fresh session should be primed with, as of now.
+
+        Public because a rollover is performed later than it is asked for: it waits for
+        both sides to stop talking, and by then the agent has usually asked the question
+        the new session most needs to know about.
+        """
+        return self._seed(t_s)
+
     def _seed(self, t_s: float) -> SessionSeed:
         return SessionSeed(
             system_prompt=self.system_prompt,

@@ -131,6 +131,21 @@ def test_a_short_pause_does_not_commit_a_turn(audio):
     assert not link.of_type(p.TURN_COMMIT)
 
 
+def test_the_session_reports_the_agent_speaking_until_its_audio_is_delivered(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    assert not sess.agent_speaking
+    link.deliver(link.wire.response_started("r1", "t1"))
+    link.deliver(agent_frame(link))
+    drive(sess, audio, 1)
+    assert sess.agent_speaking, "a response is in flight"
+    link.deliver(link.wire.response_done("r1", "completed", "model_turn_end"))
+    drive(sess, audio, 1)
+    assert sess.agent_speaking, "its audio is still queued for playback"
+    drive(sess, audio, 6)
+    assert not sess.agent_speaking
+
+
 def test_the_session_reports_an_open_turn_as_the_caller_speaking(audio):
     link = FakeLink()
     sess = session(link, audio, endpoint_silence_ms=200)

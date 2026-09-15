@@ -132,6 +132,20 @@ class VoiceSession(abc.ABC):
         """
         return False
 
+    @property
+    def agent_speaking(self) -> bool:
+        """True while the agent still has speech to deliver: a response in flight, or
+        audio queued for playback.
+
+        The companion to `caller_speaking`. A driver replacing the session checks both:
+        closing mid-reply cuts the agent off in the candidate's ear, and the fresh
+        session, which only answers a finished caller turn, then waits in silence.
+
+        A backend that cannot tell returns False, which is how every driver behaved
+        before this existed.
+        """
+        return False
+
     def __enter__(self):
         return self
 
