@@ -128,3 +128,51 @@ def test_the_decline_line_plays_after_an_ordinary_pause_too():
     assert result.consent is False
     assert voiced(links[0], CONSENT_DECLINED), "the decline was never voiced"
     assert not links[0].errors()
+
+
+# --- rollover over the real wire --------------------------------------------------
+
+
+def unanswered_probe(link):
+    """The last probe this session was told to ask, if the candidate never got to answer
+    it before the session closed. An answer shows up as a committed turn after it."""
+    pending = None
+    for m in link.sent:
+        if m["type"] == p.STEER and m["text"].startswith("Ask for"):
+            pending = m["text"]
+        elif m["type"] == p.TURN_COMMIT:
+            pending = None
+    return pending
+
+
+def test_rollover_never_closes_a_session_on_a_question_it_did_not_get_to_ask():
+    """The rollover policy waits for the probe ladder to finish, and it counted the
+    ladder finished when its last question was issued rather than answered. So it
+    rolled on that turn, and on every rollover the final question, what broke
+    afterwards, went into a model that closed a moment later."""
+    from zeg.conversation import CallerTurn
+    from zeg.interview import Interview
+    from zeg.memory import RolloverPolicy
+
+    links = []
+
+    def factory():
+        link = LoopbackLink(SilenceModel(reply_frames=12, reply_text=REPLY))
+        links.append(link)
+        return link
+
+    caller = [CallerTurn("yes that is fine", speak_s=1.5)] + [
+        CallerTurn("we cut reconciler p99 latency from 400ms to 30ms", speak_s=4.0)
+    ] * 12
+    interview = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    backend = GB10Backend(BackendConfig(kind="gb10"), link_factory=factory)
+    result = InterviewRunner(backend, interview=interview).run(caller)
+
+    assert result.rollovers >= 1, "the call never rolled, so this proves nothing"
+    for i, link in enumerate(links[:-1]):
+        assert unanswered_probe(link) is None, (
+            "connection %d closed before its candidate answered: %r"
+            % (i, unanswered_probe(link))
+        )
+    for link in links:
+        assert not link.errors()

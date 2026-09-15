@@ -216,7 +216,13 @@ class InterviewEngine:
         """
         if not self.state.claims:
             return False
-        return 0 < self.state.claims[-1].probed_to < len(PROBE_LADDER)
+        # The final rung counts until the candidate has answered it. Checking the rung
+        # count alone declared the ladder finished the moment its last question was
+        # issued, so the rollover policy, which waits for a finished ladder, rolled the
+        # session on that very turn. The question was steered into a model that closed
+        # a moment later and was never asked.
+        return (0 < self.state.claims[-1].probed_to < len(PROBE_LADDER)
+                or self.state.probe_outstanding)
 
     def speak(self, text: str) -> str:
         """Gate an outbound utterance. Raises ProhibitedQuestion if it must not be said.

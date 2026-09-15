@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Rollover no longer throws away the last question of the probe ladder.** A long
+interview through the real client and server now rolls its session over the wire
+cleanly: every replaced connection closes, every new one starts from its seed, and no
+server error is raised. It also showed that every replaced session had ended on the same
+instruction, to ask what broke afterwards, which the next session never received.
+
+The rollover policy waits for the probe ladder to finish so it never drops a thread
+mid-descent. It counted the ladder finished the moment the last question was issued
+rather than when the candidate answered it, so it rolled on exactly that turn, and the
+question went into a model that closed a moment later. Because the policy seeks out a
+finished ladder, this was the normal case, not a rare one, and the rung it lost is the
+one most likely to separate real experience from a rehearsed story. The final rung now
+counts as in progress until it is answered, so the same session asks it and hears the
+reply, and the rollover comes a turn later with nothing pending.
+
 **A candidate who declines now hears the decline.** Holding a mid-turn line on the
 client was only half of it. The runner closed the session the moment the call ended, so
 a line the client was holding, or one the server had just accepted, never got the audio

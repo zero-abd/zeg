@@ -150,3 +150,19 @@ def test_a_spoken_number_makes_an_answer_specific(eng):
     eng.note_caller("we saw about twelve hundred retries a second, you know", 100)
     assert eng.state.vague_streak == 0
     assert eng.state.claims
+
+
+def test_the_final_rung_is_in_progress_until_the_candidate_answers_it(eng):
+    """Issuing the last question used to count as finishing the ladder, so a rollover
+    waiting for a finished ladder fired on that same turn and the question was lost."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    for _ in PROBE_LADDER[:-1]:
+        eng.next_probe()
+        eng.note_caller("a specific answer with a number, 42", 110)
+
+    assert eng.next_probe() == PROBE_LADDER[-1]
+    assert eng.probe_in_progress, "the last question is out but not yet answered"
+
+    eng.note_caller("a downstream report started double counting", 120)
+    assert not eng.probe_in_progress
+    assert eng.next_probe() is None
