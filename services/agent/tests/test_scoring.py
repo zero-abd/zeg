@@ -379,3 +379,65 @@ def test_a_question_answered_only_with_a_hesitation_has_no_answer():
         T(30, "agent", "What did you personally do there?"),
         T(32, "caller", "um"),
     ]) == []
+
+
+# --- the quote in the report is the evidence, not the lead-in ------------------------
+
+LONG_ANSWERS = {
+    "ownership": ("so the reconciler was double settling payments during peak hours and "
+                  "after a lot of back and forth I wrote the advisory lock fix myself",
+                  "I wrote the advisory lock fix"),
+    "technical_depth": ("we measured it over the six weeks before the fix and there were "
+                        "eleven double settlements, costing about forty thousand dollars",
+                        # The window sits on the first figure the judge matched.
+                        "over the six weeks before the fix"),
+    "tradeoffs": ("the lock serialises writers on a batch so to be honest we gave up some "
+                  "write throughput, maybe fifteen percent at peak",
+                  "gave up some write throughput"),
+    "debugging": ("at first nobody could reproduce it in staging, so I suspected the retry "
+                  "path and narrowed it to two workers claiming the same batch",
+                  "I suspected the retry path"),
+}
+
+
+def long_call():
+    out, t = [], 60
+    for answer, _ in LONG_ANSWERS.values():
+        out += [T(t, "agent", "Tell me more?"), T(t + 5, "caller", answer)]
+        t += 60
+    return out
+
+
+def quoted_lines(report):
+    return [line.strip() for line in report.splitlines() if line.strip().startswith("[")]
+
+
+def test_a_long_quote_shows_the_evidence_it_was_scored_on():
+    """Cut from the end, every quote in this report stopped before its evidence."""
+    report = score_call(long_call()).render()
+    for dimension, (_, evidence) in LONG_ANSWERS.items():
+        assert evidence in report, "%s quote lost %r:\n%s" % (dimension, evidence, report)
+
+
+def test_a_quote_excerpt_stays_short_and_on_word_boundaries():
+    from zeg.scoring import excerpt
+
+    for dimension, (answer, _) in LONG_ANSWERS.items():
+        piece = excerpt(answer, dimension)
+        assert len(piece) <= 74, piece
+        for word in piece.strip("…").split():
+            assert word in answer.split(), "cut mid-word: %r in %r" % (word, piece)
+
+
+def test_a_short_quote_is_shown_whole():
+    from zeg.scoring import excerpt
+
+    assert excerpt("I wrote the fix myself.", "ownership") == "I wrote the fix myself."
+
+
+def test_a_long_quote_with_no_marker_keeps_both_ends():
+    from zeg.scoring import excerpt
+
+    quote = "we spent the first month " + "arguing about the schema " * 4 + "and shipped in May"
+    piece = excerpt(quote, "ownership")
+    assert piece.startswith("we spent") and piece.endswith("shipped in May")

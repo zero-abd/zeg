@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The report quotes the evidence, not the lead-in.** Each dimension in the report shows one
+quote, cut to 72 characters from the end. People lead in before they get to the point, so
+in a report built from realistic answers every quote stopped short of its evidence: the
+ownership quote ended before "I wrote the advisory lock fix myself", and the tradeoffs quote
+at "we gave up some". A recruiter saw a score and a lead-in. The quote is now a window on
+the earliest marker the judge matched for that dimension, snapped to whole words, and a
+quote with no marker is shortened from the middle. On the old code the ownership quote lost
+its evidence. The other three new tests also failed there, but only because the excerpt
+function did not exist yet. For technical depth the window lands on the first figure the
+judge matched ("six weeks"), which is not always the figure a person would pick.
+
 **The briefing stops asking for evidence the candidate already gave.** Nothing recorded
 evidence during a call, so every briefing, for the whole fifteen minutes, said all five
 dimensions were still uncovered. A model told "Still no evidence for: ownership" straight

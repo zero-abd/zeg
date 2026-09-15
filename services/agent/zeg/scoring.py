@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Sequence
 
 from .engine import DIMENSIONS, Evidence
 from .hesitation import is_hesitation
+from .memory import shorten
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
 #: is a presentation of the same judgement, not a finer one.
@@ -82,7 +83,7 @@ class Assessment:
             if d.evidence:
                 e = d.evidence[0]
                 m, s = divmod(int(e.at_s), 60)
-                out.append('      [%02d:%02d] "%s"' % (m, s, _trim(e.quote)))
+                out.append('      [%02d:%02d] "%s"' % (m, s, excerpt(e.quote, d.dimension)))
             elif d.note:
                 out.append("      %s" % d.note)
         if self.flags:
@@ -388,9 +389,33 @@ def band_for(overall: int, scores: Sequence[DimensionScore]) -> str:
     return "do not advance"
 
 
-def _trim(text: str, limit: int = 72) -> str:
-    text = " ".join(text.split())
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+def excerpt(quote: str, dimension: str, limit: int = 72) -> str:
+    """The part of a quote that is the evidence, in the candidate's own words.
+
+    Quotes were cut from the end, and people lead in before they get to the point. Every
+    quote in a realistic report stopped short of its evidence: the ownership line ended
+    before "I wrote the advisory lock fix myself", so a recruiter saw a score and a
+    lead-in. The window now sits on the earliest marker for the dimension, and a quote
+    with none is shortened from the middle.
+    """
+    text = " ".join(quote.split())
+    if len(text) <= limit:
+        return text
+    starts = [m.start() for m in (p.search(text) for p in _SIGNALS.get(dimension, ())) if m]
+    if not starts:
+        return shorten(text, limit)
+    start = max(0, min(min(starts) - limit // 3, len(text) - limit))
+    end = start + limit
+    # Snap to whole words, so the window never opens or closes mid-word. A window with no
+    # space to snap to is left as it is.
+    if start > 0 and text[start - 1] != " ":
+        space = text.find(" ", start, end)
+        start = space + 1 if space != -1 else start
+    if end < len(text) and text[end] != " ":
+        space = text.rfind(" ", start, end)
+        end = space if space != -1 else end
+    return "%s%s%s" % ("…" if start > 0 else "", text[start:end].strip(),
+                       "…" if end < len(text) else "")
 
 
 # --- A judge with a model behind it -------------------------------------------
