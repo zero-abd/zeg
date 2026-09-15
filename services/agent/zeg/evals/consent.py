@@ -38,6 +38,10 @@ AFFIRMATIVE: Sequence[Answer] = (
     Answer("I don't mind at all", True, "contains 'don't' and means yes"),
     Answer("yep, that works", True),
     Answer("fine by me", True),
+    Answer("Sure, why not.", True, "contains 'not' and means yes"),
+    Answer("Yes, but please be quick.", True, "a contrast word, but nothing about the recording"),
+    Answer("Absolutely.", True),
+    Answer("Yes, you can record it.", True, "mentions the recording with no condition"),
 )
 
 #: A clear no. Every one of these must end the call.
@@ -53,6 +57,21 @@ REFUSAL: Sequence[Answer] = (
     Answer("no, I would rather speak to a person", False),
     Answer("yes I understand, but I'd rather not be recorded", False,
            "agreement word first, refusal after"),
+    Answer("Absolutely not.", False, "negates an agreement word"),
+    Answer("Of course not.", False, "negates an agreement word"),
+    Answer("Not okay.", False, "negates an agreement word"),
+    Answer("I'm not okay with that.", False, "negates an agreement word"),
+    Answer("It's not okay with me.", False, "negates an agreement word"),
+    Answer("Sure not.", False, "negates an agreement word"),
+    Answer("That's not fine with me.", False, "negates an agreement word"),
+    Answer("Of course, but can we skip the recording?", False,
+           "agrees to the call and refuses the recording"),
+    Answer("Go ahead, but I'd prefer it wasn't recorded.", False,
+           "agrees to the call and refuses the recording"),
+    Answer("Okay, but I'm not comfortable being recorded.", False,
+           "agrees to the call and refuses the recording"),
+    Answer("Sure thing, but I object to being recorded.", False,
+           "agrees to the call and refuses the recording"),
 )
 
 #: Not a clear yes, so not consent. These are the dangerous ones: a gate that accepts

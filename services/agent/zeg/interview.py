@@ -46,9 +46,22 @@ _NO = re.compile(
     r"\b(no|nope|nah|refuse)\b|\bnot really\b"
     r"|\bi'?d rather not\b|\bi would rather not\b"
     r"|\brather you did ?n'?t\b|\brather you would not\b"
-    r"|\bplease do(n'?t| not)\b|\bdo(n'?t| not) record\b",
+    r"|\bplease do(n'?t| not)\b|\bdo(n'?t| not) record\b"
+    # A negated agreement is a refusal. "Absolutely not" and "I'm not okay with that"
+    # each contain a word from the agreement list, and both were read as consent.
+    r"|\b(absolutely|of course|sure|certainly|definitely) not\b"
+    r"|\bnot (okay|ok|fine|comfortable|happy|alright|all right)\b",
     re.I,
 )
+
+#: A condition attached to the recording. "Of course, but can we skip the recording?"
+#: agrees to the call and refuses the recording, which is the one thing the question
+#: asked about. Only applies when recording is mentioned, so "yes, but please be quick"
+#: still counts as a yes: a false no costs the candidate their interview.
+_CONTRAST = re.compile(
+    r"\b(but|though|although|however|unless|as long as|only if|provided)\b", re.I
+)
+_RECORDING = re.compile(r"\brecord(ed|ing|s)?\b", re.I)
 
 #: Hedged, questioning or reluctant. Not a refusal, and emphatically not a yes. These
 #: are the dangerous ones: several contain an agreement word while meaning "maybe".
@@ -77,6 +90,9 @@ def reads_as_consent(text: str) -> bool:
     # "yes" still matched, so a refusal was recorded as consent. Fold first.
     text = fold(text)
     if _UNSURE.search(text):
+        return False
+    if _CONTRAST.search(text) and _RECORDING.search(text):
+        # Agreement with a condition on the recording is not a clear yes to it.
         return False
     plain = _AGREEMENT_IDIOM.sub(" yes ", text)
     if _NO.search(plain):

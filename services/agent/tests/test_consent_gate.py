@@ -90,3 +90,31 @@ def test_a_hedge_ends_the_call_and_routes_to_a_human():
     iv.on_event(UserTranscript("I guess so", final=True), 5)
     assert iv.record.consent is False
     assert iv.record.ended == "consent declined"
+
+
+# --- negated and conditional agreement ----------------------------------------------
+
+
+def test_a_negated_agreement_is_a_refusal():
+    """Each contains a word from the agreement list, and each was read as consent."""
+    for text in ["Absolutely not.", "Of course not.", "Not okay.", "I'm not okay with that."]:
+        assert not reads_as_consent(text), text
+
+
+def test_a_condition_on_the_recording_is_not_a_clear_yes():
+    """Each agrees to the call and refuses the recording, and each was read as consent."""
+    assert not reads_as_consent("Of course, but can we skip the recording?")
+    assert not reads_as_consent("Sure thing, but I object to being recorded.")
+
+
+def test_a_condition_about_something_other_than_the_recording_is_still_a_yes():
+    """The contrast rule only applies to the recording, because a false no costs the
+    candidate their interview."""
+    assert reads_as_consent("Yes, but please be quick.")
+    assert reads_as_consent("Sure, why not.")
+
+
+@pytest.mark.xfail(strict=True, reason="an instruction to skip the recording with no "
+                   "contrast word is still read as consent; the next step")
+def test_an_instruction_to_skip_the_recording_is_not_consent():
+    assert not reads_as_consent("Sure, skip the recording.")

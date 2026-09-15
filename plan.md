@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A negated or conditional refusal is no longer recorded as consent.** The consent
+check counts an answer as consent when it contains an agreement word and no refusal
+pattern. A negated agreement matched the first and none of the second. In a diagnostic,
+7 of 11 negated agreements read as consent, including "Absolutely not.", "Of course not."
+and "I'm not okay with that." Agreement with a condition on the recording did the same
+for 4 of 7, including "Of course, but can we skip the recording?" and "Sure thing, but I
+object to being recorded." Six plain yeses were all still read correctly, and replaying
+the existing consent suite with contractions and expansions changed nothing.
+
+A negated agreement is now a refusal. An answer that attaches a condition to the
+recording, meaning a contrast word such as "but" or "unless" together with any mention of
+recording, is not a clear yes. The contrast rule only applies when recording is mentioned,
+so "yes, but please be quick" is still consent, because a false no costs the candidate
+their interview. A refusal phrased as an instruction with no contrast word, "Sure, skip
+the recording.", is still read as consent. It is recorded as a strict expected failure
+and is the next step.
+
 **A contracted prohibited question no longer gets through.** The prohibited-question
 rules are written mostly in full forms, "where are you" and "do you have", and a model
 phrasing a question conversationally uses contractions. Replaying every question in the
