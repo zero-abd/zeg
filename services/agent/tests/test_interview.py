@@ -338,3 +338,54 @@ def test_an_acknowledgement_that_may_mean_yes_is_judged_not_waited_on(iv):
     iv.start()
     iv.on_event(UserTranscript("mm-hmm", final=True), 5.0)
     assert iv.record.consent is not None
+
+
+# --- hesitating in the middle of an answer ---------------------------------------
+
+
+def _claim_with_first_probe(iv):
+    consented(iv)
+    iv.on_event(UserTranscript("we rewrote the payment reconciler after an outage", final=True), 30)
+
+
+def test_a_hesitation_mid_answer_does_not_use_up_a_probe(iv):
+    """The ladder took "um" as the answer to its outstanding question and asked the next,
+    so every later answer was credited to the wrong question."""
+    from zeg.engine import PROBE_LADDER
+
+    _claim_with_first_probe(iv)
+    assert iv.engine.state.claims[-1].probed_to == 1
+    actions = iv.on_event(UserTranscript("um", final=True), 40)
+    assert probes(actions) == []
+    assert iv.engine.state.claims[-1].probed_to == 1
+    actions = iv.on_event(UserTranscript("I wrote the advisory lock fix myself", final=True), 50)
+    assert probes(actions) == ["Ask for %s." % PROBE_LADDER[1]]
+
+
+def test_a_hesitation_does_not_replace_the_session():
+    from zeg.interview import Rollover
+    from zeg.memory import RolloverPolicy
+
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    consented(iv)
+    actions = iv.on_event(UserTranscript("um", final=True), 40)
+    assert not [a for a in actions if isinstance(a, Rollover)]
+
+
+def test_a_hesitation_does_not_revive_a_stalled_ladder(iv):
+    """Two vague answers stall the ladder. Read as an answer, "um" reset that count and
+    the questions started again."""
+    _claim_with_first_probe(iv)
+    iv.on_event(UserTranscript("we basically did various things", final=True), 40)
+    iv.on_event(UserTranscript("pretty much just stuff", final=True), 50)
+    assert iv.engine.ladder_stalled
+    actions = iv.on_event(UserTranscript("um", final=True), 60)
+    assert iv.engine.ladder_stalled
+    assert probes(actions) == []
+
+
+def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
+    """The clock outranks the conversation, hesitation or not."""
+    consented(iv)
+    actions = iv.on_event(UserTranscript("um", final=True), 815)
+    assert any("time I have" in s for s in spoken(actions))

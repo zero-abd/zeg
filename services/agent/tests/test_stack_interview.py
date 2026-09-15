@@ -278,3 +278,22 @@ def test_a_candidate_who_hesitates_before_answering_is_not_turned_away():
     assert result.consent is True
     assert result.ended is None
     assert not [m for m in links[0].sent if m["type"] == p.SAY and m["text"] == CONSENT_DECLINED]
+
+
+# --- hesitating mid-answer, over the real wire ---------------------------------------
+
+
+def test_a_hesitation_mid_answer_does_not_skip_a_question_over_the_real_wire():
+    """Counted as an answer, "um" used up the outstanding question, so every later answer
+    was credited to the wrong question and the ladder ran out one question early."""
+    from zeg.conversation import CallerTurn
+    from zeg.engine import PROBE_LADDER
+
+    result, _ = run_stack([
+        CallerTurn("yes that is fine", speak_s=1.5),
+        CallerTurn("we rewrote the payment reconciler after an outage", speak_s=3.0),
+        CallerTurn("um", speak_s=0.5),
+        CallerTurn("I wrote the advisory lock fix myself", speak_s=2.5),
+        CallerTurn("about eleven double settlements in six weeks", speak_s=2.5),
+    ])
+    assert result.probes == ["Ask for %s." % rung for rung in PROBE_LADDER[:3]]

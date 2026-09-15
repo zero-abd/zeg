@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate thinking mid-answer no longer moves the interview on.** The client closes a
+turn after 640 ms of silence, so "um" and a pause in the middle of an answer reach the
+interview as a complete answer. In a diagnostic, the probe ladder counted that "um" as
+the answer to its outstanding question and asked the next one. Every later answer was then
+credited to the wrong question and the ladder ran out one question early: the candidate's
+answer about what they personally did was taken as the answer to "give a number", and so
+on down. A lone "um" also triggered a session rollover under an eager policy, and it reset
+the count of vague answers, restarting a ladder the engine had given up on.
+
+A hesitation mid-interview now leaves the outstanding question outstanding, issues no new
+probe, triggers no rollover and leaves the count of vague answers alone. The wall clock
+still applies, so a hesitation after the wrap-up time still wraps the interview up.
+
+Scoring still pairs the question with "um" and the real answer with whatever the model
+said in between. The heuristic judge reads only answers, so scores are unchanged, but the
+pairing is wrong and a model judge would see it. That is the next step.
+
 **A candidate who hesitates before answering the consent question is no longer turned
 away.** The client ends a candidate's turn after 640 ms of silence, so "um" followed by a
 pause arrives as a complete answer. The consent check reads anything short of a clear yes

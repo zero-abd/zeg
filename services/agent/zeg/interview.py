@@ -293,7 +293,12 @@ class Interview:
                 return []
             return self._resolve_consent(text, t_s)
 
-        self.engine.note_caller(text, t_s)
+        # A hesitation mid-interview is the candidate thinking, not answering. Counted as
+        # an answer it used up the outstanding probe, so every later answer was credited
+        # to the wrong question, and it could revive a stalled ladder or trigger a rollover.
+        hesitation = is_hesitation(text)
+        if not hesitation:
+            self.engine.note_caller(text, t_s)
 
         actions: List[Action] = []
         phase = self.engine.advance(t_s)
@@ -317,6 +322,9 @@ class Interview:
             # session and pay for a pause in the last minute and a half.
             return actions
 
+        if hesitation:
+            # Leave the outstanding question outstanding and the session as it is.
+            return actions
         probe = self.engine.next_probe()
         if probe is not None:
             actions.append(Probe("Ask for %s." % probe))
