@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A replaced session stops being read.** Making the real backend discard its queue on
+close only covered one backend. The mock and the speaking backend take a snapshot of
+their queue when reading starts, so when a rollover replaced a session partway through,
+the runner went on delivering the old session's remaining events to the interview. Those
+are words from a model that had just been closed, and they would have been recorded and
+scored. The runner now stops reading as soon as the session it was reading from is
+replaced or the call ends, which holds for every backend regardless of how its queue
+behaves.
+
 **One contract, run against every backend.** The backends were kept in step by tests
 copied from one file to another, and the copies drifted. That is how `say` and `steer`
 came to crash on every call on the real backend while passing on the mock. The fake

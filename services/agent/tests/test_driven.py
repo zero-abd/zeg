@@ -236,3 +236,85 @@ def test_a_rolled_session_is_not_sent_its_system_prompt_twice():
     long_call_on(backend)
     prompt = Interview().system_prompt.strip().splitlines()[0]
     assert prompt not in backend.sessions[1].steers[0]
+
+
+# --- a replaced session stops being read ---------------------------------------
+
+
+class _OldSession:
+    """A session whose queue was snapshotted before the swap, as the mock's is."""
+
+    def __init__(self, events):
+        self._events = events
+        self.closed = False
+
+    def poll(self):
+        for ev in list(self._events):
+            yield ev
+
+    def close(self):
+        self.closed = True
+
+
+class _Stub:
+    """An interview that answers the first event with one action, then records."""
+
+    def __init__(self, first_action):
+        self.first_action = first_action
+        self.seen = []
+
+    def on_event(self, ev, t_s):
+        self.seen.append(ev)
+        return [self.first_action] if len(self.seen) == 1 else []
+
+
+def _consume_once(stub, events):
+    from zeg.backends import AgentText, UserTranscript  # noqa: F401
+    from zeg.conversation import DrivenResult, _VirtualClock
+    from zeg.interview import EndCall, Rollover
+
+    runner = InterviewRunner(MockBackend(), interview=stub)
+    runner._session = _OldSession(events)
+    runner._saying = "we rewrote the reconciler"
+    result = DrivenResult()
+
+    def perform(actions):
+        for a in actions:
+            if isinstance(a, Rollover):
+                result.rollovers += 1
+                runner._roll(a.seed)
+            elif isinstance(a, EndCall):
+                result.ended = a.reason
+
+    runner._consume(_VirtualClock(runner.audio.frame_ms), result, perform)
+    return result
+
+
+def test_events_queued_after_a_rollover_never_reach_the_interview():
+    """A backend that snapshots its queue kept delivering the old session's events
+    after the swap. Those are words from a model that was just closed, which nobody
+    heard, and they would have been recorded and scored."""
+    from zeg.backends import AgentText, UserTranscript
+    from zeg.interview import Rollover
+    from zeg.memory import SessionSeed
+
+    stub = _Stub(Rollover(SessionSeed("rules", "Phase: depth_two.")))
+    result = _consume_once(stub, [
+        UserTranscript("placeholder", final=True),
+        AgentText("a question the old model started and nobody heard", final=True),
+    ])
+    assert result.rollovers == 1
+    assert len(stub.seen) == 1
+
+
+def test_events_queued_after_the_call_ends_never_reach_the_interview():
+    from zeg.backends import AgentText, UserTranscript
+    from zeg.interview import EndCall
+
+    stub = _Stub(EndCall("consent declined"))
+    result = _consume_once(stub, [
+        UserTranscript("placeholder", final=True),
+        AgentText("anything after the end", final=True),
+    ])
+    assert result.ended == "consent declined"
+    assert len(stub.seen) == 1

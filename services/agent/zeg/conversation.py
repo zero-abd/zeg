@@ -417,7 +417,8 @@ class InterviewRunner:
     def _consume(self, clock, result, perform) -> None:
         from .backends.base import AgentAudio, AgentInterrupted, UserTranscript
 
-        for ev in self._session.poll():
+        source = self._session
+        for ev in source.poll():
             if isinstance(ev, AgentAudio):
                 result.agent_audio_frames += 1
             if isinstance(ev, AgentInterrupted):
@@ -431,3 +432,8 @@ class InterviewRunner:
                 ev = UserTranscript(self._saying, final=True)
                 self._saying = None
             perform(self.interview.on_event(ev, clock.now))
+            if self._session is not source or result.ended:
+                # The session these events came from was replaced, or the call is over.
+                # Anything else it had queued describes speech nobody will hear, and a
+                # backend that snapshots its queue would otherwise keep delivering it.
+                return
