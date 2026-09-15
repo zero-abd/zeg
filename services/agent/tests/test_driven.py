@@ -212,8 +212,8 @@ def long_call_on(backend):
 def test_the_interview_ends_at_the_limit_with_nothing_said():
     from zeg.interview import EndCall
 
-    iv = Interview()
-    iv.start()
+    iv = consented_interview()
+    iv.tick(850)  # the wrap-up, said once
     assert iv.tick(899.9) == []
     actions = iv.tick(900)
     assert [type(a) for a in actions] == [EndCall]
@@ -255,8 +255,11 @@ def test_the_clock_delivers_the_wrap_up_once_both_sides_are_quiet():
 
 
 def test_the_clock_does_not_wrap_up_before_consent_or_before_time():
+    from zeg.backends.base import AgentAudio
+
     iv = Interview()
     iv.start()
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 840.0)
     assert iv.tick(850) == [], "no interview was ever started"
     assert consented_interview().tick(700) == []
 
@@ -274,6 +277,47 @@ def test_a_silent_candidate_hears_the_wrap_up_before_the_call_ends():
     assert 810 <= wrap[0].at_s < 900
     assert r.wrapped_up_s == wrap[0].at_s
     assert r.ended == "time limit reached"
+
+
+# --- no answer to the consent question ---------------------------------------------------
+
+
+def test_an_unanswered_consent_question_ends_the_call_after_a_quiet_wait():
+    from zeg.backends.base import AgentAudio
+    from zeg.interview import EndCall, Speak
+    from zeg.prompts import CONSENT_UNANSWERED
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 12.0)  # disclosure still playing
+    assert iv.tick(26.0) == [], "only 14 s since the agent stopped"
+    actions = iv.tick(27.0)
+    assert [a.text for a in actions if isinstance(a, Speak)] == [CONSENT_UNANSWERED]
+    assert [type(a) for a in actions if isinstance(a, EndCall)] == [EndCall]
+    assert iv.record.consent is False
+    assert iv.record.ended == "no answer to the consent question"
+
+
+def test_a_hesitation_restarts_the_wait_for_a_consent_answer():
+    from zeg.backends.base import UserTranscript
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("um", final=True), 10.0)
+    assert iv.tick(24.0) == []
+    assert iv.record.consent is None
+
+
+def test_a_silent_candidate_is_not_kept_on_a_recorded_call_without_consent():
+    """This call ran the full 900 seconds with consent never given."""
+    from zeg.prompts import CONSENT_UNANSWERED
+
+    r = InterviewRunner(MockBackend()).run([CallerTurn("", speak_s=0.0, pause_after_s=1000.0)])
+    assert r.consent is False
+    assert r.ended == "no answer to the consent question"
+    assert r.duration_s < 60
+    assert any(t.speaker == "agent" and t.text == CONSENT_UNANSWERED for t in r.transcript)
+    assert r.agent_audio_frames > 0
 
 
 class RecordsCloses(OneAtATime):

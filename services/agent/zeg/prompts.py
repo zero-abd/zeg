@@ -18,6 +18,14 @@ CONSENT_DECLINED = (
     "your time."
 )
 
+#: Spoken if the consent question gets no answer at all. Silence is not agreement, so the
+#: call ends the same way a refusal does, without telling the candidate they refused.
+CONSENT_UNANSWERED = (
+    "I have not heard an answer, so I will not go ahead with a recorded interview. "
+    "I will pass this back to the recruiting team and someone will reach out to "
+    "arrange a call with a person instead. Thanks for your time."
+)
+
 #: Spoken when the wall clock reaches the wrap-up mark, regardless of context.
 WRAP_UP = (
     "That is about all the time I have. Is there anything you wanted to ask before "

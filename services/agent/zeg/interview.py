@@ -21,7 +21,7 @@ from .textnorm import fold
 from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
-from .prompts import CONSENT_DECLINED, GREETING, SYSTEM_PROMPT, WRAP_UP
+from .prompts import CONSENT_DECLINED, CONSENT_UNANSWERED, GREETING, SYSTEM_PROMPT, WRAP_UP
 
 #: How often the model is re-grounded. Its audio context is roughly two minutes, so a
 #: briefing older than this is worth resending even if nothing changed.
@@ -31,6 +31,11 @@ BRIEFING_INTERVAL_S = 60.0
 #: own. Long enough that it never cuts across the agent's sentence or the candidate's
 #: pause; the model's audio arrives every 80 ms while it speaks.
 QUIET_BEFORE_WRAP_UP_S = 2.0
+
+#: How long the consent question waits in silence before the call ends. Counted from the
+#: last thing either side said, so it starts once the disclosure has finished playing, and
+#: a hesitation restarts it.
+CONSENT_ANSWER_TIMEOUT_S = 15.0
 
 #: Consent detection. The two failure directions are not equally bad, so the rules are
 #: not symmetrical. See `reads_as_consent`.
@@ -255,6 +260,18 @@ class Interview:
             return []
         if self.engine.is_over(t_s):
             return self._end("time limit reached")
+        if (
+            self.record.consent is None
+            and self._asked_consent
+            and t_s - self._last_heard_s >= CONSENT_ANSWER_TIMEOUT_S
+        ):
+            # Consent was only ever settled by an answer. A candidate who never gave one
+            # kept a recorded call open for the full fifteen minutes with no consent.
+            self.record.consent = False
+            self.engine.note_consent(False)
+            actions = self._say(CONSENT_UNANSWERED, t_s)
+            actions.extend(self._end("no answer to the consent question"))
+            return actions
         if (
             self.record.consent is True
             and not self._wrapped

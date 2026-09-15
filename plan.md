@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**No answer to the consent question ends the call instead of recording for fifteen
+minutes.** Consent was only ever settled by an answer. In a mock call where the candidate
+never spoke after the disclosure, the call ran the full 900 seconds, recorded, with consent
+never given, and ended only on the time limit. The interview's `tick` now ends the call once
+the consent question has had `CONSENT_ANSWER_TIMEOUT_S` (15 s) of silence. That is counted
+from the last thing either side said, so it starts after the disclosure finishes playing and
+a hesitation restarts it. Consent is recorded as not given, and the candidate hears a new
+fixed line, `CONSENT_UNANSWERED`. Unlike the decline line, it does not tell them "that is
+completely fine" about a refusal they never made. It then routes them to a person. On the
+old code the two tests that need this failed, and the guard (a hesitation restarts the
+wait) passed. Two tests from the previous two entries ticked an unconsented interview late
+and expected nothing to happen, which is the bug. They now use a consented interview, or
+tick inside the wait. The 15 s figure is a judgement call and wants a look with real
+candidates.
+
 **A silent candidate is told the interview is closing.** The spoken wrap-up at 13:30 was
 only issued when a caller turn arrived. A candidate who had gone quiet reached the 15-minute
 limit without hearing it, and the call simply stopped. The interview's `tick` now delivers
