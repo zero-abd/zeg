@@ -339,7 +339,9 @@ class GB10Session(VoiceSession):
             self._deferred_says.append(text)
             return
         if self._speaking:  # a property, not a method
-            self._barge_in()
+            # Stop the model's own reply to make room, without calling it an
+            # interruption: nobody talked over the agent.
+            self._stop_response("superseded", report=False)
         self._link.send(self._wire.say(text))
 
     def steer(self, text: str) -> None:
@@ -479,12 +481,23 @@ class GB10Session(VoiceSession):
         Nothing waits for that: a round trip plus a model step is another 80 ms of
         the agent talking over a candidate.
         """
+        self._stop_response("barge_in", report=True)
+
+    def _stop_response(self, reason: str, report: bool) -> None:
+        """Stop the response in flight, locally and on the runtime.
+
+        `report` is whether the layer above hears about it. A candidate talking over
+        the agent is an interruption. The client replacing the model's own reply with a
+        fixed line is not, and reporting it as one made the interview believe every
+        repeat of the disclosure had been talked over, so it repeated it forever.
+        """
         if self._interrupted:
             return
         self._interrupted = True
         self._playout.clear()
-        self._pending.append(AgentInterrupted())
-        self._link.send(self._wire.cancel("barge_in"))
+        if report:
+            self._pending.append(AgentInterrupted())
+        self._link.send(self._wire.cancel(reason))
 
     def _emit_playout(self) -> None:
         """Release one 20 ms frame of agent audio per caller frame.

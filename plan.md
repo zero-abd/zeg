@@ -195,6 +195,33 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who talks over the disclosure is told again before consent is taken.**
+The interview ignored an interruption, so whatever the candidate said over the opening
+disclosure counted as their answer to whether the call could be recorded. Through the
+real client and server, a candidate who said "yeah go ahead" over the disclosure cut it
+off, the server cancelled it part way through, it was never repeated, consent was
+recorded, and the transcript still showed the disclosure in full. That put a candidate
+on record as agreeing to a recording they may never have heard announced, which is the
+first of the non-negotiables in docs/06-compliance.md.
+
+Before consent is settled the only thing the agent has said is the disclosure, so an
+interruption in that window now means it was not heard. The interview does not treat the
+next utterance as an answer; it repeats the disclosure in full and takes consent from the
+reply after that, and it flags the repeat so a reviewer can see it happened. An
+interruption once consent is settled behaves as before.
+
+Running that through the real client and server sent the disclosure four times and never
+took consent. The candidate had interrupted only once. The model starts replying on its
+own the moment a candidate's turn ends, and the real client stops that reply to make room
+for a fixed line; it reported doing so as an interruption, exactly as if the candidate had
+talked over the agent. So every repeat of the disclosure flagged itself as interrupted and
+triggered another. The mock replaces its reply without reporting anything, which is why
+only the real stack showed it. Stopping the agent's own reply for a fixed line is no
+longer reported as an interruption, and a contract rule holds every backend to that.
+
+The same trace shows the reply that was stopped still landing in the transcript as if the
+agent had said it. That is the next step.
+
 **The agent stops interrogating once it has said it is out of time.** At 13:30 the
 interview speaks its wrap-up line and leaves the last ninety seconds for the candidate's
 questions and next steps. Only the answer that triggered the wrap-up stopped short of

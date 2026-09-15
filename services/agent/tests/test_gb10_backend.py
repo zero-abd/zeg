@@ -525,7 +525,10 @@ def test_say_over_a_speaking_agent_cancels_it_first_on_the_real_session(audio):
     assert [m["text"] for m in link.of_type(p.SAY)] == [
         "That is my time. Thanks for talking me through it."
     ]
-    assert any(isinstance(e, AgentInterrupted) for e in sess.poll())
+    # Stopping its own reply for a fixed line is not the candidate interrupting. This
+    # test used to assert the opposite, which is the behaviour that made the interview
+    # repeat the disclosure forever.
+    assert not [e for e in sess.poll() if isinstance(e, AgentInterrupted)]
 
 
 # --- a fixed line asked for while the candidate is talking --------------------------

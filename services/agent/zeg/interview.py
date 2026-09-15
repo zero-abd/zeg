@@ -170,6 +170,8 @@ class Interview:
         self._wrapped = False
         self._asked_consent = False
         self._session_started_s = 0.0
+        #: The candidate talked over the disclosure before consent was settled.
+        self._disclosure_interrupted = False
 
     # --- lifecycle ------------------------------------------------------------
 
@@ -192,8 +194,12 @@ class Interview:
             return self._end("time limit reached")
 
         if isinstance(event, AgentInterrupted):
-            # The candidate started talking. Nothing to decide; the backend already
-            # stopped. Recorded so the report can show they were cut off.
+            # The candidate started talking and the backend already stopped. Before
+            # consent is settled the only thing the agent has said is the disclosure, so
+            # an interruption here means they may not have heard that the call is
+            # recorded.
+            if self.record.consent is None and self._asked_consent:
+                self._disclosure_interrupted = True
             return []
 
         if isinstance(event, AgentText) and event.final:
@@ -216,6 +222,16 @@ class Interview:
         self.record.transcript.append(Turn(t_s, "caller", text))
 
         if self.record.consent is None and self._asked_consent:
+            if self._disclosure_interrupted:
+                # Whatever they said over the disclosure is not an answer to a question
+                # they may not have heard in full. Taking it as one recorded consent to a
+                # recording the candidate had cut off before it was announced.
+                self._disclosure_interrupted = False
+                self.record.flags.append(
+                    "The candidate talked over the recording disclosure. It was repeated "
+                    "in full before consent was taken."
+                )
+                return self._say(self.greeting, t_s)
             return self._resolve_consent(text, t_s)
 
         self.engine.note_caller(text, t_s)

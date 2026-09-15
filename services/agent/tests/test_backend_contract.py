@@ -14,7 +14,7 @@ import pytest
 
 from fakes import FakeLink, agent_frame
 from zeg.audio import AudioFrame
-from zeg.backends import AgentAudio, AgentText, MockBackend, VoiceSession
+from zeg.backends import AgentAudio, AgentInterrupted, AgentText, MockBackend, VoiceSession
 from zeg.backends.gb10 import GB10Backend, GB10Session
 from zeg.config import AudioConfig, BackendConfig
 
@@ -52,11 +52,14 @@ def silence():
 def queue_an_event(session):
     """Leave at least one event waiting, without polling for it."""
     if isinstance(session, GB10Session):
+        # Agent audio from the runtime, left in the queue. This used to speak a fixed line
+        # over the agent to queue an interruption, but replacing the agent's own reply is
+        # no longer reported as one.
         link = session._link
         link.deliver(link.wire.response_started("r1", "t1"))
         link.deliver(agent_frame(link))
-        session.push_audio(silence())
-        session.say("That is my time.")  # over a speaking agent, so it queues an interrupt
+        for _ in range(2):
+            session.push_audio(silence())
         return
     # The mock and the speaking backend both stream a fixed line a few frames after
     # being asked for it. Caller speech would not do: the speaking backend is playback
@@ -102,6 +105,36 @@ def test_closing_discards_whatever_was_still_queued(session):
     assert session._pending, "nothing was queued, so this would prove nothing"
     session.close()
     assert list(session.poll()) == []
+
+
+# --- replacing the agent's own reply ------------------------------------------------
+
+
+def make_the_agent_speak(session):
+    """Get the backend part way through a reply of its own, without polling it."""
+    if isinstance(session, GB10Session):
+        link = session._link
+        link.deliver(link.wire.response_started("r1", "t1"))
+        link.deliver(agent_frame(link))
+        session.push_audio(silence())
+        return
+    session.say("A reply the agent is part way through saying to the candidate.")
+    for _ in range(6):
+        session.push_audio(silence())
+
+
+def test_a_fixed_line_over_the_agents_own_reply_is_not_an_interruption(session):
+    """An interruption is the candidate talking over the agent, or the runtime cutting
+    it off. The real client also reported one whenever it stopped the model's own reply
+    to make room for a fixed line, and the interview took that as the candidate talking
+    over the disclosure, so it repeated the disclosure forever. The mock never did."""
+    make_the_agent_speak(session)
+    list(session.poll())
+    assert session._speaking, "the agent was not speaking, so this would prove nothing"
+    session.say("That is my time.")
+    for _ in range(6):
+        session.push_audio(silence())
+    assert not [e for e in session.poll() if isinstance(e, AgentInterrupted)]
 
 
 # --- steering -------------------------------------------------------------------

@@ -176,3 +176,26 @@ def test_rollover_never_closes_a_session_on_a_question_it_did_not_get_to_ask():
         )
     for link in links:
         assert not link.errors()
+
+
+# --- talking over the disclosure, over the real wire --------------------------------
+
+
+def test_a_candidate_who_talks_over_the_disclosure_hears_it_again_before_consenting():
+    """The server cut the disclosure off, the interview took the words spoken over it as
+    consent, and the transcript still showed the disclosure in full."""
+    from zeg.conversation import CallerTurn
+
+    caller = [
+        CallerTurn("yeah go ahead", speak_s=1.5, barge_in=True),
+        CallerTurn("yes that is fine", speak_s=1.5),
+        CallerTurn("a race condition in our payment reconciler", speak_s=3.0),
+    ]
+    result, links = run_stack(caller)
+    disclosures = [m for m in links[0].sent if m["type"] == p.SAY and "AI interviewer" in m["text"]]
+
+    assert result.interruptions >= 1, "the candidate never actually cut in"
+    assert len(disclosures) == 2, "the disclosure was not repeated after being cut off"
+    assert result.consent is True
+    assert any("talked over the recording disclosure" in f for f in result.flags)
+    assert not links[0].errors()

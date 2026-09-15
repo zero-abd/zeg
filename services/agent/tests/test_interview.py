@@ -235,3 +235,34 @@ def test_no_rollover_happens_once_the_interview_has_wrapped_up():
     for t in (815, 825, 835, 845):
         after.extend(iv.on_event(UserTranscript("we basically did various things", final=True), t))
     assert not [a for a in after if isinstance(a, Rollover)]
+
+
+# --- talking over the disclosure ------------------------------------------------
+
+
+def test_consent_is_not_taken_from_someone_who_talked_over_the_disclosure(iv):
+    """An interruption before consent was ignored, so whatever the candidate said over
+    the disclosure counted as their answer. Saying yeah over "this call is recorded"
+    put them on record as consenting to a recording they may never have heard."""
+    from zeg.backends.base import AgentInterrupted
+
+    iv.start()
+    iv.on_event(AgentInterrupted(), 2.0)
+    actions = iv.on_event(UserTranscript("yeah go ahead", final=True), 3.0)
+
+    assert iv.record.consent is None, "consent taken over an interrupted disclosure"
+    assert any("AI interviewer" in s for s in spoken(actions)), "the disclosure was not repeated"
+    assert any("talked over the recording disclosure" in f for f in iv.record.flags)
+
+    iv.on_event(UserTranscript("yes that is fine", final=True), 20.0)
+    assert iv.record.consent is True
+
+
+def test_an_interruption_after_consent_does_not_ask_again(iv):
+    from zeg.backends.base import AgentInterrupted
+
+    consented(iv)
+    iv.on_event(AgentInterrupted(), 30.0)
+    actions = iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 35.0)
+    assert iv.record.consent is True
+    assert not any("AI interviewer" in s for s in spoken(actions))
