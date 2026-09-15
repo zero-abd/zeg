@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**One contract, run against every backend.** The backends were kept in step by tests
+copied from one file to another, and the copies drifted. That is how `say` and `steer`
+came to crash on every call on the real backend while passing on the mock. The fake
+connection lived inside the real backend's own test file, so no other suite could run
+that backend at all. It now lives in a shared test module, and a single contract suite
+runs the mock, the real backend and the speaking backend through the same rules. A guard
+fails if the contract gains a method no rule exercises.
+
+Building it surfaced one more divergence. Closing a mock session discards whatever it had
+queued; closing a real session kept it, and polling afterwards still returned it. During
+a rollover the runner closes the old session while still reading it, so on the box the
+old model's leftovers would have flowed into the transcript as words nobody heard. A
+caller's close now discards. A session that ends itself still keeps its final error,
+because that is how the caller learns why the call died, and four existing tests depend
+on exactly that.
+
 **Rollover no longer crashes the first long call on the box.** The runner replaced a
 session by opening the new one before closing the old, so there would never be a moment
 with no session. The real backend refuses a second live session and the server closes a

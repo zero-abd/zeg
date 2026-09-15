@@ -20,48 +20,9 @@ from zeg.backends.gb10 import GB10Backend, GB10Config, GB10Session
 from zeg.config import AudioConfig, BackendConfig
 from zeg.runtime import protocol as p
 
+from fakes import FakeLink, agent_frame
 
-class FakeLink:
-    """A connection that is two lists.
 
-    Records what the session sent and lets a test hand back whatever the runtime
-    would have said. No thread, no socket, no clock, so every test below is
-    deterministic and runs in microseconds.
-    """
-
-    def __init__(self, auto_ready=True):
-        self.sent = []
-        self.closed = False
-        self.auto_ready = auto_ready
-        self.wire = p.Wire("srv")
-        self._inbox = collections.deque()
-
-    # --- the Link interface ---------------------------------------------------
-
-    def send(self, msg):
-        self.sent.append(msg)
-        if self.auto_ready and msg["type"] == p.CONFIGURE:
-            self.deliver(self.wire.ready("s1", {}))
-            self.deliver(self.wire.configured("s1", {}))
-
-    def drain(self):
-        out = list(self._inbox)
-        self._inbox.clear()
-        return out
-
-    def close(self):
-        self.closed = True
-
-    # --- test helpers ---------------------------------------------------------
-
-    def deliver(self, msg):
-        self._inbox.append(msg)
-
-    def types(self):
-        return [m["type"] for m in self.sent]
-
-    def of_type(self, kind):
-        return [m for m in self.sent if m["type"] == kind]
 
 
 @pytest.fixture
@@ -93,8 +54,6 @@ def drive(sess, audio, n, speaking=False):
     return out
 
 
-def agent_frame(link, response_id="r1", frame=1):
-    return link.wire.response_audio(response_id, b"\x11\x22" * p.OUTPUT_FRAME_SAMPLES, frame)
 
 
 # --- handshake ---------------------------------------------------------------

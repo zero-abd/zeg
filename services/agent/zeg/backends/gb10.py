@@ -346,6 +346,21 @@ class GB10Session(VoiceSession):
             yield self._pending.popleft()
 
     def close(self) -> None:
+        """The caller is done. Anything still queued is discarded.
+
+        During a rollover the runner closes this session while it is still reading
+        events from it. Whatever was left queued describes speech the candidate will
+        never hear, and delivering it would put those words in the transcript.
+        """
+        self._shutdown()
+        self._pending.clear()
+
+    def _shutdown(self) -> None:
+        """End the session but keep what is queued.
+
+        Used when the session ends itself. It queues a fatal error first, and the
+        caller has to be able to poll afterwards to learn why the call died.
+        """
         if self._closed:
             return
         self._closed = True
@@ -550,7 +565,7 @@ class GB10Session(VoiceSession):
                 )
             )
             if error.get("fatal"):
-                self.close()
+                self._shutdown()
             return
 
         if kind == p.CLOSED:
@@ -603,7 +618,7 @@ class GB10Session(VoiceSession):
         if self._closed:
             return
         self._pending.append(BackendError(message, fatal=True))
-        self.close()
+        self._shutdown()
 
     # --- introspection, for tests and logs ------------------------------------
 
