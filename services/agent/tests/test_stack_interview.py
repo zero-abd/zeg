@@ -199,3 +199,64 @@ def test_a_candidate_who_talks_over_the_disclosure_hears_it_again_before_consent
     assert result.consent is True
     assert any("talked over the recording disclosure" in f for f in result.flags)
     assert not links[0].errors()
+
+
+# --- only what was actually said reaches the transcript ------------------------------
+
+
+def completed_reply_count(link, text):
+    """How many of the server's responses finished speaking exactly this text."""
+    spoken = {}
+    for m in link.received:
+        if m["type"] == p.RESPONSE_TEXT:
+            spoken[m.get("response_id")] = m.get("text") or ""
+    return sum(
+        1 for m in link.received
+        if m["type"] == p.RESPONSE_DONE and m.get("status") == "completed"
+        and spoken.get(m.get("response_id")) == text
+    )
+
+
+def agent_lines(result, text):
+    return len([t for t in result.transcript if t.speaker == "agent" and t.text == text])
+
+
+def test_a_reply_stopped_for_the_disclosure_is_not_recorded_as_said():
+    """The client stopped the model's own reply to repeat the disclosure, and the stopped
+    reply still landed in the transcript as a line the agent had said. Sitting between the
+    repeated disclosure and its echo, it also got the disclosure recorded a third time."""
+    from zeg.conversation import CallerTurn
+
+    caller = [
+        CallerTurn("yeah go ahead", speak_s=1.5, barge_in=True),
+        CallerTurn("yes that is fine", speak_s=1.5),
+        CallerTurn("a race condition in our payment reconciler", speak_s=3.0),
+    ]
+    result, links = run_stack(caller)
+    done = [m for m in links[0].received if m["type"] == p.RESPONSE_DONE]
+    assert any(m.get("status") == "cancelled" for m in done), "nothing was stopped, so this proves nothing"
+
+    assert agent_lines(result, REPLY) == completed_reply_count(links[0], REPLY)
+    disclosures = [t for t in result.transcript if t.speaker == "agent" and "AI interviewer" in t.text]
+    assert len(disclosures) == 2, "the disclosure was recorded %d times" % len(disclosures)
+
+
+def test_a_reply_the_candidate_talked_over_is_not_recorded_as_said():
+    from zeg.conversation import CallerTurn
+
+    links = []
+
+    def factory():
+        link = LoopbackLink(SilenceModel(reply_frames=200, reply_text=REPLY))
+        links.append(link)
+        return link
+
+    caller = [
+        CallerTurn("yes that is fine", speak_s=1.5),
+        CallerTurn("a race condition in our payment reconciler", speak_s=2.0),
+        CallerTurn("actually wait, let me add something", speak_s=2.0, barge_in=True),
+    ]
+    result = InterviewRunner(GB10Backend(BackendConfig(kind="gb10"), link_factory=factory)).run(caller)
+    assert result.interruptions >= 1, "the candidate never cut in, so this proves nothing"
+    assert agent_lines(result, REPLY) == completed_reply_count(links[0], REPLY)
+    assert not links[0].errors()

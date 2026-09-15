@@ -137,6 +137,96 @@ def test_a_fixed_line_over_the_agents_own_reply_is_not_an_interruption(session):
     assert not [e for e in session.poll() if isinstance(e, AgentInterrupted)]
 
 
+# --- only what was actually said is recorded -----------------------------------------
+
+REPLACED = "A reply the agent is part way through saying to the candidate."
+
+
+def _still_records_replies_at_the_start(request, session):
+    """The mock and the speaking backend still record a reply the moment it starts.
+
+    Making them wait for the last frame is the change that conforms to the contract, and
+    it was written. It breaks a gateway test that feeds fifteen frames and expects the
+    greeting already in the transcript, and that test belongs to the call-joining track,
+    so the change waits on that team. Strict, so the day these backends conform this
+    starts failing and the marker has to come off.
+    """
+    if not isinstance(session, GB10Session):
+        request.applymarker(pytest.mark.xfail(
+            strict=True,
+            reason="records a reply when it starts; the fix waits on a call-joining test",
+        ))
+
+
+def _finals(events):
+    return [e.text for e in events if isinstance(e, AgentText) and e.final]
+
+
+def _push_and_poll(session, frames, frame=None):
+    out = []
+    for _ in range(frames):
+        session.push_audio(frame if frame is not None else silence())
+        out.extend(session.poll())
+    return out
+
+
+def test_a_reply_replaced_by_a_fixed_line_is_never_recorded_as_spoken(session, request):
+    """A final agent text is a record of what was actually spoken. The mock recorded a
+    reply the moment it started and the real client recorded it whatever the server's
+    status, so both kept a reply that a fixed line had replaced part way through."""
+    _still_records_replies_at_the_start(request, session)
+    events = []
+    if isinstance(session, GB10Session):
+        link = session._link
+        link.deliver(link.wire.response_started("r1", "t1"))
+        link.deliver(link.wire.response_text("r1", REPLACED, REPLACED))
+        link.deliver(agent_frame(link))
+        events += _push_and_poll(session, 1)
+        session.say("That is my time.")
+        link.deliver(link.wire.response_cancelled("r1", "superseded"))
+        link.deliver(link.wire.response_done("r1", "cancelled", "superseded"))
+        link.deliver(link.wire.response_started("r2", "t1"))
+        link.deliver(link.wire.response_text("r2", "That is my time.", "That is my time."))
+        link.deliver(link.wire.response_done("r2", "completed", "model_turn_end"))
+        events += _push_and_poll(session, 4)
+    else:
+        session.say(REPLACED)
+        events += _push_and_poll(session, 6)
+        session.say("That is my time.")
+        events += _push_and_poll(session, 150)
+    finals = _finals(events)
+    assert "That is my time." in finals, "no line completed, so this would prove nothing"
+    assert REPLACED not in finals
+
+
+def test_a_reply_the_candidate_talks_over_is_never_recorded_as_spoken(session, request):
+    """The candidate heard only part of it, so the transcript must not claim it."""
+    from zeg.audio import tone
+
+    if type(session).__name__ == "TTSSession":
+        pytest.skip("the speaking backend plays every line in full by design; nobody can cut in")
+    _still_records_replies_at_the_start(request, session)
+    speech = tone(AUDIO.input_sample_rate, AUDIO.input_frame_samples, amplitude=0.3)
+    events = []
+    if isinstance(session, GB10Session):
+        link = session._link
+        link.deliver(link.wire.response_started("r1", "t1"))
+        link.deliver(link.wire.response_text("r1", REPLACED, REPLACED))
+        link.deliver(agent_frame(link))
+        events += _push_and_poll(session, 1)
+        events += _push_and_poll(session, 6, speech)
+        link.deliver(link.wire.response_cancelled("r1", "barge_in"))
+        link.deliver(link.wire.response_done("r1", "cancelled", "barge_in"))
+        events += _push_and_poll(session, 4)
+    else:
+        session.say(REPLACED)
+        events += _push_and_poll(session, 6)
+        events += _push_and_poll(session, 6, speech)
+        events += _push_and_poll(session, 150)
+    assert [e for e in events if isinstance(e, AgentInterrupted)], "nobody cut in, so this proves nothing"
+    assert REPLACED not in _finals(events)
+
+
 # --- steering -------------------------------------------------------------------
 
 

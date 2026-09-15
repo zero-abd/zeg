@@ -569,7 +569,12 @@ class GB10Session(VoiceSession):
             return
 
         if kind == p.RESPONSE_DONE:
-            if self._response_text:
+            # A final agent text is a record of what was actually spoken. A response the
+            # candidate talked over, or one the client replaced with a fixed line, was
+            # not spoken in full, and delivering its whole text put words in the
+            # transcript the candidate never heard. That phantom line also sat between a
+            # fixed line and its own echo, so the echo was recorded as a second copy.
+            if self._response_text and msg.get("status") == "completed":
                 self._pending.append(AgentText(self._response_text, final=True))
             self._response_id = None
             self._response_text = ""

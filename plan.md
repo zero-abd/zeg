@@ -195,6 +195,30 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Only what the agent actually said reaches the transcript.** The backend contract
+defines a final agent text as a record of what was actually spoken, and both backends
+broke that. The real client turned any reply text into a final line when the reply ended,
+ignoring the server's status, so a reply the candidate talked over, or one the client
+stopped to speak a fixed line, was recorded in full. The mock emitted a reply's final text
+the moment the reply began, before any audio played, and kept it when interrupted or
+replaced. Through the real stack this appeared as a phantom line after a repeated
+disclosure, and because that phantom sat between the disclosure and its own echo, the
+disclosure was recorded a third time. Scoring pairs each answer with the agent line before
+it, so a phantom question also mispaired the candidate's answer.
+
+The real client now emits a final agent line only for a reply the server reports as
+completed, and two contract rules pass against it: a reply replaced by a fixed line, and
+one the candidate talks over, are never recorded as spoken. Only the real client runs on
+the box, so the defect is fixed where it matters.
+
+The mock and the speaking backend still record a reply the moment it starts. The change
+that makes them wait for the last frame was written and is saved outside the repo, but it
+breaks a gateway test that feeds fifteen frames and expects the greeting already in the
+transcript. That test belongs to the call-joining track, so the mock change waits on that
+team. Until then the two rules are strict expected failures for those backends, which will
+fail loudly the day they conform. The speaking backend plays every line in full by design,
+so nobody can cut in, and it is exempt from the second rule entirely.
+
 **A candidate who talks over the disclosure is told again before consent is taken.**
 The interview ignored an interruption, so whatever the candidate said over the opening
 disclosure counted as their answer to whether the call could be recorded. Through the
