@@ -195,6 +195,27 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Rollover no longer crashes the first long call on the box.** The runner replaced a
+session by opening the new one before closing the old, so there would never be a moment
+with no session. The real backend refuses a second live session and the server closes a
+second connection as busy, so on the box the first rollover of every long call would have
+raised. Every rollover test ran against the mock, which allows two sessions at once.
+
+The swap now closes first and then opens, and the candidate hears the beat of silence the
+design already accepted. The new session is also steered with the whole seed rather than
+the briefing alone. The last exchange was being dropped, and it is the part that lets the
+agent continue mid-thought instead of starting the topic over. Rollover is now tested
+against a backend that enforces one live session and against the real backend class.
+
+Testing that against the real backend class found two more crashes in code written two
+iterations earlier. On the real session, `say` and `steer` referred to a module name the
+file never imports, so every call raised. `say` also called a property as if it were a
+method, which raised again even once the first was fixed. The server-side fix that
+delivers briefings to the model would have been unreachable, because the client could not
+send one. Both methods had only ever been tested on the mock and on the server session.
+They are now tested directly on the real session, including a fixed line spoken over an
+agent that is mid-response.
+
 **Briefings and the disclosure now reach the model.** The server accepted `say` and
 `steer`, stored each one as state, and nothing ever came to collect it. Every briefing,
 every rollover seed and the consent disclosure would have arrived at the box and gone no

@@ -329,15 +329,15 @@ class GB10Session(VoiceSession):
         """
         if self._closed:
             raise RuntimeError("session is closed")
-        if self._speaking():
+        if self._speaking:  # a property, not a method
             self._barge_in()
-        self._link.send({"type": protocol.SAY, "text": text})
+        self._link.send(self._wire.say(text))
 
     def steer(self, text: str) -> None:
         """Guidance into the model's context. Never reaches the speaker."""
         if self._closed:
             raise RuntimeError("session is closed")
-        self._link.send({"type": protocol.STEER, "text": text})
+        self._link.send(self._wire.steer(text))
 
     def poll(self) -> Iterator[BackendEvent]:
         if not self._closed:

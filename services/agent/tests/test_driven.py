@@ -171,3 +171,68 @@ def test_an_interruption_does_not_lose_the_callers_turn(_=None):
 
 def test_the_agent_speaks_at_all(_=None):
     assert run().agent_audio_frames > 0
+
+
+# --- rollover on a box that runs one conversation at a time --------------------
+
+
+class OneAtATime(MockBackend):
+    """Enforces what the real backend and the server both enforce: one live session.
+
+    The plain mock allows two at once, which is how a rollover that opened the new
+    session before closing the old one passed every test and would have crashed the
+    first long call on the box.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.live = None
+        self.sessions = []
+
+    def start_session(self, system_prompt, greeting=None):
+        if self.live is not None and not self.live._closed:
+            raise RuntimeError("a conversation is already in progress")
+        session = super().start_session(system_prompt, greeting=greeting)
+        self.live = session
+        self.sessions.append(session)
+        return session
+
+
+def long_call_on(backend):
+    slow = [CONSENT] + [CallerTurn("we rewrote the payment reconciler after an outage",
+                                   speak_s=8.0, pause_after_s=2.0)] * 8
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    return InterviewRunner(backend, interview=iv).run(slow), len(slow)
+
+
+def test_rollover_works_when_only_one_session_may_be_live():
+    backend = OneAtATime()
+    r, turns = long_call_on(backend)
+    assert r.rollovers >= 1
+    assert r.ended is None
+    assert len(caller_turns(r)) == turns
+    assert len(backend.sessions) == r.rollovers + 1
+
+
+def test_the_old_session_is_closed_before_the_new_one_opens():
+    backend = OneAtATime()
+    long_call_on(backend)
+    assert all(s._closed for s in backend.sessions[:-1])
+
+
+def test_a_rolled_session_is_steered_with_the_last_exchange():
+    """The briefing alone makes the new session start over. The last exchange is what
+    lets it continue the thread the candidate is in the middle of."""
+    backend = OneAtATime()
+    r, _ = long_call_on(backend)
+    seeded = backend.sessions[1].steers[0]
+    assert "Where we are:" in seeded
+    assert "The last thing said" in seeded
+    assert "Candidate:" in seeded
+
+
+def test_a_rolled_session_is_not_sent_its_system_prompt_twice():
+    backend = OneAtATime()
+    long_call_on(backend)
+    prompt = Interview().system_prompt.strip().splitlines()[0]
+    assert prompt not in backend.sessions[1].steers[0]

@@ -88,14 +88,23 @@ class SessionSeed:
     briefing: str
     last_exchange: Sequence[str] = ()
 
-    def render(self) -> str:
-        parts = [self.system_prompt.rstrip(), "", "Where we are:", self.briefing]
+    def context(self) -> str:
+        """Everything except the standing instructions.
+
+        A fresh session is started with the system prompt, so this is what it is
+        steered with afterwards. Sending the prompt twice would spend a prefill on
+        text the session already holds.
+        """
+        parts = ["Where we are:", self.briefing]
         if self.last_exchange:
             parts.append("")
             parts.append("The last thing said, so you can pick up naturally:")
             for line in self.last_exchange:
                 parts.append("  %s" % line)
         return "\n".join(parts)
+
+    def render(self) -> str:
+        return "\n".join([self.system_prompt.rstrip(), "", self.context()])
 
 
 def last_exchange(transcript: Sequence, turns: int = 2) -> List[str]:

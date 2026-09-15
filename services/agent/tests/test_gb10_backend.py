@@ -475,3 +475,95 @@ def test_warmup_checks_the_runtime_is_up_before_anyone_is_on_the_line():
 
     GB10Backend(BackendConfig(kind="gb10"), link_factory=factory).warmup()
     assert links and links[0].closed
+
+
+# --- rollover through the interview runner, on this backend --------------------
+
+
+def test_the_runners_rollover_succeeds_on_the_real_backend():
+    """The runner used to open the new session before closing the old one. This
+    backend refuses a second live session, so the first rollover of every long call
+    would have raised. Every rollover test ran against the mock, which does not."""
+    from zeg.conversation import InterviewRunner
+    from zeg.memory import SessionSeed
+
+    backend = GB10Backend(BackendConfig(kind="gb10"), link_factory=FakeLink)
+    runner = InterviewRunner(backend)
+    first = backend.start_session("standing rules")
+    runner._session = first
+
+    runner._roll(SessionSeed("standing rules", "Phase: depth_two.", ["Candidate: a lock."]))
+
+    assert first.closed
+    assert runner._session is not first
+    assert not runner._session.closed
+
+
+def test_a_rolled_session_on_the_real_backend_is_steered_with_the_seed():
+    from zeg.conversation import InterviewRunner
+    from zeg.memory import SessionSeed
+
+    backend = GB10Backend(BackendConfig(kind="gb10"), link_factory=FakeLink)
+    runner = InterviewRunner(backend)
+    runner._session = backend.start_session("standing rules")
+
+    runner._roll(SessionSeed("standing rules", "Phase: depth_two.", ["Candidate: a lock."]))
+
+    steers = runner._session._link.of_type(p.STEER)
+    assert len(steers) == 1
+    assert "Candidate: a lock." in steers[0]["text"]
+    assert "standing rules" not in steers[0]["text"]
+
+
+def test_opening_before_closing_is_exactly_what_this_backend_refuses():
+    backend = GB10Backend(BackendConfig(kind="gb10"), link_factory=FakeLink)
+    backend.start_session("sys")
+    with pytest.raises(RuntimeError):
+        backend.start_session("sys")
+
+
+# --- say and steer on the real session -----------------------------------------
+
+
+def test_steer_sends_one_context_message_on_the_real_session(audio):
+    """Both methods named a module this file never imported, so every call raised.
+    Only the mock and the server session had ever been tested, and neither is this."""
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.steer("Still no evidence for ownership.")
+    assert [m["text"] for m in link.of_type(p.STEER)] == ["Still no evidence for ownership."]
+
+
+def test_say_sends_one_fixed_utterance_on_the_real_session(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.say("This call is recorded. Is that okay?")
+    assert [m["text"] for m in link.of_type(p.SAY)] == ["This call is recorded. Is that okay?"]
+
+
+def test_neither_is_accepted_on_a_closed_real_session(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.close()
+    with pytest.raises(RuntimeError):
+        sess.steer("anything")
+    with pytest.raises(RuntimeError):
+        sess.say("anything")
+
+
+def test_say_over_a_speaking_agent_cancels_it_first_on_the_real_session(audio):
+    """The only path that reads the speaking check with the agent talking. It called a
+    property as if it were a method, which raised on every say regardless."""
+    link = FakeLink()
+    sess = session(link, audio)
+    link.deliver(link.wire.response_started("r1", "t1"))
+    link.deliver(agent_frame(link))
+    drive(sess, audio, 1)
+
+    sess.say("That is my time. Thanks for talking me through it.")
+
+    assert link.of_type(p.CANCEL), "a speaking agent has to be stopped before the fixed line"
+    assert [m["text"] for m in link.of_type(p.SAY)] == [
+        "That is my time. Thanks for talking me through it."
+    ]
+    assert any(isinstance(e, AgentInterrupted) for e in sess.poll())

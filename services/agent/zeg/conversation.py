@@ -307,13 +307,8 @@ class InterviewRunner:
                     result.probes.append(a.instruction)
                     self._session.steer(a.instruction)
                 elif isinstance(a, Rollover):
-                    # A fresh session, primed. The old one is closed only after the new
-                    # one exists, so there is never a moment with no session at all.
                     result.rollovers += 1
-                    new = self.backend.start_session(a.seed.system_prompt)
-                    new.steer(a.seed.briefing)
-                    self._session.close()
-                    self._session = new
+                    self._roll(a.seed)
                 elif isinstance(a, EndCall):
                     result.ended = a.reason
 
@@ -344,6 +339,19 @@ class InterviewRunner:
         result.consent = self.interview.record.consent
         result.duration_s = clock.now
         return result
+
+    def _roll(self, seed) -> None:
+        """Swap in a fresh session primed with `seed`.
+
+        Close first, then open. The box runs one conversation at a time, in the backend
+        and again in the server, so opening first raised on the first rollover of every
+        long call. The candidate hears a beat of silence either way.
+        """
+        self._session.close()
+        self._session = self.backend.start_session(seed.system_prompt)
+        # The whole seed, not just the briefing. The last exchange is what lets the new
+        # session pick up mid-thought rather than start the topic over.
+        self._session.steer(seed.context())
 
     # --- caller behaviours ----------------------------------------------------
 
