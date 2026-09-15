@@ -114,7 +114,21 @@ def test_a_condition_about_something_other_than_the_recording_is_still_a_yes():
     assert reads_as_consent("Sure, why not.")
 
 
-@pytest.mark.xfail(strict=True, reason="an instruction to skip the recording with no "
-                   "contrast word is still read as consent; the next step")
 def test_an_instruction_to_skip_the_recording_is_not_consent():
+    """No contrast word, so the conditional rule missed it, and it was read as consent."""
     assert not reads_as_consent("Sure, skip the recording.")
+    assert not reads_as_consent("Yeah, stop recording please.")
+    assert not reads_as_consent("Okay, don't bother recording.")
+
+
+def test_a_genuine_yes_that_mentions_the_recording_is_still_a_yes():
+    """Refusing every mention of recording unless it named an affirmation would have
+    turned both of these into refusals. A word list against the recording does not."""
+    assert reads_as_consent("Sure, it's fine if you record.")
+    assert reads_as_consent("Yeah, record whatever you need.")
+
+
+@pytest.mark.xfail(strict=True, reason="a condition that never mentions recording is "
+                   "invisible to a rule keyed on the word")
+def test_a_retention_condition_that_never_says_record_is_not_consent():
+    assert not reads_as_consent("Sure, as long as nothing is saved.")

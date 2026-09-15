@@ -195,6 +195,25 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A refusal phrased as an instruction is no longer recorded as consent.** "Sure, skip
+the recording" agrees to the call and refuses the recording with no contrast word, so the
+previous consent fix did not see it. In a diagnostic, 9 of 10 refusals phrased this way
+read as consent, including "Yeah, stop recording please." and "Okay, don't bother
+recording."
+
+Two fixes were measured side by side before choosing. The first treated any mention of
+recording as a qualification unless it explicitly affirmed recording. It closed all ten,
+but turned 2 of 9 genuine yeses into refusals, "Sure, it's fine if you record." and "Yeah,
+record whatever you need." The second is a list of words against the recording, applied
+only when recording is mentioned: skip, stop, pause, off, without, minus, disable, delete,
+erase and bother. It also closed all ten and turned none of the nine yeses into refusals,
+so that is what went in.
+
+It only catches opposition phrased with those words. "Sure, as long as nothing is saved."
+never mentions recording and is still read as consent; it is recorded as a strict expected
+failure. "Sure, delete the recording afterwards." is now read as a refusal, which is
+arguable, and is the safe direction.
+
 **A negated or conditional refusal is no longer recorded as consent.** The consent
 check counts an answer as consent when it contains an agreement word and no refusal
 pattern. A negated agreement matched the first and none of the second. In a diagnostic,

@@ -42,6 +42,14 @@ AFFIRMATIVE: Sequence[Answer] = (
     Answer("Yes, but please be quick.", True, "a contrast word, but nothing about the recording"),
     Answer("Absolutely.", True),
     Answer("Yes, you can record it.", True, "mentions the recording with no condition"),
+    Answer("Sure, record away.", True, "affirms the recording"),
+    Answer("Of course, recording is fine.", True, "affirms the recording"),
+    Answer("Yeah, I'm fine with the recording.", True, "affirms the recording"),
+    Answer("Okay, happy to be recorded.", True, "affirms the recording"),
+    Answer("Go ahead and record.", True, "affirms the recording"),
+    Answer("Yes, recording's fine.", True, "affirms the recording"),
+    Answer("Sure, it's fine if you record.", True, "affirms the recording in a form no list names"),
+    Answer("Yeah, record whatever you need.", True, "affirms the recording in a form no list names"),
 )
 
 #: A clear no. Every one of these must end the call.
@@ -72,6 +80,16 @@ REFUSAL: Sequence[Answer] = (
            "agrees to the call and refuses the recording"),
     Answer("Sure thing, but I object to being recorded.", False,
            "agrees to the call and refuses the recording"),
+    Answer("Sure, skip the recording.", False, "refuses the recording as an instruction"),
+    Answer("Sure, just leave the recording off.", False, "refuses the recording as an instruction"),
+    Answer("Yes, turn the recording off.", False, "refuses the recording as an instruction"),
+    Answer("Go ahead, without recording.", False, "refuses the recording as an instruction"),
+    Answer("Fine by me, minus the recording.", False, "refuses the recording as an instruction"),
+    Answer("Yeah, stop recording please.", False, "refuses the recording as an instruction"),
+    Answer("Okay, don't bother recording.", False, "refuses the recording as an instruction"),
+    Answer("Yes, pause the recording.", False, "refuses the recording as an instruction"),
+    Answer("Sure, recording off please.", False, "refuses the recording as an instruction"),
+    Answer("Okay, I'd prefer no recording.", False, "refuses the recording as an instruction"),
 )
 
 #: Not a clear yes, so not consent. These are the dangerous ones: a gate that accepts

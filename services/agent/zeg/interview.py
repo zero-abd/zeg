@@ -63,6 +63,14 @@ _CONTRAST = re.compile(
 )
 _RECORDING = re.compile(r"\brecord(ed|ing|s)?\b", re.I)
 
+#: A word against the recording. "Sure, skip the recording" agrees to the call and
+#: refuses the recording with no contrast word, and was read as consent. This is a word
+#: list, so it only catches opposition phrased with these words. A condition that never
+#: mentions recording, like "as long as nothing is saved", is still missed.
+_OPPOSED = re.compile(
+    r"\b(skip|stop|pause|off|without|minus|disable|delete|erase|bother)\b", re.I
+)
+
 #: Hedged, questioning or reluctant. Not a refusal, and emphatically not a yes. These
 #: are the dangerous ones: several contain an agreement word while meaning "maybe".
 _UNSURE = re.compile(
@@ -93,6 +101,9 @@ def reads_as_consent(text: str) -> bool:
         return False
     if _CONTRAST.search(text) and _RECORDING.search(text):
         # Agreement with a condition on the recording is not a clear yes to it.
+        return False
+    if _RECORDING.search(text) and _OPPOSED.search(text):
+        # A word against the recording, even without a contrast word, is not a clear yes.
         return False
     plain = _AGREEMENT_IDIOM.sub(" yes ", text)
     if _NO.search(plain):
