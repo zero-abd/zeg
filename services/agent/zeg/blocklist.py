@@ -17,6 +17,8 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+from .textnorm import fold
+
 #: Explicitly permitted, checked before the block list. A single yes/no question about
 #: authorisation to work is lawful in most jurisdictions; questions about citizenship,
 #: visa category or national origin are not.
@@ -69,6 +71,10 @@ class ProhibitedQuestion(Exception):
 
 def check(text: str) -> Optional[Violation]:
     """Return the first violation in `text`, or None if it is safe to speak."""
+    # How a character was typed must never decide whether a question gets asked. A
+    # typographic apostrophe let "what's your nationality" through, and a non-breaking
+    # space let every multi-word rule through.
+    text = fold(text)
     for allowed in _ALLOWED:
         if allowed.search(text):
             # Strip the permitted phrasing so it cannot shield a prohibited clause

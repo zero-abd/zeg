@@ -16,6 +16,7 @@ from typing import List, Optional, Sequence
 
 from .backends.base import AgentInterrupted, AgentText, UserTranscript
 from .blocklist import ProhibitedQuestion
+from .textnorm import fold
 from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
@@ -72,6 +73,9 @@ def reads_as_consent(text: str) -> bool:
     a yes and is not one. Then agreement idioms are rewritten, because "no problem" is
     not a no. Only then is a literal refusal looked for.
     """
+    # A typographic apostrophe in "didn't" slipped past every refusal pattern while
+    # "yes" still matched, so a refusal was recorded as consent. Fold first.
+    text = fold(text)
     if _UNSURE.search(text):
         return False
     plain = _AGREEMENT_IDIOM.sub(" yes ", text)

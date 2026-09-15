@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**How a character is typed no longer changes a compliance decision.** The consent
+check and the prohibited-question gate are regular expressions written with keyboard
+apostrophes and ordinary spaces, and neither normalised its input. Speech recognisers and
+language models often write a typographic apostrophe instead. With one, "Yes, but I'd
+rather you didn't record this" read as consent, because the typographic "didn't" slipped
+past every refusal pattern while "yes" still matched, and "What's your nationality?" and
+"What's your native language?" were allowed to be spoken. With non-breaking spaces every
+multi-word rule tested failed to match, "How old are you?" included.
+
+Both gates now fold typographic apostrophes, quotes and every kind of whitespace to plain
+characters before matching. Every probe in both red-team suites is replayed in
+typographic form and must reach exactly the decision its plain form is labelled with. The
+same probing turned up a separate gap that typography did not cause: "Where're you
+originally from?" is not caught even when typed plainly. That is the next step.
+
 **A candidate's last words are no longer cut off at the end of their turn.** On a
 commit the server sent the final transcript at once and closed the turn, before the model
 had processed the commit. The model interface says a commit makes the recogniser settle
