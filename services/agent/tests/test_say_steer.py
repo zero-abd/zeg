@@ -95,24 +95,30 @@ def errors(out):
     return [m for m in out if "error" in m.get("type", "") or "code" in m]
 
 
-def test_the_server_queues_a_say(_=None):
+def queued(s):
+    """What the session handed to the model loop, in order."""
+    return [(a.kind, a.payload) for a in s.drain_actions()]
+
+
+def test_the_server_hands_a_say_to_the_model_loop(_=None):
+    """Stored as state, nothing ever collected it. It has to leave as an action."""
     s = configured()
     assert s.on_client(p.Wire().say("Is that okay?")) == []
-    assert s.pending_say == "Is that okay?"
+    assert queued(s) == [("say", "Is that okay?")]
 
 
-def test_the_server_queues_steers_in_order(_=None):
+def test_the_server_hands_steers_to_the_model_loop_in_order(_=None):
     s = configured()
     s.on_client(p.Wire().steer("one"))
     s.on_client(p.Wire().steer("two"))
-    assert s.take_steers() == ["one", "two"]
+    assert queued(s) == [("steer", "one"), ("steer", "two")]
 
 
-def test_draining_steers_empties_the_queue(_=None):
+def test_a_steer_is_handed_over_once(_=None):
     s = configured()
     s.on_client(p.Wire().steer("one"))
-    s.take_steers()
-    assert s.take_steers() == []
+    queued(s)
+    assert queued(s) == []
 
 
 def test_empty_text_is_rejected_on_both(_=None):
@@ -126,7 +132,7 @@ def test_say_is_refused_while_the_candidate_is_talking(_=None):
     s = configured()
     s.on_client(p.Wire().turn_start(1))
     assert errors(s.on_client(p.Wire().say("interrupting")))
-    assert s.pending_say is None
+    assert ("say", "interrupting") not in queued(s)
 
 
 def test_steer_is_allowed_mid_turn(_=None):
@@ -134,3 +140,4 @@ def test_steer_is_allowed_mid_turn(_=None):
     s = configured()
     s.on_client(p.Wire().turn_start(1))
     assert s.on_client(p.Wire().steer("still no evidence for ownership")) == []
+    assert ("steer", "still no evidence for ownership") in queued(s)

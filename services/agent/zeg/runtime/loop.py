@@ -117,6 +117,23 @@ class FrameLoop:
         """
         self._put(("commit", None))
 
+    def say(self, text: str) -> None:
+        """Speak fixed text. Ordered behind the audio already queued.
+
+        It is only valid at a turn boundary, so everything ahead of it in the queue is
+        the end of what the candidate said. Letting it overtake that audio would have
+        the agent answer before it had heard the question finish.
+        """
+        self._put(("say", text))
+
+    def steer(self, text: str) -> None:
+        """Give the model context without speaking it. Ordered, not prioritised.
+
+        A briefing is written about what has been said so far. Delivered ahead of the
+        audio it describes, it tells the model about a conversation it has not heard.
+        """
+        self._put(("steer", text))
+
     def cancel(self, reason: str) -> None:
         """Barge-in. Jumps the queue, because a cancel that waits is not a cancel.
 
@@ -164,6 +181,12 @@ class FrameLoop:
             return
         if kind == "commit":
             self.model.commit_turn()
+            return
+        if kind == "say":
+            self.model.speak_text(payload)
+            return
+        if kind == "steer":
+            self.model.inject_context(payload)
             return
 
         started = self.clock()

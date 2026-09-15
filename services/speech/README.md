@@ -38,13 +38,14 @@ drifts. This directory is where bring-up notes, scripts and box-specific config 
 | `runtime/session.py` | Written and tested, pure state machine |
 | `runtime/loop.py` | Written, budget accounting tested |
 | `runtime/codec.py` | Written, pipelining tested |
-| `runtime/model.py` | **Three seams raise. This is your job.** |
+| `runtime/model.py` | **Five seams raise. This is your job.** |
 | `runtime/server.py` | Written, protocol layer tested, socket untested |
 | `backends/gb10.py` | Written and tested against a fake transport |
 
 ## Your actual job
 
-`runtime/model.py` has three marked seams that raise without CUDA. The checkpoint's
+`runtime/model.py` has five marked seams that raise without CUDA. Seams 4 and 5 are
+how briefings and the fixed disclosure reach the model. The checkpoint's
 module code ships with the weights, so the last stretch of the model wrapper cannot be
 written blind. Filling those in, and then making the numbers real, is stage 1.
 

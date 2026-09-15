@@ -175,6 +175,10 @@ class RuntimeServer:
                 loop.commit_turn()
             elif action.kind == "cancel":
                 loop.cancel(action.payload or "cancel")
+            elif action.kind == "say":
+                loop.say(action.payload)
+            elif action.kind == "steer":
+                loop.steer(action.payload)
             elif action.kind == "close":
                 loop.stop()
 

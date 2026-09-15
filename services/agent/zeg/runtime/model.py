@@ -83,7 +83,7 @@ def require_cuda() -> Any:
 
 
 class SpeechModel:
-    """The interface the frame loop needs. Four methods, no more.
+    """The interface the frame loop needs, and nothing beyond it.
 
     Implementations must be single-threaded and stepped by exactly one caller.
     """
@@ -111,6 +111,23 @@ class SpeechModel:
         """
         raise NotImplementedError
 
+    def inject_context(self, text: str) -> None:
+        """Put text into the model's working context without speaking it.
+
+        Briefings and rollover seeds arrive here. The model holds about two minutes of
+        audio context, so this is how an interview that runs fifteen stays coherent.
+        """
+        raise NotImplementedError
+
+    def speak_text(self, text: str) -> None:
+        """Say exactly this, as the next response.
+
+        For the utterances whose wording is ours rather than the model's: the
+        disclosure, the consent request, the wrap-up. It opens and closes like any
+        other response, so barge-in and the response watchdog apply to it unchanged.
+        """
+        raise NotImplementedError
+
     def load(self) -> None:
         """Bring the weights up. Minutes. Called once, at process start."""
 
@@ -133,7 +150,7 @@ class CudaSpeechModel(SpeechModel):
     The constructor is cheap and the weights load in `load`, because loading is
     minutes and the server has to be able to say "not ready yet" while it happens.
 
-    The three seams that have to be wired on the box are marked SEAM below. They
+    The five seams that have to be wired on the box are marked SEAM below. They
     are the calls into the checkpoint's own module code, which lives with the
     weights rather than in this repo, so they cannot be written blind from here
     without inventing an API that will not match.
@@ -205,6 +222,21 @@ class CudaSpeechModel(SpeechModel):
             return
         raise ModelUnavailable("response cancel is not wired up yet")
 
+    def inject_context(self, text: str) -> None:
+        # SEAM 4: tokenise the text and run it through the backbone as context the
+        # model conditions on but does not voice. Needs the checkpoint's own text
+        # input path, which ships with the weights.
+        if not self._loaded:
+            raise ModelUnavailable("context before load")
+        raise ModelUnavailable("context injection is not wired up yet")
+
+    def speak_text(self, text: str) -> None:
+        # SEAM 5: force this text as the agent's next response and let the decoder
+        # voice it. Must open and close a response exactly as a generated one does.
+        if not self._loaded:
+            raise ModelUnavailable("fixed speech before load")
+        raise ModelUnavailable("fixed speech is not wired up yet")
+
 
 class SilenceModel(SpeechModel):
     """A model-shaped object that says nothing. Not a model.
@@ -221,6 +253,10 @@ class SilenceModel(SpeechModel):
     def __init__(self, reply_frames: int = 0, reply_text: str = "") -> None:
         self.reply_frames = reply_frames
         self.reply_text = reply_text
+        #: What was injected, in order. Recorded because it is never audible, so
+        #: there is no other way to see that it arrived.
+        self.context: list = []
+        self._say_text: Optional[str] = None
         self._remaining = 0
         self._opened = False
         self._closed = False
@@ -234,7 +270,8 @@ class SilenceModel(SpeechModel):
         if self._opened:
             control = "response_open"
             self._opened = False
-            text = self.reply_text
+            text = self._say_text if self._say_text is not None else self.reply_text
+            self._say_text = None
         if self._remaining > 0:
             self._remaining -= 1
             audible = True
@@ -249,7 +286,18 @@ class SilenceModel(SpeechModel):
 
     def commit_turn(self) -> None:
         self._opened = True
+        self._say_text = None
         self._remaining = self.reply_frames
+
+    def inject_context(self, text: str) -> None:
+        self.context.append(text)
+
+    def speak_text(self, text: str) -> None:
+        # At least two frames. With one, the close lands on the same frame as the open
+        # and overwrites it, so the response is never seen to start.
+        self._opened = True
+        self._say_text = text
+        self._remaining = max(self.reply_frames, 2)
 
     def cancel_response(self, reason: str) -> None:
         self._remaining = 0

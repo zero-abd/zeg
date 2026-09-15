@@ -59,7 +59,7 @@ class Action:
     server drains these after every client message.
     """
 
-    kind: str  # "audio" | "commit" | "cancel" | "close"
+    kind: str  # "audio" | "commit" | "cancel" | "close" | "say" | "steer"
     payload: Any = None
 
 
@@ -151,11 +151,6 @@ class ServerSession:
         self.frames = 0
         self.over_budget = 0
 
-        #: Exact text the client asked to be spoken, waiting for the loop to pick up.
-        self.pending_say: Optional[str] = None
-        #: Context guidance queued by the client. Never spoken.
-        self.steers: List[str] = []
-
         self._turn: Optional[int] = None
         self._turn_id: Optional[str] = None
         self._turn_index = 0
@@ -231,21 +226,23 @@ class ServerSession:
             return [self.wire.error("bad_say", "say needs non-empty text")]
         if self._turn_id is not None:
             return [self.wire.error("say_mid_turn", "say is only valid at a turn boundary")]
-        self.pending_say = text
+        # An action, like every other message that needs the model. It was stored as
+        # state instead, and nothing ever came to collect it: the disclosure reached
+        # the server and went no further.
+        self.actions.append(Action("say", text))
         return []
 
     def _steer(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Context guidance. Queued, never spoken, applied before the next response."""
+        """Context guidance for the model. Never spoken.
+
+        This is the path every briefing and every rollover seed takes, so a steer that
+        is accepted and then dropped is the memory layer silently switched off.
+        """
         text = msg.get("text")
         if not isinstance(text, str) or not text.strip():
             return [self.wire.error("bad_steer", "steer needs non-empty text")]
-        self.steers.append(text)
+        self.actions.append(Action("steer", text))
         return []
-
-    def take_steers(self) -> List[str]:
-        """Drain the queued guidance. Called by the loop before it builds a response."""
-        out, self.steers = self.steers, []
-        return out
 
     def _configure(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if self.configured:

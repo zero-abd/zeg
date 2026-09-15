@@ -176,7 +176,7 @@ problem.
 | Conversation harness, 24 tests | Done, `src/zeg/conversation.py` |
 | Interview prompt and consent text | Done, `src/zeg/prompts.py` |
 | Real backend | Written, untested on hardware |
-| Steering: say and steer, both sides | Done, 21 tests |
+| Steering: say and steer, client to model | Done, routed through the server loop |
 | Interview engine: plan, clock, memory, briefing | Done, 20 tests |
 | Call driver: consent, clock, briefing, gating | Done, 23 tests |
 | Session rollover and seeding | Done, 21 tests, needs the box to tune |
@@ -194,6 +194,19 @@ problem.
 ## 6a. Progress log
 
 Newest first. Each entry is one commit or a short run of them.
+
+**Briefings and the disclosure now reach the model.** The server accepted `say` and
+`steer`, stored each one as state, and nothing ever came to collect it. Every briefing,
+every rollover seed and the consent disclosure would have arrived at the box and gone no
+further, which is the memory layer switched off without an error. Both halves passed
+their own tests, the same shape as the three integration bugs before it.
+
+They are now actions like every other message that needs the model, routed through the
+dispatcher and the frame loop in order. A steer never overtakes the audio it describes, a
+say never overtakes the end of the candidate's turn, and a barge-in still jumps ahead of
+both. The model interface gained the two methods they end at, and the real model marks
+them as seams 4 and 5 for the box. A new test reads the session's source and fails if it
+ever emits an action the dispatcher does not route.
 
 **A cough no longer interrupts the agent.** The voice gate decided both barge-in and
 turn opening from the loudness of a single 20 ms frame, so a door, a keyboard or someone
