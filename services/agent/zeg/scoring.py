@@ -585,12 +585,16 @@ def _normalise(text: str) -> str:
 
 
 def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:
-    """Whitespace and case are not fabrication; missing words are."""
+    """Whitespace and case are not fabrication; missing words are.
+
+    Only the candidate's answers count. The interviewer's questions used to count too,
+    so a judge citing "you personally do" from "What did you personally do?" scored the
+    candidate 4 on ownership with the interviewer's own words as the evidence.
+    """
     needle = _normalise(quote)
     if not needle:
         return False
-    return any(needle in _normalise(u.answer) or needle in _normalise(u.question)
-               for u in units)
+    return any(needle in _normalise(u.answer) for u in units)
 
 
 def _timestamp_of(quote: str, units: Sequence[QAUnit]) -> float:
@@ -598,6 +602,4 @@ def _timestamp_of(quote: str, units: Sequence[QAUnit]) -> float:
     for u in units:
         if needle in _normalise(u.answer):
             return u.answered_at_s
-        if needle in _normalise(u.question):
-            return u.asked_at_s
     return 0.0

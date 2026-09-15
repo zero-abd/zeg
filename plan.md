@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The model judge can no longer cite the interviewer as evidence about the candidate.** The
+guard against made-up quotes accepted a quote found anywhere in a question or an answer. A
+judge that cited "you personally do", from the question "What did you personally do?",
+scored ownership 4 of 4 for a candidate who had said "I was mostly watching", with the
+interviewer's words as the evidence. Quotes, and the timestamps looked up for them, now
+count only if they appear in the candidate's answers. An existing test had pinned the old
+behaviour on purpose (`test_a_quote_from_the_interviewer_counts_as_present`). It is
+reversed, because evidence is meant to be what the candidate said. On the old code both new
+tests failed. The same check found the guard also rejecting genuine quotes over a trailing
+period or a straight versus curly apostrophe. That direction voids a score rather than
+inventing one, and is next.
+
 **The report quotes the evidence, not the lead-in.** Each dimension in the report shows one
 quote, cut to 72 characters from the end. People lead in before they get to the point, so
 in a report built from realistic answers every quote stopped short of its evidence: the

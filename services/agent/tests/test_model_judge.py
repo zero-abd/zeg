@@ -105,9 +105,22 @@ def test_whitespace_and_case_differences_are_not_fabrication():
     assert j.score_dimension("ownership", UNITS).score == 3
 
 
-def test_a_quote_from_the_interviewer_counts_as_present():
+def test_a_quote_from_the_interviewer_is_not_evidence_about_the_candidate():
+    """This used to be accepted, on purpose. The quote is in the transcript, but the
+    candidate never said it, and a report citing it scores the candidate on the
+    interviewer's words."""
     j = ModelJudge(replying({"score": 2, "quote": "What did it cost?", "reason": "ok"}))
-    assert not j.score_dimension("tradeoffs", UNITS).insufficient
+    assert j.score_dimension("tradeoffs", UNITS).insufficient
+    assert j.fabrications == ["tradeoffs"]
+
+
+def test_the_interviewers_phrasing_cannot_score_ownership():
+    units = to_qa_units([
+        T(0, "agent", "What did you personally do, as opposed to the team?"),
+        T(5, "caller", "the team handled most of it, I was mostly watching"),
+    ])
+    j = ModelJudge(replying({"score": 4, "quote": "you personally do", "reason": "owns it"}))
+    assert j.score_dimension("ownership", units).insufficient
 
 
 # --- failure modes --------------------------------------------------------------
