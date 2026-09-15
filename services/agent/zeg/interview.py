@@ -229,9 +229,16 @@ class Interview:
             actions.append(Brief(self.engine.briefing(t_s)))
             self._last_brief_s = t_s
 
-        if self.engine.should_wrap_up(t_s) and not self._wrapped:
-            self._wrapped = True
-            actions.extend(self._say(WRAP_UP, t_s))
+        if self.engine.should_wrap_up(t_s):
+            if not self._wrapped:
+                self._wrapped = True
+                actions.extend(self._say(WRAP_UP, t_s))
+            # Past the wrap-up the interview is closing: the candidate's questions, next
+            # steps, thanks. Only the answer that triggered the wrap-up used to stop here.
+            # Every later answer fell through and issued a fresh probe, so the agent said
+            # it was out of time and then asked what broke afterwards, even in reply to
+            # the candidate asking a question of their own. It could also roll the
+            # session and pay for a pause in the last minute and a half.
             return actions
 
         probe = self.engine.next_probe()

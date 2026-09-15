@@ -199,3 +199,39 @@ def test_an_engine_can_be_supplied(iv):
     other = Interview(engine=eng)
     other.start()
     assert other.engine is eng
+
+
+# --- after the wrap-up ---------------------------------------------------------
+
+
+def test_no_probe_is_issued_once_the_interview_has_wrapped_up(iv):
+    """Only the answer that triggered the wrap-up stopped short of probing. Every later
+    answer started or continued a ladder, so the agent said it was out of time and then
+    kept asking, even answering the candidate's own question with a probe."""
+    consented(iv)
+    iv.on_event(UserTranscript("we rewrote the payment reconciler after an outage", final=True), 790)
+    iv.on_event(UserTranscript("I wrote the advisory lock fix myself", final=True), 800)
+    wrap = iv.on_event(UserTranscript("we cut p99 latency from 400ms to 30ms", final=True), 815)
+    assert any("time I have" in s for s in spoken(wrap))
+
+    after = []
+    for t, text in [(825, "we gave up strict ordering across shards"),
+                    (835, "a downstream report started double counting"),
+                    (845, "we fixed the report join afterwards"),
+                    (855, "do you have any questions for me?")]:
+        after.extend(iv.on_event(UserTranscript(text, final=True), t))
+    assert not probes(after), "still probing after saying it was out of time: %s" % probes(after)
+
+
+def test_no_rollover_happens_once_the_interview_has_wrapped_up():
+    """A policy eager enough to roll on every turn must still not pay for a fresh session
+    and an audible pause in the closing minute and a half."""
+    from zeg.interview import Rollover
+    from zeg.memory import RolloverPolicy
+
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+    consented(iv)
+    after = []
+    for t in (815, 825, 835, 845):
+        after.extend(iv.on_event(UserTranscript("we basically did various things", final=True), t))
+    assert not [a for a in after if isinstance(a, Rollover)]

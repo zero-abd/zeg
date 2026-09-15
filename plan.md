@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The agent stops interrogating once it has said it is out of time.** At 13:30 the
+interview speaks its wrap-up line and leaves the last ninety seconds for the candidate's
+questions and next steps. Only the answer that triggered the wrap-up stopped short of
+probing. Every later answer fell through to the normal path, so in a diagnostic run the
+agent said it was out of time and then walked a whole new ladder over the next four
+answers, ending by steering the model to ask what broke afterwards in reply to the
+candidate asking whether they had any questions. The same path could also roll the
+session and pay for a pause in the closing minute. Once the wrap-up time has passed,
+every answer now stops before probing and rollover; the briefing still goes out, since it
+tells the model to close.
+
 **A candidate who goes vague part way down a ladder no longer switches rollover off.**
 Two general answers in a row make the engine abandon a probe ladder and tell the model
 to change topic. The rollover guard still counted that ladder as in progress, because it
