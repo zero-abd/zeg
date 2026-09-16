@@ -401,8 +401,18 @@ class InterviewRunner:
         rebuild = getattr(self.interview, "seed", None)
         if rebuild is not None:
             seed = rebuild(self._now)
+        try:
+            self._roll(seed)
+        except Exception as exc:  # noqa: B902 - the backend decides how it fails
+            # The old session is closed before the new one opens, on purpose: the box
+            # runs one conversation at a time. So a refused new session ends the call.
+            # This used to escape the runner, losing the whole interview, transcript
+            # and all, over a failure that arrives every hundred seconds on a long call.
+            result.errors.append("could not open a new session: %s" % exc)
+            result.failed = True
+            result.ended = "backend failed: could not open a new session"
+            return
         result.rollovers += 1
-        self._roll(seed)
 
     def _roll(self, seed) -> None:
         """Swap in a fresh session primed with `seed`.

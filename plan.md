@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A rollover that cannot open a new session ends the call with the transcript intact.** The
+old session is closed before the new one opens, on purpose, because the box runs one
+conversation at a time. So a refused new session ends the call. It used to escape the runner
+instead: the exception came out of `run()` and the whole interview went with it, transcript
+and report included. That is reachable every hundred seconds of a long call, and more so
+now that the runtime refuses connections when it has no usable model. The runner now records
+the error, ends the call as a backend failure, and returns what was gathered. A rollover
+that did not happen is not counted as one. On the old runner the new test failed with the
+backend's exception coming out of the run.
+
 **A dropped connection ends the call at once, and says so.** The client noticed a connection
 that had gone only through its watchdog, which counts 200 caller frames: four seconds of a
 candidate talking to nothing, reported afterwards as "the speech runtime went silent", which

@@ -366,6 +366,39 @@ def test_a_session_reports_whether_the_caller_is_mid_turn():
     assert not session.caller_speaking
 
 
+class RefusesTheSecondSession(MockBackend):
+    """A backend that will not open another session, as the runtime may refuse."""
+
+    def __init__(self):
+        super().__init__()
+        self.starts = 0
+
+    def start_session(self, system_prompt, greeting=None):
+        self.starts += 1
+        if self.starts > 1:
+            raise RuntimeError("the speech runtime refused the connection")
+        return super().start_session(system_prompt, greeting=greeting)
+
+
+def test_a_rollover_that_cannot_open_a_session_still_returns_the_interview():
+    """The old session is closed before the new one opens, so a refused session ends
+    the call. It used to escape the runner instead: no transcript, no report, over a
+    failure that is reachable every hundred seconds of a long call."""
+    backend = RefusesTheSecondSession()
+    caller = [CONSENT] + [CallerTurn("we rewrote the payment reconciler after an outage",
+                                     speak_s=8.0, pause_after_s=2.0)] * 8
+    iv = Interview(rollover=RolloverPolicy(context_horizon_s=20, min_session_s=10))
+
+    r = InterviewRunner(backend, interview=iv).run(caller)
+
+    assert backend.starts > 1, "the call never tried to roll, so this proves nothing"
+    assert r.failed
+    assert r.ended == "backend failed: could not open a new session"
+    assert any("refused the connection" in e for e in r.errors)
+    assert [t for t in r.transcript if t.speaker == "caller"], "what was said comes back"
+    assert r.rollovers == 0, "a rollover that did not happen is not counted"
+
+
 def test_a_session_reports_whether_the_agent_is_still_speaking():
     session = MockBackend().start_session("sys", greeting="hello there")
     assert session.agent_speaking
