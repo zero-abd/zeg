@@ -131,6 +131,23 @@ def test_a_short_pause_does_not_commit_a_turn(audio):
     assert not link.of_type(p.TURN_COMMIT)
 
 
+def test_a_silent_line_with_a_dc_offset_still_ends_the_turn(audio):
+    """With a 700 offset the session still believed the candidate was talking three
+    seconds after they stopped: the turn never ended and the model never replied."""
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200)
+    drive(sess, audio, 10, speaking=True)
+    n = audio.input_frame_samples
+    biased = AudioFrame.from_samples(
+        [700 + ((i % 7) - 3) * 10 for i in range(n)], audio.input_sample_rate
+    )
+    for _ in range(20):  # 400 ms of silence on a biased line, twice the endpoint
+        sess.push_audio(biased)
+        list(sess.poll())
+    assert link.of_type(p.TURN_COMMIT), "the turn never ended"
+    assert not sess.caller_speaking
+
+
 def test_a_dropped_connection_ends_the_call_at_once(audio):
     """It took the watchdog to notice: four seconds of a candidate talking to nothing,
     reported as the runtime going silent rather than the connection dropping."""

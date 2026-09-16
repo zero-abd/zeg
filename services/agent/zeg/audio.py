@@ -55,12 +55,22 @@ class AudioFrame:
 
 
 def rms(frame: AudioFrame) -> float:
-    """Root mean square amplitude, normalised to 0..1. Used by the crude VAD."""
+    """Root mean square amplitude about the frame's mean, normalised to 0..1.
+
+    Used by the crude VAD that opens and ends every turn. About the mean, not about zero:
+    a capture path with a DC offset, a constant bias the signal sits on even in silence,
+    counted that bias as loudness. An offset of 700, about 2% of full scale, crossed the
+    speech threshold, so a silent line read as someone talking: the turn never ended and
+    the model never got a finished turn to answer. Speech is zero-mean, so for real audio
+    this measures the same thing it always did.
+    """
     s = frame.samples()
     if not s:
         return 0.0
-    total = sum(v * v for v in s)
-    return math.sqrt(total / len(s)) / 32768.0
+    n = len(s)
+    mean = sum(s) / n
+    total = sum((v - mean) * (v - mean) for v in s)
+    return math.sqrt(total / n) / 32768.0
 
 
 def resample_linear(frame: AudioFrame, target_rate: int) -> AudioFrame:

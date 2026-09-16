@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A DC offset on the line no longer reads as someone talking.** Every turn start, turn end and
+barge-in decision rests on one loudness measure, `rms`, and it squared the raw samples, so a
+constant bias counted as sound. Capture paths often carry one: the signal sits slightly off zero
+even in silence. Measured: an offset of 700, about 2% of full scale, crossed the speech
+threshold. Driven through the real client, a candidate who stopped talking on such a line was
+still "speaking" three seconds later: the turn never ended, so the model never got a finished
+turn to answer, and on a real call a silent line would also keep barging in on the agent.
+Loudness is now measured about the frame's own mean. Speech is zero-mean, so for real audio it
+measures what it always did: an offset added to a tone leaves its loudness within 0.002. On the
+old code all three new tests failed. The gateway uses the same module and its tests still pass.
+
 **A report says which judge produced it, and a heuristic one says not to use it.** The
 heuristic judge's own documentation says a report from it "should never be shown to a hiring
 manager": it matches wording and cannot tell a correct explanation from a confident wrong one.
