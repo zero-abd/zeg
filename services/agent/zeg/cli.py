@@ -63,9 +63,25 @@ def main(argv=None) -> int:
         print()
         # Only the interview itself. The consent answer and anything said after the
         # wrap-up used to be scored as if they answered interview questions.
-        print(score_call(result.transcript, window=result.interview_window).render())
+        print(report_for(result).render())
 
     return 0
+
+
+def report_for(result):
+    """The report for a finished call.
+
+    The interview's flags travel with it: a candidate who talked over the recording
+    disclosure, a prohibited question that was blocked. They were printed beside the
+    report and left out of it, so the report itself — the thing a recruiter reads, and
+    the thing anything other than this console would keep — did not mention them.
+
+    Only the interview is scored. The consent answer and anything said after the
+    wrap-up are outside the window.
+    """
+    return score_call(
+        result.transcript, flags=result.flags, window=result.interview_window
+    )
 
 
 def _raw(backend, args) -> int:

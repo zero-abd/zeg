@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The compliance flags reach the report.** The interview records them — a candidate who
+talked over the recording disclosure, a prohibited question that was blocked — and the
+report has a "Flags, for a human to weigh" section for exactly this. The demo printed them
+as separate console lines and scored the call without them, so the report itself carried
+none: composed the old way the same call produced `flags=[]` and no flags section at all.
+The console is one view of a report; anything that keeps the report rather than the terminal
+scrollback kept one that did not mention them. Report building is now one function,
+`report_for`, which passes the interview's flags along with the interview window, and the
+demo uses it. Scoring still adds its own flag about thin evidence, and the window still
+decides what is scored.
+
 **A rollover that cannot open a new session ends the call with the transcript intact.** The
 old session is closed before the new one opens, on purpose, because the box runs one
 conversation at a time. So a refused new session ends the call. It used to escape the runner
