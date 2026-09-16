@@ -55,6 +55,33 @@ def test_two_vague_answers_stop_the_probe_ladder(eng):
     assert eng.next_probe() is None
 
 
+def test_an_explanation_with_filler_in_it_does_not_abandon_the_thread(eng):
+    """The scorer counts both of these as technical depth. The engine called both vague
+    and told the model to change topic on a candidate who had just explained the root
+    cause twice."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    assert eng.next_probe() is not None
+    eng.note_caller("there were a lot of things going on, and the lock expiring early "
+                    "caused the double settlements", 130)
+    assert eng.next_probe() is not None
+    eng.note_caller("basically the reason was a missing unique constraint on the batch id", 160)
+    assert not eng.ladder_stalled
+    assert "Change topic" not in eng.briefing(200)
+
+
+def test_live_specificity_agrees_with_the_scorer(eng):
+    """One judgement of what counts, so the call cannot drop a thread the report credits."""
+    from zeg.scoring import signals
+
+    # A vagueness word and an explanation together. Without the vagueness word neither
+    # engine would call it vague, and this test would prove nothing.
+    answer = "basically the problem was that the lock expired before the write finished"
+    assert signals(answer)
+    eng.note_caller("stuff", 100)  # vague, starts a streak
+    eng.note_caller(answer, 110)
+    assert eng.state.vague_streak == 0
+
+
 def test_the_probe_ladder_descends_then_stops(eng):
     eng.note_caller("we rewrote the payment reconciler after an outage", 100)
     rungs = [eng.next_probe() for _ in range(len(PROBE_LADDER))]

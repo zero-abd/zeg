@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The live engine and the scorer agree on what a specific answer is.** The engine decides during
+the call whether an answer was specific, and two general answers in a row abandon the thread with
+"Change topic". It used its own list of five causal words plus a number check. The scorer's lists
+have since been widened, so the two disagreed. Measured: two answers, "there were a lot of things
+going on, and the lock expiring early caused the double settlements" and "basically the reason was
+a missing unique constraint", each scored as technical depth and communication afterwards, and the
+engine called both vague and told the model to change topic on a candidate who had just explained
+the root cause twice.
+
+The engine now asks the scorer's `signals()`, the same way live evidence already did, so the call
+cannot drop a thread the report would credit. Two answers with nothing in them still stall the
+ladder. The first version of one new test used an answer with no vagueness word in it, so neither
+engine would ever call it vague and it passed on the old code as well; it now carries both a
+vagueness word and an explanation, and fails on the old engine as it should.
+
 **Explanations and structure count, in ordinary phrasing.** The last two dimensions with short
 lists. Of ten ordinary causal explanations, three were recognised: "which caused the double
 settlements", "as a result", "the reason was", "that is why" and "the problem was that" counted

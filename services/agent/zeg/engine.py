@@ -85,9 +85,6 @@ _VAGUE = re.compile(
     r"a lot of|generally|typically|it depends)\b",
     re.I,
 )
-_CAUSAL_OR_OUTCOME = re.compile(
-    r"\b(because|so that|which meant|turned out|root cause)\b", re.I
-)
 
 
 # --- State -------------------------------------------------------------------
@@ -183,7 +180,11 @@ class InterviewEngine:
         from .scoring import has_number, normalise, signals  # local: scoring imports engine
 
         spoken = normalise(text)
-        specific = bool(_CAUSAL_OR_OUTCOME.search(spoken)) or has_number(spoken)
+        # Specific means what the scorer counts as evidence, not a private list of five
+        # words. The two disagreed: an answer explaining the root cause with "caused" or
+        # "the reason was" scored as technical depth afterwards and was called vague
+        # here, and two of those abandoned the thread with "Change topic".
+        specific = bool(signals(text)) or has_number(spoken)
         vague = bool(_VAGUE.search(spoken)) and not specific
         self.state.vague_streak = self.state.vague_streak + 1 if vague else 0
 
