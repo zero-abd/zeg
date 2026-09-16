@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The model is told why it was interrupted, and the flag claims only what is known.** Two
+things were wrong with cutting off a prohibited question. The flag said the question "was
+cut off", which is a stronger claim than we can make: saying a line cancels the model's
+reply, but how much the candidate heard depends on how far ahead the audio was, and a
+backend that reports a reply in one piece may report it only once it has been spoken. The
+flag now says the question was asked and that a redirect was spoken over it, so the
+candidate may have heard part of it. A compliance record that overstates what happened is
+worse than one that is plain about the uncertainty.
+
+The second thing: nothing told the model anything. The system prompt already forbids those
+subjects and it asked anyway, so the standing instruction is not enough on its own, and the
+next turn would likely be the same question again. A redirect now carries a briefing naming
+the subject and saying never to return to it. On the old interview both new tests failed.
+
 **A prohibited question from the model is cut off and put on the record.** The block list
 gated only our own fixed lines. The model speaks for itself, so its questions arrive as
 transcript text after the fact: fed "So before we go on, are you married?", the interview

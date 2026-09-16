@@ -437,11 +437,27 @@ class Interview:
         if violation is None:
             return []
         self._redirected = True
+        # What the record can honestly claim. Saying a line cancels the model's reply,
+        # but how much of the question the candidate heard depends on how far ahead the
+        # audio was, and a backend that reports a reply in one piece may report it only
+        # once it has been spoken. "Cut off" was a stronger claim than we can make.
         self.record.flags.append(
-            "The agent started asking a prohibited question (%s) and was cut off: %r"
+            "The agent asked a prohibited question (%s): %r. A redirect was spoken over "
+            "it, so the candidate may have heard part of it."
             % (violation.category, violation.matched)
         )
-        return self._say(PROHIBITED_REDIRECT, t_s)
+        actions = self._say(PROHIBITED_REDIRECT, t_s)
+        # Telling the model is the difference between one blocked question and the same
+        # question again on the next turn. The system prompt already forbids the topic
+        # and it asked anyway, so the standing instruction is not enough on its own.
+        actions.append(
+            Brief(
+                "You just started asking about %s. That subject is prohibited: never "
+                "return to it. Ask about the technical work instead."
+                % violation.category.replace("_", " ")
+            )
+        )
+        return actions
 
     def _resolve_consent(self, text: str, t_s: float) -> List[Action]:
         """No recording, no interview. Silence is not agreement."""

@@ -415,6 +415,28 @@ def test_a_prohibited_question_from_the_model_is_cut_off(iv):
     assert any("prohibited question (family)" in f for f in iv.record.flags)
 
 
+def test_the_model_is_told_the_subject_is_prohibited(iv):
+    """The system prompt already forbids it and the model asked anyway, so without this
+    the next turn is the same question again."""
+    consented(iv)
+    actions = streamed(iv, ["are you married", "?"])
+    briefs = [a.text for a in actions if isinstance(a, Brief)]
+    assert briefs, "the model was cut off and told nothing"
+    assert "family" in briefs[0]
+    assert "prohibited" in briefs[0]
+
+
+def test_the_flag_claims_only_what_is_known(iv):
+    """Saying a line cancels the model's reply, but how much the candidate heard
+    depends on the backend and on how far ahead the audio was."""
+    consented(iv)
+    streamed(iv, ["are you married?"])
+    flag = iv.record.flags[0]
+    assert "asked a prohibited question (family)" in flag
+    assert "may have heard part of it" in flag
+    assert "was cut off" not in flag
+
+
 def test_the_agent_is_only_cut_off_once_for_one_question(iv):
     consented(iv)
     streamed(iv, ["are you married", "?"])
