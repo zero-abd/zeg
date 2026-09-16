@@ -611,6 +611,24 @@ def render_units(units: Sequence[QAUnit]) -> str:
     return "\n".join(lines)
 
 
+def _whole_score(value) -> Optional[int]:
+    """A rubric score, only if the model actually gave a whole number.
+
+    It went through `int()`, which turns `true` into 1, a real score at the bottom of the
+    rubric, and truncates 3.9 to 3 and 2.5 to 2. Each of those is a number the model did
+    not give. A whole number is accepted however it is written: 3, 3.0, "3".
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else None
+    if isinstance(value, str) and re.fullmatch(r"\s*[0-9]+\s*", value):
+        return int(value)
+    return None
+
+
 def parse_verdict(raw: str):
     """Pull (score, quote, reason) out of a model's reply, or None if unreadable.
 
@@ -647,9 +665,8 @@ def parse_verdict(raw: str):
 
     score = data.get("score")
     if score is not None:
-        try:
-            score = int(score)
-        except (TypeError, ValueError):
+        score = _whole_score(score)
+        if score is None:
             return None
         if not MIN_SCORE <= score <= MAX_SCORE:
             return None

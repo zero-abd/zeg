@@ -67,6 +67,20 @@ def test_unreadable_or_out_of_range_output_is_rejected(raw):
     assert parse_verdict(raw) is None
 
 
+@pytest.mark.parametrize("score", ["true", "false", "3.9", "2.5", '"3.5"', '"three"', "[3]"])
+def test_a_score_that_is_not_a_whole_number_is_rejected(score):
+    """int() turned true into a score of 1 and truncated 3.9 to 3. Each is a number the
+    model never gave, and it would have gone into a report."""
+    raw = '{"score": %s, "quote": "x", "reason": "y"}' % score
+    assert parse_verdict(raw) is None, score
+
+
+@pytest.mark.parametrize("score,expected", [("3", 3), ("4.0", 4), ('"4"', 4), ('" 2 "', 2)])
+def test_a_whole_number_is_accepted_however_it_is_written(score, expected):
+    raw = '{"score": %s, "quote": "x", "reason": "y"}' % score
+    assert parse_verdict(raw)[0] == expected
+
+
 def test_a_verdict_followed_by_a_note_with_braces_still_parses():
     """The parser took everything from the first brace to the last, so any other brace
     in the reply made a good verdict unreadable."""

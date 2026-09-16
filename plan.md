@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A judge's score is taken only as the whole number it gave.** The score went through `int()`.
+In Python that turns `true` into 1, so a boolean became a real score at the bottom of the
+rubric, and it truncates 3.9 to 3 and 2.5 to 2, each a number the model never gave. `false`
+was rejected only by coincidence, because it becomes 0, below the scale, and the string "3.5"
+was rejected while the number 2.5 was accepted. A score is now accepted only if it is a whole
+number, however it is written (3, 3.0, "3"); booleans and fractions are unreadable, like any
+other malformed verdict. On the old code exactly the three from the diagnostic failed.
+
 **A judge's verdict survives other braces in its reply.** The parser took everything from the
 first `{` to the last `}` and parsed that. Any other brace in the reply widened the span, so a
 good verdict followed by a note such as "(I ignored the {placeholder} in the brief.)" was thrown
