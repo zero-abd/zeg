@@ -491,6 +491,8 @@ OWNED = [
     "I owned the rollout end to end",
     "I drove the migration",
     "I was responsible for the rollout",
+    "I isolated it to the settlement worker",
+    "I ruled out the network first",
 ]
 
 NOT_OWNED = [

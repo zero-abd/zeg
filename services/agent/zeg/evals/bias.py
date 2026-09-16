@@ -155,7 +155,37 @@ TERSE = Pair(
     ),
 )
 
-PAIRS: Sequence[Pair] = (DISFLUENCY, NON_NATIVE, HEDGING, TERSE)
+VOCABULARY = Pair(
+    name="vocabulary",
+    what_differs="The same facts in different ordinary words for the same things.",
+    baseline=_qa(
+        ("What did you do?",
+         "I wrote the advisory-lock fix myself because two workers could read the same "
+         "batch."),
+        ("How did you find it?",
+         "I reproduced it by running two workers against one merchant."),
+        ("What was the impact?",
+         "Double settlements went from eleven in six weeks to zero."),
+        ("What did it cost?",
+         "We gave up parallel reconciliation. Batch time roughly doubled."),
+    ),
+    variant=_qa(
+        ("What did you do?",
+         "I personally implemented the advisory-lock fix. The reason was that two workers "
+         "could read the same batch."),
+        ("How did you find it?",
+         "I isolated it by running two workers against one merchant."),
+        ("What was the impact?",
+         "Double settlements went from eleven in six weeks to zero."),
+        ("What did it cost?",
+         "The tradeoff was parallel reconciliation. Batch time roughly doubled."),
+    ),
+)
+
+#: The judge scored vocabulary for a while: "I personally implemented" was not ownership,
+#: "the reason was" was not an explanation, "the tradeoff was" was not a tradeoff. Each
+#: was fixed on its own, and this pair is what keeps them fixed.
+PAIRS: Sequence[Pair] = (DISFLUENCY, NON_NATIVE, HEDGING, TERSE, VOCABULARY)
 
 
 @dataclass

@@ -249,6 +249,10 @@ _OWNERSHIP_VERBS = (
     r"|diagnosed|traced|reproduced|set up|architected|deployed|rolled out|created"
     r"|developed|authored|replaced|removed|optimi[sz]ed|tuned|benchmarked|instrumented"
     r"|automated|investigated|wired up|patched|ran"
+    # First-person investigative work, like "reproduced" and "traced" above. "I isolated
+    # it" counted as debugging but not ownership while "I reproduced it" counted as both,
+    # and the vocabulary pair in the bias eval scored ownership 4 against 3 on it.
+    r"|isolated|narrowed|ruled out|bisected|measured"
 )
 #: Words that sit between "I" and the verb without changing who did it. "basically" is
 #: deliberately absent: it is on the vagueness list and should not open a door here.

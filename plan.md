@@ -195,6 +195,24 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The bias eval now has a vocabulary pair, and it found one more inconsistency on arrival.** The
+recent word-list fixes to the judge were each checked on their own, and nothing in the
+matched-pair eval would have caught them coming back. The new pair says the same facts once in
+the classic words and once in equally ordinary ones: "I personally implemented" for "I wrote",
+"the reason was" for "because", "I isolated it" for "I reproduced it", "the tradeoff was" for
+"we gave up".
+
+Scored dimension by dimension before it was committed, it was not clean: ownership 4 against 3.
+"I reproduced it" counted as ownership and "I isolated it" did not, though both are first-person
+investigative work and both already counted as debugging. The ownership verbs now include the
+investigative ones the list was missing (isolated, narrowed, ruled out, bisected, measured),
+consistent with reproduced, traced and diagnosed already being there.
+
+Run against the scorer from before the vocabulary fixes, the same pair scored 8/10 as written
+and no score at all in the variant, with ownership, debugging and communication all unscored: a
+candidate sent to a human screen for their choice of words. That is the class of defect the pair
+now guards. Tradeoffs did not move in that run only because both halves also say "doubled".
+
 **The bias eval compares every dimension, and it found filler costing a candidate ownership.**
 The matched-pair eval, which says the same substance twice with only the delivery changed,
 counted a pair clean when the overall score and band matched. It never compared the dimension
