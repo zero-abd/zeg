@@ -143,6 +143,31 @@ def test_what_is_still_fabrication(quote):
     assert j.score_dimension("ownership", UNITS).insufficient, quote
 
 
+def test_a_quote_copied_with_its_candidate_label_is_not_fabrication():
+    """The judge sees every answer as "Candidate: ...". Copying the label along with the
+    words is formatting, and it voided a genuine quote and its score."""
+    j = ModelJudge(replying({"score": 3, "quote": "Candidate: I wrote the advisory-lock fix",
+                             "reason": "first person"}))
+    d = j.score_dimension("ownership", UNITS)
+    assert d.score == 3
+    assert d.evidence[0].at_s == 10
+    assert not j.fabrications
+
+
+def test_a_quote_labelled_as_the_interviewer_is_still_rejected():
+    j = ModelJudge(replying({"score": 2, "quote": "Interviewer: What did it cost?",
+                             "reason": "ok"}))
+    assert j.score_dimension("tradeoffs", UNITS).insufficient
+
+
+def test_the_prompt_asks_for_what_the_guard_accepts():
+    """The prompt asked for any verbatim span of the transcript, interviewer lines
+    included, and the guard voided every quote that was not the candidate's."""
+    assert "Candidate lines" in JUDGE_PROMPT
+    assert "without the" in JUDGE_PROMPT and "label" in JUDGE_PROMPT
+    assert "interviewer's words are never evidence" in JUDGE_PROMPT
+
+
 def test_the_interviewers_phrasing_cannot_score_ownership():
     units = to_qa_units([
         T(0, "agent", "What did you personally do, as opposed to the team?"),

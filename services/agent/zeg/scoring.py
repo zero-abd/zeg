@@ -525,11 +525,13 @@ it is the correct answer far more often than people expect. Do not infer, do not
 the benefit of the doubt, and do not reward confidence.
 
 Respond with JSON only:
-{{"score": 1-4 or null, "quote": "verbatim span from the transcript, or null",
+{{"score": 1-4 or null, "quote": "the candidate's own words, verbatim, or null",
   "reason": "one sentence"}}
 
-The quote must be copied exactly from the transcript below. A quote you cannot find
-there is a fabrication and the answer is null instead.
+The quote must be copied exactly from one of the Candidate lines below, without the
+"Candidate:" label. The interviewer's words are never evidence about the candidate, even
+where a question repeats what the candidate said. A quote you cannot find in the
+candidate's lines is a fabrication and the answer is null instead.
 
 Transcript:
 {transcript}
@@ -669,14 +671,24 @@ def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:
     so a judge citing "you personally do" from "What did you personally do?" scored the
     candidate 4 on ownership with the interviewer's own words as the evidence.
     """
-    needle = _normalise(quote)
+    needle = _normalise(_unlabelled(quote))
     if not needle:
         return False
     return any(needle in _normalise(u.answer) for u in units)
 
 
+#: The label the judge sees in front of every candidate line. Copying it into a quote is
+#: formatting, not fabrication, and it voided genuine quotes. Only this label: a quote
+#: labelled as the interviewer's is still not evidence about the candidate.
+_CANDIDATE_LABEL = re.compile(r"^\s*[\"'“‘]?\s*candidate\s*:\s*", re.I)
+
+
+def _unlabelled(quote: str) -> str:
+    return _CANDIDATE_LABEL.sub("", quote, count=1)
+
+
 def _timestamp_of(quote: str, units: Sequence[QAUnit]) -> float:
-    needle = _normalise(quote)
+    needle = _normalise(_unlabelled(quote))
     for u in units:
         if needle in _normalise(u.answer):
             return u.answered_at_s

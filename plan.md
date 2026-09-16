@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The judge's prompt asks for what its guard accepts.** Two mismatches between the model judge's
+prompt and the check on its quotes. The prompt asked for "a verbatim span from the transcript",
+and the transcript it is shown includes the interviewer's lines, but the guard has only accepted
+the candidate's own words since the fix that stopped a judge citing the interviewer. So a model
+following its instructions exactly could quote a question and have a valid score voided and
+recorded as a fabrication. The prompt now says to quote only from the candidate's lines, and
+that the interviewer's words are never evidence about the candidate.
+
+Second, every answer is shown to the judge as "Candidate: ...". A quote copied with that label
+failed the verbatim check, because the label is not in the answer text, so a genuine quote and
+its score were voided over formatting. A leading "Candidate:" label is now stripped before the
+check. An "Interviewer:" label is not, and such a quote is still rejected. On the old code the
+label test failed; the prompt test failed because the guidance was not there. That test only
+pins the prompt's wording: whether a real model follows it needs a model on the box.
+
 **The live engine and the scorer agree on what a specific answer is.** The engine decides during
 the call whether an answer was specific, and two general answers in a row abandon the thread with
 "Change topic". It used its own list of five causal words plus a number check. The scorer's lists
