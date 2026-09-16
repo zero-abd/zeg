@@ -112,6 +112,20 @@ def test_briefing_stays_short(eng):
     assert len(eng.briefing(400).splitlines()) <= 10
 
 
+def test_a_prohibited_subject_is_named_in_every_briefing(eng):
+    """A briefing is what a fresh session is primed with, so this is how the
+    instruction survives a rollover."""
+    eng.note_prohibited("family")
+    eng.note_prohibited("family")
+    eng.note_prohibited("salary_history")
+    assert eng.state.prohibited_subjects == ["family", "salary_history"]
+    assert "Never ask about: family, salary history." in eng.briefing(300)
+
+
+def test_a_call_with_nothing_to_forbid_says_nothing(eng):
+    assert "Never ask about" not in eng.briefing(300)
+
+
 # --- what the call has already covered ------------------------------------------------
 
 

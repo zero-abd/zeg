@@ -437,6 +437,7 @@ class Interview:
         if violation is None:
             return []
         self._redirected = True
+        self.engine.note_prohibited(violation.category)
         # What the record can honestly claim. Saying a line cancels the model's reply,
         # but how much of the question the candidate heard depends on how far ahead the
         # audio was, and a backend that reports a reply in one piece may report it only

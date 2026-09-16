@@ -426,6 +426,15 @@ def test_the_model_is_told_the_subject_is_prohibited(iv):
     assert "prohibited" in briefs[0]
 
 
+def test_a_fresh_session_is_told_about_a_subject_already_refused(iv):
+    """The briefing that came with the redirect lives in that session. A rollover opens
+    a new one every hundred seconds, and it would start from the same system prompt the
+    model has already ignored once."""
+    consented(iv)
+    streamed(iv, ["are you married?"])
+    assert "Never ask about: family" in iv.seed(200).context()
+
+
 def test_the_flag_claims_only_what_is_known(iv):
     """Saying a line cancels the model's reply, but how much the candidate heard
     depends on the backend and on how far ahead the audio was."""

@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A subject the agent was pulled off stays off, across sessions.** The briefing that comes
+with a redirect lives in the session that was told it. A rollover opens a fresh session every
+hundred seconds, and its seed carries the engine's briefing and the last exchange, so the
+instruction went with the old session: printed from the old code, the seed a fresh session
+would get right after "are you married?" was refused mentions the subject nowhere. It holds
+the redirect line as "the last thing said" and nothing else. The next session starts from the
+same system prompt the model has already ignored once.
+
+The engine now records each refused subject and names them in every briefing ("Never ask
+about: family, salary history."), which is what a rollover seed is built from, so the
+instruction outlives the session. Recorded once per subject and kept for the rest of the
+call. This is a new capability rather than a corrected misbehaviour: on the old code the two
+tests fail because the method did not exist, and the demonstration above is the actual gap.
+
 **The model is told why it was interrupted, and the flag claims only what is known.** Two
 things were wrong with cutting off a prohibited question. The flag said the question "was
 cut off", which is a stronger claim than we can make: saying a line cancels the model's

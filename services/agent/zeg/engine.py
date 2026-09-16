@@ -119,6 +119,10 @@ class InterviewState:
     evidence: List[Evidence] = field(default_factory=list)
     asked: List[str] = field(default_factory=list)
     vague_streak: int = 0
+    #: Subjects the agent has already had to be pulled off. Kept because a briefing is
+    #: what a fresh session is primed with, and a rollover would otherwise hand the next
+    #: session only the system prompt the model has already ignored once.
+    prohibited_subjects: List[str] = field(default_factory=list)
     #: True between issuing a probe and hearing the answer to it. Without this, every
     #: specific answer looked like a brand new claim and the ladder reset instead of
     #: descending, so a probe never got past its first rung.
@@ -203,6 +207,11 @@ class InterviewEngine:
             return
         if not vague and len(text.split()) >= 4:
             self.state.claims.append(Claim(text=text, at_s=t_s))
+
+    def note_prohibited(self, category: str) -> None:
+        """The agent had to be pulled off this subject. Recorded once, kept for good."""
+        if category not in self.state.prohibited_subjects:
+            self.state.prohibited_subjects.append(category)
 
     def record_evidence(self, dimension: str, quote: str, t_s: float) -> None:
         if dimension not in DIMENSIONS:
@@ -293,6 +302,14 @@ class InterviewEngine:
         if self.state.claims:
             lines.append("The candidate has claimed:")
             lines.extend(self._claim_lines(max_claims))
+        if self.state.prohibited_subjects:
+            # Carried in every briefing, so it survives a rollover: the fresh session
+            # would otherwise start from the same system prompt the model already
+            # ignored once.
+            lines.append(
+                "Never ask about: %s."
+                % ", ".join(s.replace("_", " ") for s in self.state.prohibited_subjects)
+            )
         missing = self.uncovered()
         if missing:
             lines.append("Still no evidence for: %s." % ", ".join(missing))
