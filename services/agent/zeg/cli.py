@@ -78,10 +78,21 @@ def report_for(result):
 
     Only the interview is scored. The consent answer and anything said after the
     wrap-up are outside the window.
+
+    A call that was cut short says so. Every failure path ends the call with whatever
+    was gathered, which is right, but a score from four minutes of a fifteen-minute
+    interview reads exactly like a score from the whole thing unless the report says
+    otherwise.
     """
-    return score_call(
-        result.transcript, flags=result.flags, window=result.interview_window
-    )
+    flags = list(result.flags)
+    if result.consent and result.wrapped_up_s is None:
+        flags.append(
+            "The call ended before the wrap-up, so the interview is incomplete: %s."
+            % (result.ended or "it stopped early")
+        )
+    for error in result.errors:
+        flags.append("Something failed during the call: %s" % error)
+    return score_call(result.transcript, flags=flags, window=result.interview_window)
 
 
 def _raw(backend, args) -> int:

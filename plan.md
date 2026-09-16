@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A report from a call that was cut short says so.** Every failure path now ends the call
+with whatever was gathered, which is right: a candidate who answered twelve minutes of
+questions should still be scoreable. But the report then reads exactly like one from a
+complete interview. `report_for` now flags a call that had consent and never reached its
+wrap-up, naming how it ended, and lists any errors from the call. Measured end to end with a
+backend that refuses a second session: a 90 second call whose report previously said only
+"Only 2 of 5 dimensions had citable evidence" now also says the interview is incomplete and
+why. In that example the report was already "no score"; the case this really guards is a
+longer truncated call, which scores normally and would otherwise look whole. A finished call
+and a declined one are not flagged.
+
 **The compliance flags reach the report.** The interview records them — a candidate who
 talked over the recording disclosure, a prohibited question that was blocked — and the
 report has a "Flags, for a human to weigh" section for exactly this. The demo printed them
