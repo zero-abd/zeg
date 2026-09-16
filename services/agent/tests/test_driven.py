@@ -399,6 +399,39 @@ def test_a_rollover_that_cannot_open_a_session_still_returns_the_interview():
     assert r.rollovers == 0, "a rollover that did not happen is not counted"
 
 
+def test_a_long_probe_ladder_does_not_keep_a_session_past_the_models_window():
+    """A candidate giving long, specific answers kept the ladder going, and the ladder
+    blocked every rollover. Measured: sessions lived 246 and 227 seconds against a model
+    that holds about 120."""
+    from zeg.interview import Rollover
+
+    answers = [
+        "we rewrote the payment reconciler after an outage because batches were settled twice",
+        "I wrote the advisory lock fix myself and the reproduction harness around it",
+        "it caused eleven double settlements in six weeks, about forty thousand dollars",
+        "we gave up about fifteen percent write throughput because the lock serialises writers",
+        "a nightly batch job deadlocked against the lock because it took rows in another order",
+    ]
+    caller = [CONSENT] + [CallerTurn(a, speak_s=40.0, pause_after_s=2.0) for a in answers] * 2
+    iv = Interview()
+    started, ages = [0.0], []
+    on_event = iv.on_event
+
+    def watching(event, t_s):
+        actions = on_event(event, t_s)
+        if any(isinstance(a, Rollover) for a in actions):
+            ages.append(t_s - started[-1])
+            started.append(t_s)
+        return actions
+
+    iv.on_event = watching
+    r = InterviewRunner(MockBackend(), interview=iv).run(caller)
+    ages.append(r.duration_s - started[-1])
+
+    assert r.rollovers >= 1
+    assert max(ages) < 160, "a session lived %.0f s: %s" % (max(ages), [round(a) for a in ages])
+
+
 def test_a_session_reports_whether_the_agent_is_still_speaking():
     session = MockBackend().start_session("sys", greeting="hello there")
     assert session.agent_speaking

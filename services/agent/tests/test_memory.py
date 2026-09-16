@@ -33,9 +33,32 @@ def test_will_not_thrash_on_a_fresh_session(policy):
 
 
 def test_waits_for_a_probe_ladder_to_finish(policy):
-    """Mid-ladder is the thread a fresh session would lose."""
+    """Mid-ladder is the thread a fresh session would lose.
+
+    This used to check a session aged 200 seconds, which is the defect itself: at that
+    age the model had long since lost the thread the rule was protecting.
+    """
     assert not policy.should_roll(
-        session_age_s=200, at_turn_boundary=True, probe_in_progress=True
+        session_age_s=105, at_turn_boundary=True, probe_in_progress=True
+    )
+
+
+def test_a_ladder_does_not_hold_a_session_past_the_models_window(policy):
+    """Measured: sessions lived 246 and 227 seconds, against a model holding about 120,
+    because every specific answer kept the ladder going."""
+    assert policy.should_roll(
+        session_age_s=policy.hard_horizon_s, at_turn_boundary=True, probe_in_progress=True
+    )
+
+
+def test_the_hard_horizon_sits_between_the_soft_one_and_the_real_window(policy):
+    assert policy.context_horizon_s < policy.hard_horizon_s < 120
+
+
+def test_even_the_hard_horizon_waits_for_a_turn_boundary(policy):
+    """Mid-sentence is still the worst moment to swap, however old the session."""
+    assert not policy.should_roll(
+        session_age_s=500, at_turn_boundary=False, probe_in_progress=True
     )
 
 
@@ -199,9 +222,14 @@ def test_a_long_call_rolls_the_session():
 
 
 def test_it_holds_off_until_the_ladder_is_done():
-    """Rolling mid-descent would drop the thread the interview is following."""
+    """Rolling mid-descent would drop the thread the interview is following.
+
+    Past the soft horizon, inside the hard one: the ladder still holds. This used to run
+    at 200 and 210 seconds, in a session already past the model's window, which is where
+    the ladder rule was protecting a thread the model had already lost.
+    """
     iv = consented(Interview())
-    mid = run(iv, (200, 210))          # two rungs in, still descending
+    mid = run(iv, (100, 105))          # two rungs in, still descending
     assert not rollovers(mid)
     assert iv.engine.probe_in_progress
 

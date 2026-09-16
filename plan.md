@@ -195,6 +195,24 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A follow-up ladder no longer keeps a session past the model's window.** The rollover policy
+never rolls while a probe ladder is descending, so the thread is not dropped. But a candidate
+giving long, specific answers keeps the ladder going, and nothing overrode the rule. Measured
+on a mock interview: sessions lived 246 and 227 seconds, against a model that holds about 120.
+The thread the rule was protecting had already fallen out of the model's context, which is
+the failure rollover exists to prevent.
+
+The policy now has a hard horizon (110 s). Past it, it rolls at the next turn boundary even
+mid-ladder. Rolling mid-ladder loses less than it used to: the engine keeps the ladder state,
+and the seed carries the live claim with the answers under it. The same interview now peaks
+at 137 s with 40-second answers and 121 s with 15-second ones. The remaining overshoot is one
+answer long, because a switch waits for the candidate to finish, which is right.
+
+Two existing tests had encoded the bug: both checked that a ladder held a session aged 200
+seconds. They keep their intent at ages inside the window, between the soft and hard
+horizons, where the ladder still holds. On the old policy the runner test failed at 245.8 s;
+the other new tests failed there only because the setting did not exist.
+
 **"I'd rather speak to a person" is answered, and so is "are you a real person?"** Both were
 left to the system prompt, which is a request rather than a requirement, and both were
 treated as ordinary answers mid-interview. Measured: asked "I'd rather speak to a person",

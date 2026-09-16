@@ -45,6 +45,15 @@ class RolloverPolicy:
     #: turn triggers a rollover and the candidate hears nothing but pauses.
     min_session_s: float = 45.0
 
+    #: Past this, roll at the next turn boundary even with a probe ladder mid-descent.
+    #: The ladder rule held sessions for as long as a candidate kept giving specific
+    #: answers: measured, sessions lived 246 and 227 seconds against a model that holds
+    #: about 120, so the thread the rule was protecting had already fallen out of the
+    #: model's context. The engine keeps the ladder and the seed carries the claim and
+    #: the answers under it, so rolling mid-ladder loses less than not rolling. Set below
+    #: the real window because the roll itself waits for both sides to stop talking.
+    hard_horizon_s: float = 110.0
+
     #: Hard cap on one session, imposed by the runtime. Rolling well before it is
     #: reached keeps the cap from ever arriving mid-sentence.
     frame_budget: int = 12_000
@@ -63,6 +72,10 @@ class RolloverPolicy:
             return False
         if session_age_s < self.min_session_s:
             return False
+        if session_age_s >= self.hard_horizon_s:
+            # The model has already lost the start of this session. Holding on for the
+            # ladder protects a thread that is no longer in its context.
+            return True
         if probe_in_progress:
             # Mid-ladder is the worst moment: the thread being followed is exactly what
             # a fresh session would lose. Wait for the ladder to finish.
