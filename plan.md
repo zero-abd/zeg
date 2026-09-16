@@ -195,6 +195,24 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Explanations and structure count, in ordinary phrasing.** The last two dimensions with short
+lists. Of ten ordinary causal explanations, three were recognised: "which caused the double
+settlements", "as a result", "the reason was", "that is why" and "the problem was that" counted
+for nothing, and "led to" and "since" scored technical depth only because those answers happened
+to contain a number. Communication was worse. Its brief is structure and responsiveness, but only
+causal words were ever checked, so none of five structured answers counted: not "first we
+reproduced it, then we added the lock, and finally we backfilled", not "there were two parts to
+it", not "to answer your question directly".
+
+The causal list now covers the ordinary phrasings, and communication also recognises a sequence,
+a count of parts, and a direct answer given first. "Since" is left out on purpose: "since March"
+is about time, and a word that means cause half the time is not evidence of it. A single "then"
+or "the first release" is not structure. On the old judge eleven of the new tests failed; the
+matched-pair and band-spread evals are unchanged.
+
+This finishes the pass through the heuristic judge's word lists. All five dimensions were
+recognising a narrow vocabulary, which scores how a candidate talks rather than what they did.
+
 **Tradeoffs and debugging are recognised in the words people actually use.** The same gap as
 ownership, in the two other dimensions with short word lists. Of ten ordinary answers to the
 engine's own tradeoff probe, three were recognised; the list did not contain the word

@@ -201,7 +201,27 @@ _NUMBER = re.compile(
 def has_number(text: str) -> bool:
     """True when the text states a quantity, in digits or in words."""
     return bool(_NUMBER.search(text))
-_CAUSAL = re.compile(r"\b(because|root cause|turned out|which meant|so that|due to)\b", re.I)
+#: An explanation of why, not only what. Three of ten ordinary causal explanations were
+#: recognised: "which caused the double settlements", "as a result", "the reason was" and
+#: "that is why" all counted for nothing. "since" is deliberately absent: "since March"
+#: is about time, and a word that means cause half the time is not evidence of it.
+_CAUSAL = re.compile(
+    r"\b(because|root cause|turned out|which meant|so that|due to|caused|led to"
+    r"|as a result|the reason (was|is)|that'?s why|that is why|which is why"
+    r"|the problem was that|the issue was that|which made)\b",
+    re.I,
+)
+#: An answer with a shape: a sequence, a count of parts, a direct answer first. The
+#: communication brief is structure and responsiveness, yet only causal words were ever
+#: checked, so "first we reproduced it, then we added the lock, and finally we
+#: backfilled" earned nothing for communication.
+_STRUCTURE = re.compile(
+    r"\bfirst(ly)?\b[^.?!]{0,80}\b(then|second(ly)?|next|after that|finally)\b"
+    r"|\b(two|three|four|a couple of|a few) (parts|steps|stages|reasons|pieces|things)\b"
+    r"|\bstep (one|two|1|2)\b|\bshort version\b|\bin short\b"
+    r"|\bto answer your question\b",
+    re.I,
+)
 # Case-insensitive on purpose. Recognised speech is frequently lowercased, and a
 # capital-I requirement silently loses every ownership claim in such a transcript.
 #: Verbs an engineer uses to say they did the work. The list was ten long and required the
@@ -303,7 +323,7 @@ _SIGNALS: Dict[str, Sequence] = {
     "ownership": (_FIRST_PERSON,),
     "tradeoffs": (_TRADEOFF,),
     "debugging": (_HYPOTHESIS,),
-    "communication": (_CAUSAL,),
+    "communication": (_CAUSAL, _STRUCTURE),
 }
 
 

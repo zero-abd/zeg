@@ -567,6 +567,69 @@ def test_ordinary_work_is_not_debugging(text):
     assert "debugging" not in signals(text), text
 
 
+# --- explanations and structure in the words people actually use ---------------------
+
+CAUSAL = [
+    "because two workers claimed the same batch",
+    "it turned out the lock expired early",
+    "the lock was taken twice, which caused the double settlements",
+    "that led to duplicate payments",
+    "as a result the batch was settled twice",
+    "the reason was a missing unique constraint on the batch id",
+    "that is why the retries charged the card again",
+    "the problem was that the lock expired before the write finished",
+    "which meant the second worker never saw the first one's row",
+]
+NOT_CAUSAL = [
+    "since March we have been on the new cluster",
+    "we moved the ledger to its own database",
+    "the batch job runs at midnight",
+]
+STRUCTURED = [
+    "first we reproduced it, then we added the lock, and finally we backfilled the ledger",
+    "there were two parts to it: the lock, and the backfill",
+    "to answer your question directly, I wrote the lock",
+    "short version: a race. Longer version: two workers claimed one batch",
+    "step one was the repro, step two the fix",
+]
+NOT_STRUCTURED = [
+    "the first release was in May",
+    "I then fixed the retry path",
+    "we shipped it and moved on",
+]
+
+
+@pytest.mark.parametrize("text", CAUSAL, ids=CAUSAL)
+def test_a_causal_explanation_is_recognised_however_it_is_phrased(text):
+    """Three of ten were. The rest explained why and counted for nothing."""
+    from zeg.scoring import signals
+
+    got = signals(text)
+    assert "technical_depth" in got and "communication" in got, (text, got)
+
+
+@pytest.mark.parametrize("text", NOT_CAUSAL, ids=NOT_CAUSAL)
+def test_a_statement_of_what_happened_is_not_an_explanation(text):
+    from zeg.scoring import signals
+
+    assert "communication" not in signals(text), text
+
+
+@pytest.mark.parametrize("text", STRUCTURED, ids=STRUCTURED)
+def test_a_structured_answer_counts_for_communication(text):
+    """The brief is structure and responsiveness, and none of these counted."""
+    from zeg.scoring import signals
+
+    assert "communication" in signals(text), text
+
+
+@pytest.mark.parametrize("text", NOT_STRUCTURED, ids=NOT_STRUCTURED)
+def test_a_single_step_is_not_structure(text):
+    from zeg.scoring import signals
+
+    assert "communication" not in signals(text), text
+
+
 # --- a vague phrase is not a vague answer --------------------------------------------
 
 
