@@ -15,6 +15,7 @@ counted explicitly. A counter that says "41 frames were late" is worth more than
 mean that says everything is fine.
 """
 
+import logging
 import threading
 import time
 from collections import deque
@@ -23,6 +24,8 @@ from typing import Any, Callable, Deque, Optional, Tuple
 
 from . import protocol as p
 from .session import FrameResult
+
+log = logging.getLogger("zeg.runtime")
 
 #: Work items waiting for the model. At 80 ms a frame, 64 is five seconds of
 #: backlog, which is already a failed call — the bound exists so the failure is
@@ -88,9 +91,15 @@ class FrameLoop:
         budget_ms: float = float(p.FRAME_MS),
         max_queue: int = MAX_QUEUE,
         clock: Callable[[], float] = time.monotonic,
+        on_error: Optional[Callable[[BaseException], None]] = None,
     ) -> None:
         self.model = model
         self.on_frame = on_frame
+        #: Called on the loop's own thread when it stops on an exception. Without it a
+        #: death is only noticed by whoever next looks at `error`, and a model that
+        #: raised on a commit or a fixed line produces no further frames to prompt that
+        #: look: the client was told nothing and waited out its own watchdog.
+        self.on_error = on_error
         self.budget_ms = budget_ms
         self.max_queue = max_queue
         self.clock = clock
@@ -215,6 +224,11 @@ class FrameLoop:
                 # internal state and the next frame would be built on it.
                 self.error = exc
                 self._running = False
+                if self.on_error is not None:
+                    try:
+                        self.on_error(exc)
+                    except BaseException:  # noqa: B902 - reporting must not mask the cause
+                        log.exception("on_error failed while reporting %r", exc)
                 return
 
     def stop(self) -> None:

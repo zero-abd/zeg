@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A model that dies on a commit or a fixed line tells the client.** The server noticed a
+dead frame loop only where it drains frame results, so a failure was seen only if another
+frame arrived after it. A model that raises on a commit, a steer or a fixed line produces no
+frames at all. Measured with a model whose synthesis raises: the client received the
+handshake and then nothing, for as long as the test was willing to wait. On the box the
+candidate hears silence until the client's own watchdog fires four seconds later and
+reports the runtime as having gone quiet, which is the wrong diagnosis; a slower variant
+fills the queue and reports the model as being behind, which is also wrong.
+
+The frame loop now takes an `on_error` callback, called on its own thread when it stops on
+an exception, and the server wires it to wake the consumer, which already knows how to close
+the session as `model_error`. The session is closed with status `failed` and that reason, so
+the client and the transcript say what actually happened.
+
+On the old runtime the server test failed for the right reason: the client was told nothing.
+The loop test failed there only because the parameter did not exist yet, so it proves less.
+
 **The runtime keeps its weights between sessions.** The server closed the model when a
 connection ended. `close` releases the weights, `load` is documented as once per process,
 and nothing reloads, so every session after the first got an unloaded model. On a long call

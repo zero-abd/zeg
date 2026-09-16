@@ -137,7 +137,14 @@ class RuntimeServer:
             results.append(result)
             aio.call_soon_threadsafe(wake.set)
 
-        loop = FrameLoop(self.model, on_frame)
+        def on_error(exc: BaseException) -> None:
+            # Model thread. Wake the consumer so it reports the failure; it is the only
+            # place that touches the session. A model that raised on a commit or a fixed
+            # line produces no frames, so without this nobody looked at loop.error and
+            # the client sat in silence until its own watchdog fired.
+            aio.call_soon_threadsafe(wake.set)
+
+        loop = FrameLoop(self.model, on_frame, on_error=on_error)
         loop.start()
         consumer = None
         try:

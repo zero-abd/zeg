@@ -35,6 +35,32 @@ def collector():
 # --- the loop ----------------------------------------------------------------
 
 
+def test_the_loop_reports_its_own_death_to_whoever_is_waiting():
+    """A model that raises on a commit or a fixed line produces no frame, so nothing
+    prompts anyone to look at `error`: the client was told nothing and sat in silence
+    until its own watchdog fired. This waits on an event, not on a clock."""
+    import threading
+
+    from zeg.runtime.session import FrameResult
+
+    class Wedged:
+        def step(self, pcm):
+            return FrameResult()
+
+        def commit_turn(self):
+            raise RuntimeError("the device fell over")
+
+    told = threading.Event()
+    loop = FrameLoop(Wedged(), lambda result: None, on_error=lambda exc: told.set())
+    loop.start()
+    try:
+        loop.commit_turn()
+        assert told.wait(2.0), "the loop died without telling anyone"
+        assert isinstance(loop.error, RuntimeError)
+    finally:
+        loop.stop()
+
+
 def test_a_frame_produces_one_result():
     frames, sink = collector()
     loop = FrameLoop(SilenceModel(), sink)

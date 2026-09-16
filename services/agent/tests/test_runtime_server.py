@@ -134,6 +134,30 @@ def test_a_second_session_still_gets_a_working_model():
     assert not [m for m in ws.sent if m["type"] == p.ERROR]
 
 
+def test_a_model_that_fails_on_a_fixed_line_tells_the_client():
+    """No audio is in flight, so no frame result arrives, and the failure was only ever
+    noticed by whoever next looked at the loop. The client was told nothing: it sat in
+    silence until its own watchdog fired, and reported the runtime as having gone quiet
+    rather than the model as having failed."""
+
+    class WedgedSynthesis(StubModel):
+        def speak_text(self, text):
+            raise RuntimeError("synthesis is wedged")
+
+    model = WedgedSynthesis()
+    server = a_server(model)
+    wire = p.Wire("client")
+    ws = FakeWS([p.dumps(wire.configure("be brief")),
+                 p.dumps(wire.say("Is that okay with you?"))])
+    ws._until = lambda: any(m["type"] == p.CLOSED for m in ws.sent)
+    serve(server, ws)
+
+    closed = [m for m in ws.sent if m["type"] == p.CLOSED]
+    assert closed, "the client was never told the model had failed"
+    assert closed[0]["status"] == "failed"
+    assert closed[0]["reason"] == "model_error"
+
+
 def test_closing_the_server_releases_the_model():
     model = StubModel()
     server = a_server(model)
