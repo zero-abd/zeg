@@ -443,6 +443,59 @@ def test_a_long_quote_with_no_marker_keeps_both_ends():
     assert piece.startswith("we spent") and piece.endswith("shipped in May")
 
 
+# --- ownership in the words people actually use -------------------------------------
+
+OWNED = [
+    "I wrote the advisory lock fix",
+    "I personally rewrote the reconciler",
+    "I actually built the repro harness",
+    "I then fixed the retry path",
+    "I myself debugged it over two nights",
+    "I implemented the advisory lock",
+    "I added the idempotency key",
+    "I refactored the settlement worker",
+    "I migrated the queue to the new cluster",
+    "I was the one who wrote the fix",
+    "I owned the rollout end to end",
+    "I drove the migration",
+    "I was responsible for the rollout",
+]
+
+NOT_OWNED = [
+    "we wrote the advisory lock fix",
+    "the team implemented it and I watched",
+    "I think the platform team built it",
+    "someone on my team refactored the worker",
+    "I basically was around when they shipped it",
+]
+
+
+@pytest.mark.parametrize("text", OWNED, ids=OWNED)
+def test_a_first_person_claim_is_ownership_however_it_is_phrased(text):
+    """The engine asks what they personally did. "I personally rewrote it" scored no
+    ownership at all; ten of these twelve went unrecognised."""
+    from zeg.scoring import signals
+
+    assert "ownership" in signals(text), text
+
+
+@pytest.mark.parametrize("text", NOT_OWNED, ids=NOT_OWNED)
+def test_the_team_doing_it_is_not_ownership(text):
+    from zeg.scoring import signals
+
+    assert "ownership" not in signals(text), text
+
+
+def test_the_same_claim_in_other_words_scores_the_same():
+    """Scoring the verb a candidate picked is scoring vocabulary, not ownership."""
+    def ownership_of(answer):
+        call = [T(0, "agent", "What did you personally do?"), T(5, "caller", answer)]
+        return next(d for d in score_call(call).dimensions if d.dimension == "ownership").score
+
+    assert ownership_of("I wrote the advisory lock fix.") == \
+        ownership_of("I personally implemented the advisory lock fix.")
+
+
 # --- a vague phrase is not a vague answer --------------------------------------------
 
 

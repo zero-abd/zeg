@@ -204,8 +204,26 @@ def has_number(text: str) -> bool:
 _CAUSAL = re.compile(r"\b(because|root cause|turned out|which meant|so that|due to)\b", re.I)
 # Case-insensitive on purpose. Recognised speech is frequently lowercased, and a
 # capital-I requirement silently loses every ownership claim in such a transcript.
+#: Verbs an engineer uses to say they did the work. The list was ten long and required the
+#: verb to follow "I" directly, so of twelve first-person claims only two counted, and the
+#: natural answer to the engine's own probe — "I personally rewrote the reconciler" —
+#: counted as no ownership at all. Two candidates claiming the same work in different
+#: words scored differently, which is scoring vocabulary, not ownership.
+_OWNERSHIP_VERBS = (
+    r"wrote|rewrote|built|rebuilt|fixed|shipped|found|debugged|designed|redesigned|owned"
+    r"|led|implemented|added|refactored|migrated|drove|introduced|proposed|profiled"
+    r"|diagnosed|traced|reproduced|set up|architected|deployed|rolled out|created"
+    r"|developed|authored|replaced|removed|optimi[sz]ed|tuned|benchmarked|instrumented"
+    r"|automated|investigated|wired up|patched|ran"
+)
+#: Words that sit between "I" and the verb without changing who did it. "basically" is
+#: deliberately absent: it is on the vagueness list and should not open a door here.
+_BETWEEN = r"personally|actually|myself|then|also|just|eventually|finally|really|first|later|mostly"
 _FIRST_PERSON = re.compile(
-    r"\bi\s+(wrote|built|fixed|shipped|found|debugged|designed|owned|led|rewrote)\b", re.I
+    r"\bi\s+(?:(?:" + _BETWEEN + r")\s+){0,2}(?:" + _OWNERSHIP_VERBS + r")\b"
+    r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
+    r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on)\b",
+    re.I,
 )
 _TRADEOFF = re.compile(r"\b(gave up|traded|cost us|at the expense|downside|slower|doubled)\b", re.I)
 _HYPOTHESIS = re.compile(r"\b(hypothes\w+|suspected|reproduced|repro|bisect|narrowed)\b", re.I)

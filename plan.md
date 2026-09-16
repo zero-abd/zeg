@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Ownership is recognised in the words people actually use.** The heuristic judge counted
+ownership only when "I" was immediately followed by one of ten verbs. Of twelve first-person
+claims of ownership, it recognised two. "I personally rewrote the reconciler", which is the
+natural answer to the engine's own probe for what the candidate personally did, counted as no
+ownership at all, and so did "I implemented", "I added", "I refactored", "I migrated", "I then
+fixed" and "I was the one who wrote". Two candidates claiming the same work in different words
+scored differently: that is scoring vocabulary, not ownership, and it is exactly what the
+matched-pair evals are meant to rule out.
+
+The judge now allows up to two ordinary words between "I" and the verb ("personally",
+"actually", "then"), knows the verbs engineers use, and recognises "I was the one who" and "I
+was responsible for". "Basically" is deliberately not allowed in between, since it is on the
+vagueness list. The negative cases stay negative: "we wrote it", "the team implemented it and I
+watched", "I think the platform team built it". On the old judge twelve of the new tests failed;
+the matched-pair bias evals are unchanged.
+
 **A follow-up ladder no longer keeps a session past the model's window.** The rollover policy
 never rolls while a probe ladder is descending, so the thread is not dropped. But a candidate
 giving long, specific answers keeps the ladder going, and nothing overrode the rule. Measured
