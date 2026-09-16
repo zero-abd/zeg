@@ -128,6 +128,17 @@ class SpeechModel:
         """
         raise NotImplementedError
 
+    def reset(self) -> None:
+        """Drop the conversation, keep the weights. Called between sessions.
+
+        The backbone holds recurrent state and `prefill` does not replay it from
+        scratch, so without this a second caller would be talking into the first
+        caller's conversation. The server used to `close` the model instead, which
+        released the weights it is meant to keep: every session after the first, and
+        so every rollover, found a model that had been unloaded.
+        """
+        raise NotImplementedError
+
     def load(self) -> None:
         """Bring the weights up. Minutes. Called once, at process start."""
 
@@ -200,6 +211,17 @@ class CudaSpeechModel(SpeechModel):
         # SEAM 3: codec tokens to 80 ms of PCM16 at 22.05 kHz, on the pinned CPU
         # worker. Wrapped by PipelinedDecoder so its cost hides under the next step.
         raise ModelUnavailable("codec decode is not wired up yet")
+
+    def reset(self) -> None:
+        if not self._loaded:
+            raise ModelUnavailable("reset before load")
+        self._reset_state()
+
+    def _reset_state(self) -> None:
+        # SEAM 6: clear the backbone's recurrent state so the next session starts
+        # clean, without dropping the weights. Checkpoint-specific, like the seams
+        # above, and the last thing between one loaded model and many sessions.
+        raise ModelUnavailable("conversation reset is not wired up yet")
 
     def close(self) -> None:
         self._model = None
@@ -300,6 +322,14 @@ class SilenceModel(SpeechModel):
         self._remaining = max(self.reply_frames, 2)
 
     def cancel_response(self, reason: str) -> None:
+        self._remaining = 0
+        self._opened = False
+
+    def reset(self) -> None:
+        """Forget the conversation. The stand-in has no weights to keep, but it has
+        the same state a real model would carry across a session boundary."""
+        self.context = []
+        self._say_text = None
         self._remaining = 0
         self._opened = False
 

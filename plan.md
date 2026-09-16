@@ -195,6 +195,26 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The runtime keeps its weights between sessions.** The server closed the model when a
+connection ended. `close` releases the weights, `load` is documented as once per process,
+and nothing reloads, so every session after the first got an unloaded model. On a long call
+the second session is not an edge case: it is the first rollover, which is the whole memory
+layer. The loopback tests never caught it because they wire a client session straight to a
+server session and never go through the connection handler.
+
+Closing was standing in for something real: `prefill` does not replay the backbone's
+recurrent state, so without a reset the next caller would be talking into the previous
+caller's conversation. The model interface now says that outright with `reset()`, "drop the
+conversation, keep the weights". The stand-in implements it; on the real model it is SEAM 6,
+unwired like the others, because clearing recurrent state is checkpoint-specific and cannot
+be written blind. The server resets between connections, releases the model only when the
+process stops (`RuntimeServer.close`), and if a reset ever fails it releases the model and
+refuses further connections rather than hand the next candidate a model mid-conversation.
+
+A new test file covers the connection lifecycle with a fake socket and a stub model. On the
+old runtime all four failed, including the one that matters: the second connection never
+stepped the model, because the weights had been released.
+
 **A rollover waits for the agent to stop talking too, and its seed is built at that
 moment.** The rollover already waited for the candidate's turn to close. It did not wait
 for the agent. The runtime releases a turn's final transcript as the model opens its reply,

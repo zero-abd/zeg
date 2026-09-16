@@ -90,7 +90,16 @@ class RuntimeServer:
 
     def run(self) -> None:
         self.load()
-        asyncio.get_event_loop().run_until_complete(self._serve())
+        try:
+            asyncio.get_event_loop().run_until_complete(self._serve())
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        """Release the model. The process is done serving, not just this session."""
+        if self.model is not None:
+            self.model.close()
+            self.model = None
 
     async def _serve(self) -> None:
         websockets = _websockets()
@@ -109,6 +118,10 @@ class RuntimeServer:
         if self._busy:
             log.warning("refusing a second connection; one conversation at a time")
             await ws.close(code=p.CLOSE_BUSY, reason="a conversation is already in progress")
+            return
+        if self.model is None:
+            log.error("refusing the connection; there is no usable model")
+            await ws.close(code=p.CLOSE_BUSY, reason="the model is not available")
             return
         self._busy = True
         self._sessions += 1
@@ -135,10 +148,31 @@ class RuntimeServer:
             if consumer is not None:
                 consumer.cancel()
             loop.stop()
-            if self.model is not None:
-                self.model.close()
+            self._between_sessions()
             self._busy = False
             log.info("session over: %s", loop.metrics.summary())
+
+    def _between_sessions(self) -> None:
+        """Clear the conversation, keep the weights.
+
+        This used to close the model, which releases the weights, and nothing reloads
+        them: every session after the first found a model that had been unloaded. On a
+        long call the second session is not an edge case, it is the first rollover.
+
+        A reset that fails leaves the model's state unknown, and the next candidate
+        would be talking into the previous conversation. The process stops serving
+        instead, and says so.
+        """
+        if self.model is None:
+            return
+        try:
+            self.model.reset()
+        except Exception:  # noqa: B902 - whatever the model raises, we stop serving
+            log.exception("model reset failed; refusing further sessions")
+            try:
+                self.model.close()
+            finally:
+                self.model = None
 
     async def _ingest(self, ws: Any, session: ServerSession, loop: FrameLoop) -> None:
         """Read client messages, answer them, and hand work to the loop."""
