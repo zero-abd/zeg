@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A judge's verdict survives other braces in its reply.** The parser took everything from the
+first `{` to the last `}` and parsed that. Any other brace in the reply widened the span, so a
+good verdict followed by a note such as "(I ignored the {placeholder} in the brief.)" was thrown
+away as unreadable, and so was the same verdict given twice. The parser now decodes every
+complete JSON object in the reply and keeps the ones that are verdicts.
+
+Where the reply holds two different verdicts, it refuses. Taking the first or the last would be
+guessing which one the model meant, and the parser's own rule is that a guess becomes a number in
+a hiring report. The old parser also rejected that case, but only by accident, because the span
+across both objects was not valid JSON; now it is a stated rule with its own test. On the old code
+two of the four new tests failed; the other two, braces inside a quote and conflicting verdicts,
+passed there as well.
+
 **The judge's prompt asks for what its guard accepts.** Two mismatches between the model judge's
 prompt and the check on its quotes. The prompt asked for "a verbatim span from the transcript",
 and the transcript it is shown includes the interviewer's lines, but the guard has only accepted

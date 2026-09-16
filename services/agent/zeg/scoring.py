@@ -622,15 +622,28 @@ def parse_verdict(raw: str):
 
     if not isinstance(raw, str):
         return None
-    start, end = raw.find("{"), raw.rfind("}")
-    if start < 0 or end <= start:
+    # Every complete JSON object in the reply, not the span from the first brace to the
+    # last. That span swallowed any other brace in the reply, so a verdict followed by a
+    # note mentioning "{placeholder}" was thrown away as unreadable.
+    decoder = json.JSONDecoder()
+    verdicts = []
+    at = raw.find("{")
+    while at != -1:
+        try:
+            obj, end = decoder.raw_decode(raw, at)
+        except ValueError:
+            at = raw.find("{", at + 1)
+            continue
+        if isinstance(obj, dict) and "score" in obj:
+            verdicts.append(obj)
+        at = raw.find("{", end)
+    if not verdicts:
         return None
-    try:
-        data = json.loads(raw[start : end + 1])
-    except (ValueError, TypeError):
+    # Two different verdicts is not a verdict. Picking the first or the last would be
+    # guessing which one the model meant, and a guess here becomes a number in a report.
+    if len({json.dumps(v, sort_keys=True) for v in verdicts}) > 1:
         return None
-    if not isinstance(data, dict):
-        return None
+    data = verdicts[0]
 
     score = data.get("score")
     if score is not None:

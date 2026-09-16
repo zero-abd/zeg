@@ -67,6 +67,31 @@ def test_unreadable_or_out_of_range_output_is_rejected(raw):
     assert parse_verdict(raw) is None
 
 
+def test_a_verdict_followed_by_a_note_with_braces_still_parses():
+    """The parser took everything from the first brace to the last, so any other brace
+    in the reply made a good verdict unreadable."""
+    raw = ('{"score": 3, "quote": "I wrote the fix", "reason": "ok"}\n\n'
+           "(I ignored the {placeholder} in the brief.)")
+    assert parse_verdict(raw) == (3, "I wrote the fix", "ok")
+
+
+def test_a_quote_containing_braces_still_parses():
+    raw = '{"score": 3, "quote": "we used a map of {batch: lock}", "reason": "ok"}'
+    assert parse_verdict(raw)[1] == "we used a map of {batch: lock}"
+
+
+def test_two_different_verdicts_are_not_a_verdict():
+    """Taking the first or the last would be guessing which one the model meant."""
+    raw = ('Draft: {"score": 2, "quote": "x", "reason": "a"}\n'
+           'Final: {"score": 3, "quote": "x", "reason": "b"}')
+    assert parse_verdict(raw) is None
+
+
+def test_the_same_verdict_given_twice_is_one_verdict():
+    one = '{"score": 3, "quote": "I wrote the fix", "reason": "ok"}'
+    assert parse_verdict("%s\nTo repeat: %s" % (one, one)) == (3, "I wrote the fix", "ok")
+
+
 def test_a_non_string_reply_is_rejected():
     assert parse_verdict(None) is None
 
