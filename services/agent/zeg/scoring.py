@@ -289,8 +289,12 @@ _VAGUE = re.compile(r"\b(basically|stuff|things|various|pretty much|a lot of)\b"
 #: Verbal filler. Not vagueness, and not weakness. It correlates with nervousness and
 #: with speaking a second language, so anything that reads it as a lack of substance is
 #: scoring the candidate's delivery. Stripped before any judgement is made.
+#: The comma before a filler word goes with it. Removing only "um," left "I, um,
+#: reproduced it" as "I, reproduced it", and the stray comma between the pronoun and the
+#: verb broke ownership: the same answer with filler scored ownership 3 against 4 without.
+#: The matched-pair eval compared only the overall score and missed it.
 _FILLER = re.compile(
-    r"\b(u+m+|u+h+|e+r+m*|a+h+|you know|i mean|kind of|sort of)\b[,.]?\s*", re.I
+    r",?\s*\b(u+m+|u+h+|e+r+m*|a+h+|you know|i mean|kind of|sort of)\b[,.]?\s*", re.I
 )
 
 

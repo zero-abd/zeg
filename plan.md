@@ -195,6 +195,26 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The bias eval compares every dimension, and it found filler costing a candidate ownership.**
+The matched-pair eval, which says the same substance twice with only the delivery changed,
+counted a pair clean when the overall score and band matched. It never compared the dimension
+scores, which are what the report shows. Run dimension by dimension, the verbal-filler pair was
+not clean: ownership was 4 in the plain half and 3 in the half with "um" and "you know", while
+the overall rounded to 8 on both, and the suite reported "no measurable difference".
+
+The cause was the filler stripper. It removed "um," but left the comma before it, so "I, um,
+reproduced it" became "I, reproduced it", and the comma between the pronoun and the verb broke
+ownership. Filler correlates with nervousness and with speaking a second language, which is
+exactly what this eval exists to protect. The stripper now takes the preceding comma with the
+filler, and a pair is clean only if every dimension matches; the report names any dimension
+that moved. With the new eval and the old stripper, the three existing bias tests fail with
+"ownership moved: 4 vs 3". With both changes all pass.
+
+A correction to earlier entries: several recent scoring changes cited "the matched-pair evals
+are unchanged" as evidence. That was true, but it was weaker evidence than it sounded, because
+the eval could not see a dimension moving. The next thing is a vocabulary pair, the same facts
+in different ordinary verbs, so the word-list fixes above are guarded by the eval too.
+
 **The real client refuses audio frames of the wrong length, instead of mistiming every turn.**
 It checked each frame's sample rate but not its length, and every caller-side timing counts
 frames and assumes each is 20 ms: the endpoint, the barge-in threshold, the watchdog, and the

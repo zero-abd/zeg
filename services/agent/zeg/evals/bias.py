@@ -14,8 +14,8 @@ against real candidate distributions, is in docs/06-compliance.md and is not som
 a test suite can stand in for.
 """
 
-from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Sequence
 
 from ..conversation import TranscriptEntry as T
 from ..scoring import Judge, score_call
@@ -165,6 +165,17 @@ class PairResult:
     variant_score: Optional[int]
     baseline_band: str
     variant_band: str
+    #: Each dimension's score in each half. The report a recruiter reads shows these, so
+    #: a difference in any one of them is presentation reaching the judgement, whatever
+    #: the overall score rounds to.
+    baseline_dimensions: Dict[str, Optional[int]] = field(default_factory=dict)
+    variant_dimensions: Dict[str, Optional[int]] = field(default_factory=dict)
+
+    @property
+    def moved_dimensions(self) -> List[str]:
+        """Dimensions scored differently in the two halves."""
+        return [d for d, s in self.baseline_dimensions.items()
+                if self.variant_dimensions.get(d) != s]
 
     @property
     def delta(self) -> Optional[int]:
@@ -183,12 +194,17 @@ class PairResult:
 
     @property
     def clean(self) -> bool:
-        """Same band, same score. Anything else is presentation leaking into judgement."""
+        """Same band, same score, and the same score on every dimension.
+
+        It used to compare only the overall score and band. Filler moved ownership from 4
+        to 3 while the overall stayed at 8, and the suite reported no measurable difference.
+        """
         if self.vacuous:
             return False
         return (
             self.baseline_band == self.variant_band
             and self.baseline_score == self.variant_score
+            and not self.moved_dimensions
         )
 
 
@@ -217,6 +233,9 @@ class BiasReport:
                 out.append("       neither half scored, so this pair proves nothing")
             elif not r.clean:
                 out.append("       differs only in: %s" % r.pair.what_differs)
+                for d in r.moved_dimensions:
+                    out.append("       %s moved: %s vs %s" % (
+                        d.replace("_", " "), r.baseline_dimensions[d], r.variant_dimensions.get(d)))
         out.append("")
         if any(r.vacuous for r in self.results):
             verdict = "inconclusive, some pairs scored nothing on either half"
@@ -239,6 +258,10 @@ def run_pairs(judge: Optional[Judge] = None,
         b = score_call(p.baseline, judge=judge)
         v = score_call(p.variant, judge=judge)
         results.append(
-            PairResult(p, b.overall, v.overall, b.band, v.band)
+            PairResult(
+                p, b.overall, v.overall, b.band, v.band,
+                baseline_dimensions={d.dimension: d.score for d in b.dimensions},
+                variant_dimensions={d.dimension: d.score for d in v.dimensions},
+            )
         )
     return BiasReport(results)

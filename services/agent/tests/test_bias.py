@@ -49,7 +49,9 @@ def test_each_pair_is_individually_clean(name):
 
 @pytest.mark.parametrize("text,expected", [
     ("um I wrote the fix", "I wrote the fix"),
-    ("I wrote it, you know, myself", "I wrote it, myself"),
+    # The comma before the filler goes with it. It used to stay: "I wrote it, myself".
+    ("I wrote it, you know, myself", "I wrote it myself"),
+    ("I, um, reproduced it", "I reproduced it"),
     ("uh, the root cause was a lock", "the root cause was a lock"),
     ("I mean we doubled throughput", "we doubled throughput"),
 ])
@@ -86,6 +88,29 @@ def test_every_baseline_actually_scores():
     """If a baseline cannot score, its pair measures nothing."""
     for r in run_pairs().results:
         assert r.baseline_score is not None, r.pair.name
+
+
+def test_filler_between_the_pronoun_and_the_verb_keeps_ownership():
+    """"I, um, reproduced it" stripped to "I, reproduced it", and the stray comma broke
+    ownership: filler scored ownership 3 against 4 on identical facts."""
+    from zeg.scoring import signals
+
+    assert "ownership" in signals("I, um, reproduced it by failing the dependency")
+
+
+def test_a_dimension_that_moved_makes_a_pair_unclean_even_when_the_overall_matches():
+    """The overall rounded to 8 on both halves while ownership was 4 against 3, and the
+    suite reported no measurable difference."""
+    dims = {"technical_depth": 4, "ownership": 4, "tradeoffs": 3, "debugging": 4,
+            "communication": 3}
+    moved = dict(dims, ownership=3)
+    r = PairResult(PAIRS[0], 8, 8, "advance", "advance",
+                   baseline_dimensions=dims, variant_dimensions=moved)
+    assert not r.clean
+    assert r.moved_dimensions == ["ownership"]
+    text = BiasReport([r]).render()
+    assert "BIAS" in text
+    assert "ownership moved: 4 vs 3" in text
 
 
 def test_a_difference_is_reported_with_what_differed():
