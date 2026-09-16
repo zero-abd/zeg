@@ -302,6 +302,19 @@ def test_a_commit_never_splits_a_model_frame(audio):
         assert len(p.decode_input_audio(msg)) == p.INPUT_FRAME_BYTES
 
 
+@pytest.mark.parametrize("frame_ms", [10, 40])
+def test_a_frame_of_the_wrong_length_is_refused(audio, frame_ms):
+    """Every caller-side timing counts frames. With 10 ms frames a turn ended after
+    320 ms of silence against a 640 ms endpoint, and nothing said anything was wrong."""
+    link = FakeLink()
+    sess = session(link, audio)
+    n = audio.input_sample_rate * frame_ms // 1000
+    with pytest.raises(ValueError) as refused:
+        sess.push_audio(AudioFrame.silence(audio.input_sample_rate, n))
+    assert "expected %d samples" % audio.input_frame_samples in str(refused.value)
+    assert "got %d" % n in str(refused.value)
+
+
 def test_a_frame_at_the_wrong_rate_is_refused(audio):
     # Resampling belongs in the media path, with a real anti-alias filter.
     link = FakeLink()

@@ -316,6 +316,16 @@ class GB10Session(VoiceSession):
                 "expected %d Hz, got %d Hz. Resample in the media gateway."
                 % (self._audio.input_sample_rate, frame.sample_rate)
             )
+        if frame.n_samples != self._audio.input_frame_samples:
+            # Every timing on the caller side counts frames and assumes each is one
+            # configured frame long: the endpoint, the barge-in threshold, the watchdog,
+            # and the pacing of the agent's own audio. Measured with 10 ms frames, a turn
+            # ended after 320 ms of silence against a 640 ms endpoint; with 40 ms frames,
+            # after 1280 ms. Refused here so a mismatch is an error, not a quiet halving.
+            raise ValueError(
+                "expected %d samples (%d ms), got %d. Re-frame in the media gateway."
+                % (self._audio.input_frame_samples, self._audio.frame_ms, frame.n_samples)
+            )
 
         self._absorb()
         self._transport_frames += 1

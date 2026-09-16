@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The real client refuses audio frames of the wrong length, instead of mistiming every turn.**
+It checked each frame's sample rate but not its length, and every caller-side timing counts
+frames and assumes each is 20 ms: the endpoint, the barge-in threshold, the watchdog, and the
+pacing of the agent's own audio, played out one frame per caller frame. Measured against a
+640 ms endpoint: with 10 ms frames a turn ended after 320 ms of silence, shorter than a breath;
+with 40 ms frames, after 1280 ms. Nothing reported a problem. A frame that is not the configured
+length is now refused with a message naming what was expected, the same way a wrong sample rate
+already was.
+
+Measuring time from each frame's real length instead would also have to change playback pacing,
+which is a larger change than the problem warrants while the contract is 20 ms. The gateway's
+framer already cuts audio to the shared 20 ms constant, so this matches what integration sends,
+and any future drift becomes an immediate error rather than halved timings. On the old client
+both new tests failed.
+
 **A DC offset on the line no longer reads as someone talking.** Every turn start, turn end and
 barge-in decision rests on one loudness measure, `rms`, and it squared the raw samples, so a
 constant bias counted as sound. Capture paths often carry one: the signal sits slightly off zero
