@@ -195,6 +195,25 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Tradeoffs and debugging are recognised in the words people actually use.** The same gap as
+ownership, in the two other dimensions with short word lists. Of ten ordinary answers to the
+engine's own tradeoff probe, three were recognised; the list did not contain the word
+"tradeoff", so "the tradeoff was extra operational complexity" counted as nothing, and nor did
+"we sacrificed strict ordering", "we chose consistency over availability" or "in exchange we lost
+parallel batches". Of ten debugging answers, four were: "I ruled out the network", "I isolated it
+to the settlement worker", "I added logging and found two workers taking the same batch" and "I
+traced one request through all three services" all counted for nothing.
+
+Both lists now cover the ordinary phrasings, anchored so that "I accepted the offer", "we chose
+Postgres", "the profile page" and "I added a feature flag" stay what they are. One phrasing was
+left out on purpose: "it made deploys riskier but the fix was worth it" names a cost only by
+implication, and rewarding "worth it" would reward a phrase rather than a cost. On the old judge
+twelve of the new tests failed.
+
+The report-excerpt test changed its expected quote for debugging: the window sits on the first
+marker the judge matches, and "could reproduce it in staging" is now one, ahead of "I suspected
+the retry path". The quote still shows debugging evidence, just the earlier of two.
+
 **Ownership is recognised in the words people actually use.** The heuristic judge counted
 ownership only when "I" was immediately followed by one of ten verbs. Of twelve first-person
 claims of ownership, it recognised two. "I personally rewrote the reconciler", which is the

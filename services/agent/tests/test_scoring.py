@@ -396,7 +396,9 @@ LONG_ANSWERS = {
                   "gave up some write throughput"),
     "debugging": ("at first nobody could reproduce it in staging, so I suspected the retry "
                   "path and narrowed it to two workers claiming the same batch",
-                  "I suspected the retry path"),
+                  # The window sits on the first marker the judge matched, which since
+                  # reproducing counts as debugging is "could reproduce it".
+                  "could reproduce it in staging"),
 }
 
 
@@ -494,6 +496,75 @@ def test_the_same_claim_in_other_words_scores_the_same():
 
     assert ownership_of("I wrote the advisory lock fix.") == \
         ownership_of("I personally implemented the advisory lock fix.")
+
+
+# --- tradeoffs and debugging in the words people actually use ------------------------
+
+TRADEOFFS = [
+    "we gave up some write throughput",
+    "the tradeoff was extra operational complexity",
+    "the trade-off was more memory per worker",
+    "we accepted higher tail latency to get exactly-once settlement",
+    "we sacrificed strict ordering across shards",
+    "we chose consistency over availability",
+    "it cost us about fifteen percent throughput",
+    "in exchange we lost the ability to run batches in parallel",
+    "the downside is that reads are slower",
+]
+NOT_TRADEOFFS = [
+    "I accepted the offer in March",
+    "we chose Postgres for the ledger",
+    "we lost a day to the outage",
+    "it was the right call",
+]
+DEBUGGING = [
+    "I suspected the retry path",
+    "I reproduced it locally",
+    "my hypothesis was a lock ordering problem",
+    "I added logging and found two workers taking the same batch",
+    "I ruled out the network first",
+    "I isolated it to the settlement worker",
+    "I looked at the flame graph and saw the lock contention",
+    "I traced one request through all three services",
+    "my guess was clock skew, so I checked the timestamps",
+    "I narrowed it down to one commit",
+]
+NOT_DEBUGGING = [
+    "I added a feature flag for the rollout",
+    "the profile page loads slowly",
+    "I guess we shipped it in May",
+    "I checked in with the team every morning",
+]
+
+
+@pytest.mark.parametrize("text", TRADEOFFS, ids=TRADEOFFS)
+def test_a_tradeoff_is_recognised_however_it_is_phrased(text):
+    """Three of ten were. The list did not contain the word "tradeoff"."""
+    from zeg.scoring import signals
+
+    assert "tradeoffs" in signals(text), text
+
+
+@pytest.mark.parametrize("text", NOT_TRADEOFFS, ids=NOT_TRADEOFFS)
+def test_a_choice_or_a_loss_alone_is_not_a_tradeoff(text):
+    from zeg.scoring import signals
+
+    assert "tradeoffs" not in signals(text), text
+
+
+@pytest.mark.parametrize("text", DEBUGGING, ids=DEBUGGING)
+def test_debugging_is_recognised_however_it_is_phrased(text):
+    """Four of ten were: ruling something out or isolating it counted for nothing."""
+    from zeg.scoring import signals
+
+    assert "debugging" in signals(text), text
+
+
+@pytest.mark.parametrize("text", NOT_DEBUGGING, ids=NOT_DEBUGGING)
+def test_ordinary_work_is_not_debugging(text):
+    from zeg.scoring import signals
+
+    assert "debugging" not in signals(text), text
 
 
 # --- a vague phrase is not a vague answer --------------------------------------------

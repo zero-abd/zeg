@@ -225,8 +225,29 @@ _FIRST_PERSON = re.compile(
     r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on)\b",
     re.I,
 )
-_TRADEOFF = re.compile(r"\b(gave up|traded|cost us|at the expense|downside|slower|doubled)\b", re.I)
-_HYPOTHESIS = re.compile(r"\b(hypothes\w+|suspected|reproduced|repro|bisect|narrowed)\b", re.I)
+#: A cost named alongside what was gained. The list did not contain the word "tradeoff",
+#: so "the tradeoff was extra operational complexity" counted as nothing, and of ten
+#: ordinary answers to the engine's own tradeoff probe three were recognised. Anchored,
+#: so "I accepted the offer" and "we chose Postgres" stay what they are.
+_TRADEOFF = re.compile(
+    r"\b(gave up|traded|trade-?offs?|cost us|at the (expense|cost) of|downside|slower"
+    r"|doubled|sacrific\w+|in exchange|compromise)\b"
+    r"|\baccepted\s+(higher|more|less|lower|some|a bit of|extra|worse)\b"
+    r"|\bchose\s+\w+(\s+\w+)?\s+over\b",
+    re.I,
+)
+#: Forming and testing a hypothesis. Four of ten ordinary debugging answers were
+#: recognised: "I ruled out the network", "I isolated it to the worker" and "I added
+#: logging and found..." counted for nothing. "profile" alone is not profiling, and
+#: adding a feature is not adding instrumentation.
+_HYPOTHESIS = re.compile(
+    r"\b(hypothes\w+|suspected|reproduc\w+|repro|bisect\w*|narrowed|ruled out"
+    r"|isolated|profil(ed|ing|er)|flame ?graphs?|traced)\b"
+    r"|\b(my|our|first)\s+(guess|theory|suspicion)\b"
+    r"|\badded\s+(some\s+)?(logging|logs|tracing|metrics|instrumentation)\b"
+    r"|\bchecked\s+the\s+(logs|metrics|timestamps|traces|dashboards?|heap)\b",
+    re.I,
+)
 #: Content-free words. "you know" and "um" are deliberately absent: they are filler,
 #: which is delivery, not substance. Confusing the two cost a candidate three points in
 #: the matched-pair evals.
