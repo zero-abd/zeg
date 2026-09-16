@@ -60,6 +60,40 @@ def test_an_ordinary_technical_answer_does_not_end_the_interview(text):
     assert not reads_as_withdrawal(text), text
 
 
+HUMAN_REQUESTS = [
+    "I'd rather speak to a person.",
+    "I would prefer to talk to a human.",
+    "Can I speak to someone instead?",
+    "Could I talk to a real person?",
+    "May I speak to a recruiter?",
+    "Can you put me through to someone?",
+]
+
+#: Ordinary answers that mention talking to people. Ending the interview on any of these
+#: would be its own failure.
+ABOUT_COLLEAGUES = [
+    "We talk to the payments team every week about it.",
+    "I spoke to the on-call engineer and we rolled it back.",
+    "You can talk to the API directly if you need to.",
+    "I had to speak to three teams before anyone owned it.",
+    "The service talks to a person-lookup endpoint.",
+]
+
+
+@pytest.mark.parametrize("text", HUMAN_REQUESTS, ids=HUMAN_REQUESTS)
+def test_asking_for_a_person_is_heard(text):
+    from zeg.withdrawal import wants_a_human
+
+    assert wants_a_human(text), text
+
+
+@pytest.mark.parametrize("text", ABOUT_COLLEAGUES, ids=ABOUT_COLLEAGUES)
+def test_talking_about_colleagues_is_an_ordinary_answer(text):
+    from zeg.withdrawal import wants_a_human
+
+    assert not wants_a_human(text), text
+
+
 def test_typography_does_not_decide_it():
     assert reads_as_withdrawal("I’d like to stop.")
     assert reads_as_withdrawal("I’d rather you didn’t record this.")

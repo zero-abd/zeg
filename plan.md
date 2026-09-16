@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**"I'd rather speak to a person" is answered, and so is "are you a real person?"** Both were
+left to the system prompt, which is a request rather than a requirement, and both were
+treated as ordinary answers mid-interview. Measured: asked "I'd rather speak to a person",
+the interview issued its next probe — the candidate asked to be taken off the call and was
+asked what they personally built. The disclosure offers a human in the first sentence of the
+call, so that is a promise the agent broke while the candidate was still on the line.
+
+A request for a person now ends the call with a fixed line, flagged with the time for
+whoever picks it up. A question about what the agent is gets the honest answer immediately,
+and the interview carries on: it is a question, not an answer, so it starts no claim and
+moves no ladder, which it used to do.
+
+Both matchers are narrow, and the negative cases are the point again: "we talk to the
+payments team every week", "I spoke to the on-call engineer and we rolled it back", "you can
+talk to the API directly" are answers, not requests. On the old code three of the four tests
+failed; the guard passed.
+
 **A question at the consent gate gets an answer, not a hang-up.** The gate wanted a clear
 yes and treated everything else as refusal, including questions. Measured: "What happens to
 the recording?", "Are you a real person?", "Sorry, could you repeat that?", "Does it have to

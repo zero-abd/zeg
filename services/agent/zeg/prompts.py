@@ -57,6 +57,13 @@ CONSENT_WITHDRAWN = (
     "recruiting team and someone will be in touch. Thanks for your time."
 )
 
+#: Spoken when the candidate asks to speak to a person instead. The disclosure offers
+#: this in the first sentence of the call, so it is a promise, not a courtesy.
+HUMAN_REQUESTED = (
+    "Of course. I will stop here and ask the recruiting team to arrange a call with a "
+    "person. Thanks for your time."
+)
+
 #: Spoken over the agent when it starts asking something it must not ask. Saying it
 #: cancels the model's own reply, so the question is cut off rather than finished. The
 #: candidate hears a change of subject, not an apology for a question they were half

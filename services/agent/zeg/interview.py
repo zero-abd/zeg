@@ -19,7 +19,7 @@ from .asks import asks_about_consent
 from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
-from .withdrawal import reads_as_withdrawal
+from .withdrawal import reads_as_withdrawal, wants_a_human
 from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
@@ -30,6 +30,7 @@ from .prompts import (
     CONSENT_UNANSWERED,
     CONSENT_WITHDRAWN,
     GREETING,
+    HUMAN_REQUESTED,
     PROHIBITED_REDIRECT,
     SYSTEM_PROMPT,
     WRAP_UP,
@@ -394,6 +395,25 @@ class Interview:
                     self._consent_questions += 1
                     return self._answer_consent_question(question, t_s)
             return self._resolve_consent(text, t_s)
+
+        if wants_a_human(text):
+            # The disclosure offers this in the first sentence of the call. Asked for a
+            # person, the interview used to issue its next probe: the candidate asked to
+            # be taken off the call and was asked what they personally built.
+            mins, secs = divmod(int(t_s), 60)
+            self.record.flags.append(
+                "The candidate asked to speak to a person at %d:%02d, and the call was "
+                "ended for a human to pick up." % (mins, secs)
+            )
+            actions = self._say(HUMAN_REQUESTED, t_s)
+            actions.extend(self._end("human requested"))
+            return actions
+
+        if asks_about_consent(text) == "ai":
+            # Saying yes immediately is policy, and it was left to the system prompt,
+            # which is a request rather than a requirement. A question is not an answer,
+            # so it starts no claim and moves no ladder.
+            return self._say(CONSENT_ANSWERS["ai"], t_s)
 
         if reads_as_withdrawal(text):
             # Consent is not a gate that is passed once. Carrying on here would be

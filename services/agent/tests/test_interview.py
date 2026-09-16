@@ -460,6 +460,49 @@ def test_questions_do_not_go_on_forever(iv):
 # --- asking to stop, once the interview is under way ---------------------------------
 
 
+def test_a_candidate_who_asks_for_a_person_gets_one(iv):
+    """The disclosure offers this in the first sentence of the call. Asked for a person,
+    the interview used to issue its next probe."""
+    from zeg.prompts import HUMAN_REQUESTED
+
+    consented(iv)
+    actions = iv.on_event(UserTranscript("I'd rather speak to a person", final=True), 200)
+
+    assert spoken(actions) == [HUMAN_REQUESTED]
+    assert any(isinstance(a, EndCall) for a in actions)
+    assert not [a for a in actions if isinstance(a, Probe)]
+    assert iv.record.ended == "human requested"
+    assert any("asked to speak to a person at 3:20" in f for f in iv.record.flags)
+
+
+def test_the_agent_admits_what_it_is_mid_interview(iv):
+    """Saying yes immediately is policy, and it was left to the system prompt."""
+    from zeg.prompts import CONSENT_ANSWERS
+
+    consented(iv)
+    actions = iv.on_event(UserTranscript("wait, are you a real person?", final=True), 200)
+
+    assert spoken(actions) == [CONSENT_ANSWERS["ai"]]
+    assert not [a for a in actions if isinstance(a, Probe)]
+    assert iv.record.ended is None
+
+
+def test_a_question_about_the_agent_is_not_an_answer(iv):
+    """It starts no claim and moves no ladder: the candidate was asking, not answering."""
+    consented(iv)
+    iv.on_event(UserTranscript("am I talking to a bot?", final=True), 200)
+    assert iv.engine.state.claims == []
+
+
+def test_an_answer_that_mentions_a_colleague_is_left_alone(iv):
+    consented(iv)
+    actions = iv.on_event(
+        UserTranscript("I spoke to the on-call engineer and we rolled it back", final=True), 200
+    )
+    assert iv.record.ended is None
+    assert spoken(actions) == []
+
+
 def test_a_candidate_who_asks_to_stop_ends_the_call(iv):
     """Consent is not a gate that is passed once. This answer used to be treated as any
     other, and the interview carried on asking questions and recording them."""

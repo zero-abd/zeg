@@ -56,7 +56,31 @@ _CALL = re.compile(
 )
 
 
+#: Asking for a person instead. Not a complaint about the agent: it is a request to end
+#: this call and route to a human, and the disclosure promises exactly that. The opening
+#: verb is required, so "we talk to the payments team every week" stays an answer.
+_HUMAN = re.compile(
+    r"\b(can|could|may) i\b[^.?!]{0,30}\b(speak|talk)\b[^.?!]{0,20}"
+    r"\b(person|human|someone|somebody|recruiter)\b"
+    r"|\bi'?d (rather|prefer)\b[^.?!]{0,30}\b(person|human|recruiter)\b"
+    r"|\bi would (rather|prefer)\b[^.?!]{0,30}\b(person|human|recruiter)\b"
+    r"|\bi want to (speak|talk) to (a|an|some)\w*\b[^.?!]{0,20}"
+    r"\b(person|human|someone|somebody|recruiter)?\b"
+    r"|\b(put me through|transfer me|hand me over)\b",
+    re.I,
+)
+
+
 def reads_as_withdrawal(text: str) -> bool:
     """True when the candidate is asking to stop the recording or the interview."""
     plain = fold(text)
     return bool(_RECORDING.search(plain) or _CALL.search(plain))
+
+
+def wants_a_human(text: str) -> bool:
+    """True when the candidate is asking to speak to a person instead.
+
+    The disclosure offers this, so an agent that hears it and asks its next question is
+    breaking a promise it made in its first sentence.
+    """
+    return bool(_HUMAN.search(fold(text)))
