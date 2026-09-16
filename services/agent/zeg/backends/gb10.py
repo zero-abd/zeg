@@ -550,6 +550,12 @@ class GB10Session(VoiceSession):
         for msg in self._link.drain():
             self._frames_since_message = 0
             self._translate(msg)
+        if self._link.closed and not self._closed:
+            # A connection that dropped is not a runtime that went quiet. Waiting for
+            # the watchdog meant four seconds of a candidate talking to nothing, and
+            # the call was then reported as the runtime going silent, which sends
+            # whoever reads it looking at the model rather than the connection.
+            self._fail("the connection to the speech runtime closed")
 
     def _translate(self, msg: Dict[str, Any]) -> None:
         kind = msg.get("type")

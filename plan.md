@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A dropped connection ends the call at once, and says so.** The client noticed a connection
+that had gone only through its watchdog, which counts 200 caller frames: four seconds of a
+candidate talking to nothing, reported afterwards as "the speech runtime went silent", which
+sends whoever reads it looking at the model rather than at the connection. The client now
+checks the link while draining messages and fails the call immediately with a message that
+names the connection. Our own close is not reported as a drop. On the old client the new
+test failed with no error raised at all; the guard passed on both.
+
+This is the fourth fix in this run through the failure paths, and they line up: the runtime
+keeps its weights across sessions, reports a model that dies mid-call, reports a session
+that fails outright, and now the client reports a connection that goes away. All four
+presented as silence with a misleading explanation.
+
 **A session that fails outright says so instead of dropping the socket.** If anything in a
 session raised rather than returning, the connection handler raised with it. Measured with a
 model whose prefill fails: the client had been sent `session.ready` and nothing else, not

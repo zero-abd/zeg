@@ -131,6 +131,28 @@ def test_a_short_pause_does_not_commit_a_turn(audio):
     assert not link.of_type(p.TURN_COMMIT)
 
 
+def test_a_dropped_connection_ends_the_call_at_once(audio):
+    """It took the watchdog to notice: four seconds of a candidate talking to nothing,
+    reported as the runtime going silent rather than the connection dropping."""
+    link = FakeLink()
+    sess = session(link, audio)
+    link.closed = True
+
+    events = drive(sess, audio, 2)
+    errors = [e for e in events if isinstance(e, BackendError)]
+    assert errors, "the call carried on after the connection had gone"
+    assert errors[0].fatal
+    assert "connection" in errors[0].message
+    assert sess.closed
+
+
+def test_our_own_close_is_not_reported_as_a_dropped_connection(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.close()
+    assert not [e for e in sess.poll() if isinstance(e, BackendError)]
+
+
 def test_the_session_reports_the_agent_speaking_until_its_audio_is_delivered(audio):
     link = FakeLink()
     sess = session(link, audio)
