@@ -158,6 +158,29 @@ def test_a_model_that_fails_on_a_fixed_line_tells_the_client():
     assert closed[0]["reason"] == "model_error"
 
 
+def test_a_session_that_fails_outright_still_tells_the_client():
+    """Prefill failing is the likeliest first failure on the box: it is one of the
+    seams that is not wired up. The handler raised, the client had been sent nothing
+    but the handshake, and nobody closed the socket, so it waited out its own watchdog
+    and reported the runtime as quiet."""
+
+    class PrefillRaises(StubModel):
+        def prefill(self, instructions):
+            raise RuntimeError("prompt prefill is not wired up yet")
+
+    model = PrefillRaises()
+    server = a_server(model)
+    ws = serve(server, FakeWS(a_call()))
+
+    errors = [m for m in ws.sent if m["type"] == p.ERROR]
+    closed = [m for m in ws.sent if m["type"] == p.CLOSED]
+    assert errors and errors[0]["error"]["fatal"] is True
+    assert "prefill" in errors[0]["error"]["message"]
+    assert closed and closed[0]["status"] == "failed"
+    assert ws.closed_with == (p.CLOSE_NORMAL, "session error")
+    assert not server._busy, "the server is free to serve the next call"
+
+
 def test_closing_the_server_releases_the_model():
     model = StubModel()
     server = a_server(model)

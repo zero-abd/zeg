@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A session that fails outright says so instead of dropping the socket.** If anything in a
+session raised rather than returning, the connection handler raised with it. Measured with a
+model whose prefill fails: the client had been sent `session.ready` and nothing else, not
+even `session.configured`, and nobody closed the socket, so it waited out its own watchdog
+and reported the runtime as having gone quiet. Prefill is the likeliest first failure on the
+box, because it is one of the seams that is not wired up yet. The handler now sends a fatal
+`session_error` and closes the session with status failed before tearing down, on the normal
+close code: a new close code would be a protocol change, and the message already says it.
+Cancellation still propagates, and the server stays free to take the next call. On the old
+server the new test failed with the model's own exception coming out of the handler.
+
 **A model that dies on a commit or a fixed line tells the client.** The server noticed a
 dead frame loop only where it drains frame results, so a failure was seen only if another
 frame arrived after it. A model that raises on a commit, a steer or a fixed line produces no

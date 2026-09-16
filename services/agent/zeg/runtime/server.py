@@ -151,6 +151,11 @@ class RuntimeServer:
             await self._send(ws, session.ready())
             consumer = asyncio.ensure_future(self._consume(ws, session, loop, results, wake))
             await self._ingest(ws, session, loop)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: B902 - whatever fails, the client is told
+            log.exception("session failed")
+            await self._tell_and_close(ws, session, exc)
         finally:
             if consumer is not None:
                 consumer.cancel()
@@ -158,6 +163,25 @@ class RuntimeServer:
             self._between_sessions()
             self._busy = False
             log.info("session over: %s", loop.metrics.summary())
+
+    async def _tell_and_close(self, ws: Any, session: ServerSession, exc: Exception) -> None:
+        """Say what went wrong, in the protocol, before the socket goes away.
+
+        A session that ended by raising left the client with an open socket and no
+        message at all: it waited out its own watchdog and reported the runtime as
+        having gone quiet, which is the wrong diagnosis. Prefill is the likeliest
+        cause on the box, because it is one of the seams that is not wired up yet.
+
+        Closed as `session_error` with status failed, on the normal close code. A new
+        close code would be a protocol change, and the message already says it.
+        """
+        try:
+            await self._send(ws, session.wire.error("session_error", str(exc), fatal=True))
+            for out in session.close("session_error", status="failed"):
+                await self._send(ws, out)
+            await ws.close(code=p.CLOSE_NORMAL, reason="session error")
+        except Exception:  # noqa: B902 - the socket may already be gone
+            log.exception("could not tell the client the session failed")
 
     def _between_sessions(self) -> None:
         """Clear the conversation, keep the weights.
