@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscript
+from .asks import asks_about_consent
 from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
@@ -23,7 +24,9 @@ from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
 from .prompts import (
+    CONSENT_ANSWERS,
     CONSENT_DECLINED,
+    CONSENT_REASK,
     CONSENT_UNANSWERED,
     CONSENT_WITHDRAWN,
     GREETING,
@@ -116,6 +119,11 @@ _UNSURE = re.compile(
 #: way, so a candidate who never answers cannot hold a silent call open until the time
 #: limit. What counts as a hesitation lives in hesitation.py, shared with scoring.
 MAX_HESITATIONS_BEFORE_CONSENT = 2
+
+#: How many questions are answered before the consent gate judges the next reply the
+#: usual way. A candidate who only ever asks is not agreeing, and an agent that answers
+#: forever is one a candidate cannot get off the line.
+MAX_CONSENT_QUESTIONS = 2
 
 
 def reads_as_consent(text: str) -> bool:
@@ -246,6 +254,8 @@ class Interview:
         self._disclosure_interrupted = False
         #: Hesitations waited through before consent was settled.
         self._hesitations = 0
+        #: Questions answered before consent was settled.
+        self._consent_questions = 0
         #: When either side was last heard: agent audio, or any caller transcript.
         self._last_heard_s = 0.0
         #: The agent's reply as it streams in, and whether this one has been cut off
@@ -374,6 +384,15 @@ class Interview:
                 # and declining ended the interview for someone who was still thinking.
                 self._hesitations += 1
                 return []
+            question = asks_about_consent(text)
+            refusing = bool(_NO.search(_AGREEMENT_IDIOM.sub(" yes ", fold(text))))
+            if question is not None and not refusing:
+                # A question is not a refusal. Every one of these used to end the call
+                # and play the line written for a refusal at somebody who had not
+                # refused: "What happens to the recording?" cost a candidate.
+                if self._consent_questions < MAX_CONSENT_QUESTIONS:
+                    self._consent_questions += 1
+                    return self._answer_consent_question(question, t_s)
             return self._resolve_consent(text, t_s)
 
         if reads_as_withdrawal(text):
@@ -477,6 +496,17 @@ class Interview:
             )
         )
         return actions
+
+    def _answer_consent_question(self, kind: str, t_s: float) -> List[Action]:
+        """Answer it, and ask again in the same breath.
+
+        One utterance, not two: saying a line cancels whatever the agent is saying, so a
+        separate re-ask would cut off the answer it follows. A request to repeat gets the
+        disclosure again, which ends with the question anyway.
+        """
+        if kind == "repeat":
+            return self._say(self.greeting, t_s)
+        return self._say("%s %s" % (CONSENT_ANSWERS[kind], CONSENT_REASK), t_s)
 
     def _resolve_consent(self, text: str, t_s: float) -> List[Action]:
         """No recording, no interview. Silence is not agreement."""

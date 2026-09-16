@@ -195,6 +195,31 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A question at the consent gate gets an answer, not a hang-up.** The gate wanted a clear
+yes and treated everything else as refusal, including questions. Measured: "What happens to
+the recording?", "Are you a real person?", "Sorry, could you repeat that?", "Does it have to
+be recorded?" and "Who gets to see this?" each ended the call, and each candidate heard "That
+is completely fine", the line written for a refusal, in answer to a refusal they had not
+made. Five reasonable questions, five lost candidates.
+
+Four kinds are now recognised and answered, and the consent request comes again in the same
+breath: what happens to the recording, whether the agent is a person, whether the recording
+is required, and a request to repeat (which gets the disclosure again, since it ends with
+the question anyway). One utterance, not two, because saying a line cancels whatever the
+agent is saying and a separate re-ask would cut off the answer it follows.
+
+What the answers say is limited to what is actually known. The recording answer says a human
+reviewer goes through it and offers to have the team confirm storage and retention, rather
+than inventing a policy. Only these four kinds are recognised; anything else falls through
+to the gate, because an agent improvising about a recording is worse than one handing the
+call to a person.
+
+The gate itself is unchanged: silence is still not agreement, a hedge is still not a yes. A
+reply that refuses and asks in the same breath ("no, what happens to the recording?") goes
+straight to the decline, because answering and asking again would be pressing somebody who
+has said no. Capped at two questions. On the old interview the four behavioural tests failed
+and the three guards passed.
+
 **A candidate who asks to stop is heard, mid-interview.** Consent was a gate passed once at
 the start. After that, "actually, can you stop the recording?" was treated as any other
 answer: the interview asked its next question and the call carried on recording, which is

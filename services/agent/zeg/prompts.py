@@ -11,6 +11,29 @@ GREETING = (
     "reviewer can go through it afterwards. Is that okay with you?"
 )
 
+#: Answers to the questions a candidate asks before agreeing. Each one is followed by the
+#: consent request again. They say what is actually known: an agent that improvises about
+#: how a recording is stored is worse than one that offers to have a person confirm it.
+CONSENT_ANSWERS = {
+    "ai": (
+        "Yes, I am an AI interviewer, not a person. If you would rather speak to a "
+        "person instead, say so and I will arrange that."
+    ),
+    "recording": (
+        "A human reviewer on the hiring team goes through the recording afterwards. I "
+        "do not have the details of how it is stored or for how long, and I can have "
+        "someone from the team confirm that for you."
+    ),
+    "necessity": (
+        "The recording is how a human reviews the interview afterwards, so I cannot run "
+        "it without one. If you would rather not be recorded, we can stop here and I "
+        "will ask the team to arrange a call with a person."
+    ),
+}
+
+#: Asked again after one of those answers, and after a request to repeat.
+CONSENT_REASK = "So, is it okay with you if I record this call?"
+
 #: Spoken if consent is refused. The call then ends and routes to a human.
 CONSENT_DECLINED = (
     "That is completely fine. I will pass this back to the recruiting team and "

@@ -391,6 +391,72 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     assert any("time I have" in s for s in spoken(actions))
 
 
+# --- a question instead of an answer, at the consent gate ----------------------------
+
+
+def test_a_question_at_the_consent_gate_is_answered_not_refused(iv):
+    """Every one of these ended the call and played the line written for a refusal at
+    somebody who had not refused anything."""
+    iv.start()
+    actions = iv.on_event(UserTranscript("what happens to the recording?", final=True), 5)
+
+    assert iv.record.ended is None
+    assert iv.record.consent is None
+    said = spoken(actions)
+    assert said, "the candidate's question went unanswered"
+    assert "human reviewer" in said[0]
+    assert "is it okay with you if I record" in said[0]
+
+
+def test_the_agent_says_it_is_an_ai_when_asked(iv):
+    iv.start()
+    said = spoken(iv.on_event(UserTranscript("are you a real person?", final=True), 5))
+    assert said and said[0].startswith("Yes, I am an AI interviewer")
+    assert iv.record.ended is None
+
+
+def test_a_request_to_repeat_gets_the_disclosure_again(iv):
+    from zeg.prompts import GREETING
+
+    iv.start()
+    said = spoken(iv.on_event(UserTranscript("sorry, could you repeat that?", final=True), 5))
+    assert said == [GREETING]
+
+
+def test_a_yes_after_a_question_is_consent(iv):
+    iv.start()
+    iv.on_event(UserTranscript("what happens to the recording?", final=True), 5)
+    iv.on_event(UserTranscript("okay, that is fine", final=True), 14)
+    assert iv.record.consent is True
+    assert iv.record.ended is None
+
+
+def test_a_refusal_after_a_question_is_still_a_refusal(iv):
+    iv.start()
+    iv.on_event(UserTranscript("what happens to the recording?", final=True), 5)
+    iv.on_event(UserTranscript("I'd rather not, then", final=True), 14)
+    assert iv.record.consent is False
+    assert iv.record.ended == "consent declined"
+
+
+def test_a_refusal_with_a_question_in_it_is_not_answered_back(iv):
+    """Answering and asking again would be pressing somebody who has said no."""
+    iv.start()
+    iv.on_event(UserTranscript("no, what happens to the recording?", final=True), 5)
+    assert iv.record.consent is False
+    assert iv.record.ended == "consent declined"
+
+
+def test_questions_do_not_go_on_forever(iv):
+    """A candidate who only ever asks is not agreeing, and an agent that answers for
+    ever is one they cannot get off the line."""
+    iv.start()
+    for t in (5, 14, 23):
+        iv.on_event(UserTranscript("what happens to the recording?", final=True), t)
+    assert iv.record.consent is False
+    assert iv.record.ended == "consent declined"
+
+
 # --- asking to stop, once the interview is under way ---------------------------------
 
 
