@@ -64,6 +64,10 @@ class Assessment:
     dimensions: List[DimensionScore]
     flags: List[str] = field(default_factory=list)
     duration_s: float = 0.0
+    #: Which judge produced this. A heuristic report and a model-judged one rendered
+    #: identically, so "9/10 — advance" from a judge that only matches wording looked
+    #: exactly like a real assessment.
+    judge: str = ""
 
     @property
     def insufficient_dimensions(self) -> List[str]:
@@ -74,6 +78,16 @@ class Assessment:
         out = []
         headline = "%d/10" % self.overall if self.overall is not None else "no score"
         out.append("%s — %s" % (headline, self.band))
+        if self.judge == "heuristic":
+            # Its own documentation says a report from this judge must never be shown to
+            # a hiring manager. The report did not say which judge produced it, so the
+            # warning never reached anyone reading one.
+            out.append(
+                "Scored by the heuristic judge, which matches wording rather than judging "
+                "answers. For testing only: not for a hiring decision."
+            )
+        elif self.judge:
+            out.append("Scored by the %s judge." % self.judge)
         out.append("")
         for d in self.dimensions:
             label = d.dimension.replace("_", " ")
@@ -421,6 +435,7 @@ def score_call(
                 % (len(scored), len(DIMENSIONS))
             ],
             duration_s=duration,
+            judge=judge.name,
         )
 
     total_w = sum(role.weights.get(s.dimension, 1.0) for s in scored)
@@ -436,6 +451,7 @@ def score_call(
         dimensions=scores,
         flags=list(flags or ()),
         duration_s=duration,
+        judge=judge.name,
     )
 
 

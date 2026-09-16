@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A report says which judge produced it, and a heuristic one says not to use it.** The
+heuristic judge's own documentation says a report from it "should never be shown to a hiring
+manager": it matches wording and cannot tell a correct explanation from a confident wrong one.
+But the report did not record or show which judge produced it, and the demo always uses the
+heuristic judge, so "9/10 — advance" from it looked exactly like a real assessment and the
+warning never reached anyone reading one. The report now records its judge. A heuristic report
+carries a line under the headline saying it matches wording rather than judging answers and is
+for testing only, not for a hiring decision; any other judge is named. Every demo report now
+shows that line, which is intended. On the old code all three new tests failed.
+
 **The judge's record says what actually went wrong with a score.** Two different failures were
 recorded as one. A score with no quote at all was counted as a fabrication and described as
 having "cited a quote not present in the transcript", when nothing had been cited. And a quote

@@ -157,6 +157,36 @@ def test_report_leads_with_the_headline_and_the_band():
     assert "/10" in first
 
 
+def test_a_heuristic_report_says_it_is_not_for_a_hiring_decision():
+    """The heuristic judge's own documentation says its reports must never reach a
+    hiring manager, and "9/10 — advance" from it looked exactly like a real one."""
+    lines = score_call(strong()).render().splitlines()
+    assert "/10" in lines[0], "the headline still leads"
+    assert "heuristic judge" in lines[1]
+    assert "not for a hiring decision" in lines[1]
+
+
+def test_a_thin_heuristic_report_carries_the_warning_too():
+    rendered = score_call(thin()).render()
+    assert "not for a hiring decision" in rendered
+
+
+def test_a_model_judged_report_names_its_judge_without_the_warning():
+    import json
+
+    from zeg.scoring import ModelJudge
+
+    def complete(prompt):
+        return json.dumps({"score": 3, "quote": "I wrote the advisory-lock fix",
+                           "reason": "first person"})
+
+    report = score_call(strong(), judge=ModelJudge(complete))
+    assert report.judge == "model"
+    rendered = report.render()
+    assert "Scored by the model judge." in rendered
+    assert "not for a hiring decision" not in rendered
+
+
 def test_report_says_a_human_decides():
     assert "does not decide" in score_call(strong()).render()
 
