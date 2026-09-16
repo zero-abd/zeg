@@ -391,6 +391,48 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     assert any("time I have" in s for s in spoken(actions))
 
 
+# --- asking to stop, once the interview is under way ---------------------------------
+
+
+def test_a_candidate_who_asks_to_stop_ends_the_call(iv):
+    """Consent is not a gate that is passed once. This answer used to be treated as any
+    other, and the interview carried on asking questions and recording them."""
+    from zeg.prompts import CONSENT_WITHDRAWN
+
+    consented(iv)
+    actions = iv.on_event(
+        UserTranscript("actually, can you stop the recording?", final=True), 372
+    )
+    assert spoken(actions) == [CONSENT_WITHDRAWN]
+    assert any(isinstance(a, EndCall) for a in actions)
+    assert iv.record.ended == "consent withdrawn"
+    assert any("asked to stop at 6:12" in f for f in iv.record.flags)
+    assert any("A human must decide" in f for f in iv.record.flags)
+
+
+def test_an_ordinary_answer_about_stopping_something_does_not_end_the_call(iv):
+    consented(iv)
+    iv.on_event(
+        UserTranscript("we stopped the retries after the third attempt", final=True), 100
+    )
+    assert iv.record.ended is None
+
+
+def test_nothing_is_asked_after_a_candidate_asks_to_stop(iv):
+    consented(iv)
+    iv.on_event(UserTranscript("I would like to stop", final=True), 200)
+    later = iv.on_event(UserTranscript("sorry, what was that?", final=True), 210)
+    assert later == []
+
+
+def test_asking_to_stop_before_consent_is_a_refusal(iv):
+    """The consent gate runs first and already refuses this."""
+    iv.start()
+    iv.on_event(UserTranscript("please stop", final=True), 5)
+    assert iv.record.consent is False
+    assert iv.record.ended == "consent declined"
+
+
 # --- the model asking something it must not ask -------------------------------------
 
 

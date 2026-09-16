@@ -26,6 +26,14 @@ CONSENT_UNANSWERED = (
     "arrange a call with a person instead. Thanks for your time."
 )
 
+#: Spoken when the candidate asks to stop, once the interview is under way. The call ends
+#: there: consent is not a gate that is passed once, and carrying on after being asked to
+#: stop is the thing the consent gate exists to prevent.
+CONSENT_WITHDRAWN = (
+    "Of course. I am stopping the interview here. I will pass this back to the "
+    "recruiting team and someone will be in touch. Thanks for your time."
+)
+
 #: Spoken over the agent when it starts asking something it must not ask. Saying it
 #: cancels the model's own reply, so the question is cut off rather than finished. The
 #: candidate hears a change of subject, not an apology for a question they were half

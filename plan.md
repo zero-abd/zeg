@@ -195,6 +195,26 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who asks to stop is heard, mid-interview.** Consent was a gate passed once at
+the start. After that, "actually, can you stop the recording?" was treated as any other
+answer: the interview asked its next question and the call carried on recording, which is
+the one thing the consent gate exists to prevent. Any such answer now ends the call with a
+fixed line, and the record carries a flag with the time it happened and says a human must
+decide whether what was recorded before may be used. That decision is not one to make in
+code.
+
+Detection is deliberately narrow, because this runs on every answer in a technical
+interview. The false-positive list is as much the point as the withdrawals: "we stopped the
+retries", "we had to cancel the call to the payments API", "the consumer stops recording
+metrics", "I want to stop guessing and actually measure it". The first draft ended the
+interview on the last two, which its own tests caught: a stop has to have no object behind
+it, and the interview is not something you cancel *to* anything. On the old interview the
+two behavioural tests failed and both guards passed.
+
+Open, for a human: whether a withdrawal should also stop the earlier part of the call being
+scored. The report flags it and scores what was there; making that call in code would be
+deciding a legal question.
+
 **A subject the agent was pulled off stays off, across sessions.** The briefing that comes
 with a redirect lives in the session that was told it. A rollover opens a fresh session every
 hundred seconds, and its seed carries the engine's briefing and the last exchange, so the

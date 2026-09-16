@@ -18,12 +18,14 @@ from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscri
 from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
+from .withdrawal import reads_as_withdrawal
 from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
 from .prompts import (
     CONSENT_DECLINED,
     CONSENT_UNANSWERED,
+    CONSENT_WITHDRAWN,
     GREETING,
     PROHIBITED_REDIRECT,
     SYSTEM_PROMPT,
@@ -373,6 +375,22 @@ class Interview:
                 self._hesitations += 1
                 return []
             return self._resolve_consent(text, t_s)
+
+        if reads_as_withdrawal(text):
+            # Consent is not a gate that is passed once. Carrying on here would be
+            # recording somebody who has just asked us to stop, which is the thing the
+            # consent gate exists to prevent. Whether what was recorded before may be
+            # used is a decision for a human, so the record says so rather than
+            # deciding it here.
+            mins, secs = divmod(int(t_s), 60)
+            self.record.flags.append(
+                "The candidate asked to stop at %d:%02d, after agreeing at the start. "
+                "A human must decide whether anything recorded before that may be used."
+                % (mins, secs)
+            )
+            actions = self._say(CONSENT_WITHDRAWN, t_s)
+            actions.extend(self._end("consent withdrawn"))
+            return actions
 
         # A hesitation mid-interview is the candidate thinking, not answering. Counted as
         # an answer it used up the outstanding probe, so every later answer was credited
