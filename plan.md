@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Tense no longer decides a score.** The judge's word lists were past tense. Two new matched
+pairs say the same past work in other tenses. Present perfect ("I've written the fix", "I've
+reproduced it") scored ownership as nothing, against 4 in the past tense. The historical present
+("I write the fix", "I reproduce it", "we give up parallelism, batch time doubles"), which is
+especially common in non-native speech, lost ownership and tradeoffs entirely. The existing
+non-native pair kept its key verbs in the past tense, so it could not have caught this.
+
+Ownership verbs are now generated in every tense from a short table, and "I've", "I have" and "I
+had" may come before the verb. "I'd" may not, since "I'd rewrite it differently" is not a claim
+of having done it, and a few base forms are left out on purpose: "I find it hard", "I run into
+this" and "I drive to work" are not claims either. Tradeoff, debugging, causal and number lists
+take the present forms too. "Trades" alone is not a tradeoff, because in a payments interview "we
+reconcile trades nightly" is ordinary. On the old scorer both new pairs failed and eleven tests
+failed in all.
+
 **The bias eval now has a vocabulary pair, and it found one more inconsistency on arrival.** The
 recent word-list fixes to the judge were each checked on their own, and nothing in the
 matched-pair eval would have caught them coming back. The new pair says the same facts once in

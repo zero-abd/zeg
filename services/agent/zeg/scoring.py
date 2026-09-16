@@ -207,7 +207,7 @@ _NUMBER_WORDS = (
 _NUMBER = re.compile(
     r"\b\d+(\.\d+)?\s*(ms|s|x|%|k|m|gb|mb|qps|rps|percent)?\b"
     r"|\b(" + _NUMBER_WORDS + r")\b"
-    r"|\b(percent|per cent|doubled|tripled|halved|quadrupled)\b",
+    r"|\b(percent|per cent|doubled|doubles|tripled|triples|halved|quadrupled)\b",
     re.I,
 )
 
@@ -220,7 +220,8 @@ def has_number(text: str) -> bool:
 #: "that is why" all counted for nothing. "since" is deliberately absent: "since March"
 #: is about time, and a word that means cause half the time is not evidence of it.
 _CAUSAL = re.compile(
-    r"\b(because|root cause|turned out|which meant|so that|due to|caused|led to"
+    r"\b(because|root cause|turned out|which meant|so that|due to|caused|causes|led to"
+    r"|leads to"
     r"|as a result|the reason (was|is)|that'?s why|that is why|which is why"
     r"|the problem was that|the issue was that|which made)\b",
     re.I,
@@ -243,22 +244,63 @@ _STRUCTURE = re.compile(
 #: natural answer to the engine's own probe — "I personally rewrote the reconciler" —
 #: counted as no ownership at all. Two candidates claiming the same work in different
 #: words scored differently, which is scoring vocabulary, not ownership.
-_OWNERSHIP_VERBS = (
-    r"wrote|rewrote|built|rebuilt|fixed|shipped|found|debugged|designed|redesigned|owned"
-    r"|led|implemented|added|refactored|migrated|drove|introduced|proposed|profiled"
-    r"|diagnosed|traced|reproduced|set up|architected|deployed|rolled out|created"
-    r"|developed|authored|replaced|removed|optimi[sz]ed|tuned|benchmarked|instrumented"
-    r"|automated|investigated|wired up|patched|ran"
-    # First-person investigative work, like "reproduced" and "traced" above. "I isolated
-    # it" counted as debugging but not ownership while "I reproduced it" counted as both,
-    # and the vocabulary pair in the bias eval scored ownership 4 against 3 on it.
-    r"|isolated|narrowed|ruled out|bisected|measured"
+def _tenses(regular, irregular) -> str:
+    """Every tense of each verb, as one alternation.
+
+    The lists were past tense only. "I've written the fix" and "I write the fix" both
+    scored ownership as nothing, where "I wrote the fix" scored 4, and narrating past work
+    in the present is especially common in non-native speech. A tense is how someone talks,
+    not what they did.
+    """
+    forms = set()
+    for verb in regular:
+        head, _, tail = verb.partition(" ")
+        tail = " " + tail if tail else ""
+        if head.endswith("e"):
+            stems = (head, head + "s", head + "d")
+        elif head.endswith(("s", "sh", "ch", "x", "z")):
+            stems = (head, head + "es", head + "ed")
+        else:
+            stems = (head, head + "s", head + "ed")
+        forms.update(stem + tail for stem in stems)
+    for group in irregular:
+        forms.update(group)
+    return "|".join(sorted(forms, key=len, reverse=True))
+
+
+_OWNERSHIP_VERBS = _tenses(
+    regular=(
+        "fix", "design", "redesign", "own", "implement", "add", "refactor", "migrate",
+        "introduce", "propose", "profile", "diagnose", "trace", "reproduce", "architect",
+        "deploy", "roll out", "create", "develop", "author", "replace", "remove",
+        "optimize", "optimise", "tune", "benchmark", "instrument", "automate",
+        "investigate", "wire up", "patch",
+        # First-person investigative work, like "reproduce" and "trace". "I isolated it"
+        # counted as debugging but not ownership while "I reproduced it" counted as both.
+        "isolate", "narrow", "rule out", "bisect", "measure",
+    ),
+    irregular=(
+        ("write", "writes", "wrote", "written"),
+        ("rewrite", "rewrites", "rewrote", "rewritten"),
+        ("build", "builds", "built"),
+        ("rebuild", "rebuilds", "rebuilt"),
+        ("lead", "leads", "led"),
+        ("ship", "ships", "shipped"),
+        ("debug", "debugs", "debugged"),
+        ("set up", "sets up"),
+        # Past forms only. "I find it hard", "I run into this", "I drive to work" are not
+        # claims of having done the work.
+        ("found",), ("drove", "driven"), ("ran",),
+    ),
 )
 #: Words that sit between "I" and the verb without changing who did it. "basically" is
 #: deliberately absent: it is on the vagueness list and should not open a door here.
 _BETWEEN = r"personally|actually|myself|then|also|just|eventually|finally|really|first|later|mostly"
+#: "I've written", "I have reproduced", "I had built". Not "I'd", which is as often "I
+#: would" as "I had", and "I'd rewrite it differently" is not a claim of having done it.
+_AUXILIARY = r"(?:'ve|\s+have|\s+had)?"
 _FIRST_PERSON = re.compile(
-    r"\bi\s+(?:(?:" + _BETWEEN + r")\s+){0,2}(?:" + _OWNERSHIP_VERBS + r")\b"
+    r"\bi" + _AUXILIARY + r"\s+(?:(?:" + _BETWEEN + r")\s+){0,2}(?:" + _OWNERSHIP_VERBS + r")\b"
     r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
     r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on)\b",
     re.I,
@@ -268,10 +310,14 @@ _FIRST_PERSON = re.compile(
 #: ordinary answers to the engine's own tradeoff probe three were recognised. Anchored,
 #: so "I accepted the offer" and "we chose Postgres" stay what they are.
 _TRADEOFF = re.compile(
-    r"\b(gave up|traded|trade-?offs?|cost us|at the (expense|cost) of|downside|slower"
-    r"|doubled|sacrific\w+|in exchange|compromise)\b"
-    r"|\baccepted\s+(higher|more|less|lower|some|a bit of|extra|worse)\b"
-    r"|\bchose\s+\w+(\s+\w+)?\s+over\b",
+    r"\b((give|gives|gave|given|giving) up|traded|trade-?offs?|costs? us"
+    r"|at the (expense|cost) of|downside|slower|doubles|doubled|sacrific\w+|in exchange"
+    r"|compromise)\b"
+    # "We trade latency for durability". Not "trades" on its own: in a payments interview
+    # "we reconcile trades nightly" is an ordinary sentence.
+    r"|\btrades?\s+\w+(\s+\w+)?\s+for\b"
+    r"|\baccept(s|ed)?\s+(higher|more|less|lower|some|a bit of|extra|worse)\b"
+    r"|\b(choose|chooses|chose|chosen)\s+\w+(\s+\w+)?\s+over\b",
     re.I,
 )
 #: Forming and testing a hypothesis. Four of ten ordinary debugging answers were
@@ -279,11 +325,11 @@ _TRADEOFF = re.compile(
 #: logging and found..." counted for nothing. "profile" alone is not profiling, and
 #: adding a feature is not adding instrumentation.
 _HYPOTHESIS = re.compile(
-    r"\b(hypothes\w+|suspected|reproduc\w+|repro|bisect\w*|narrowed|ruled out"
-    r"|isolated|profil(ed|ing|er)|flame ?graphs?|traced)\b"
+    r"\b(hypothes\w+|suspect(s|ed)?|reproduc\w+|repro|bisect\w*|narrow(s|ed)"
+    r"|rul(e|es|ed) out|isolat(e|es|ed)|profil(ed|ing|er)|flame ?graphs?|trac(e|es|ed))\b"
     r"|\b(my|our|first)\s+(guess|theory|suspicion)\b"
-    r"|\badded\s+(some\s+)?(logging|logs|tracing|metrics|instrumentation)\b"
-    r"|\bchecked\s+the\s+(logs|metrics|timestamps|traces|dashboards?|heap)\b",
+    r"|\b(add|adds|added)\s+(some\s+)?(logging|logs|tracing|metrics|instrumentation)\b"
+    r"|\b(check|checks|checked)\s+the\s+(logs|metrics|timestamps|traces|dashboards?|heap)\b",
     re.I,
 )
 #: Content-free words. "you know" and "um" are deliberately absent: they are filler,

@@ -182,10 +182,47 @@ VOCABULARY = Pair(
     ),
 )
 
+PRESENT_PERFECT = Pair(
+    name="present_perfect",
+    what_differs="The same past work narrated as 'I've done' rather than 'I did'.",
+    baseline=VOCABULARY.baseline,
+    variant=_qa(
+        ("What did you do?",
+         "I've written the advisory-lock fix myself because two workers could read the "
+         "same batch."),
+        ("How did you find it?",
+         "I've reproduced it by running two workers against one merchant."),
+        ("What was the impact?",
+         "Double settlements have gone from eleven in six weeks to zero."),
+        ("What did it cost?",
+         "We've given up parallel reconciliation. Batch time has roughly doubled."),
+    ),
+)
+
+HISTORICAL_PRESENT = Pair(
+    name="historical_present",
+    what_differs="The same past work narrated in the present tense, common in non-native "
+                 "speech.",
+    baseline=VOCABULARY.baseline,
+    variant=_qa(
+        ("What did you do?",
+         "I write the advisory-lock fix myself because two workers can read the same "
+         "batch."),
+        ("How did you find it?",
+         "I reproduce it by running two workers against one merchant."),
+        ("What was the impact?",
+         "Double settlements go from eleven in six weeks to zero."),
+        ("What did it cost?",
+         "We give up parallel reconciliation. Batch time roughly doubles."),
+    ),
+)
+
 #: The judge scored vocabulary for a while: "I personally implemented" was not ownership,
 #: "the reason was" was not an explanation, "the tradeoff was" was not a tradeoff. Each
 #: was fixed on its own, and this pair is what keeps them fixed.
-PAIRS: Sequence[Pair] = (DISFLUENCY, NON_NATIVE, HEDGING, TERSE, VOCABULARY)
+PAIRS: Sequence[Pair] = (
+    DISFLUENCY, NON_NATIVE, HEDGING, TERSE, VOCABULARY, PRESENT_PERFECT, HISTORICAL_PRESENT,
+)
 
 
 @dataclass

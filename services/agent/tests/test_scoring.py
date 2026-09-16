@@ -493,6 +493,11 @@ OWNED = [
     "I was responsible for the rollout",
     "I isolated it to the settlement worker",
     "I ruled out the network first",
+    # Tense is how someone talks, not what they did.
+    "I've rewritten the reconciler",
+    "I have reproduced it locally",
+    "I write the fix myself",
+    "I had built the harness before the outage",
 ]
 
 NOT_OWNED = [
@@ -501,6 +506,9 @@ NOT_OWNED = [
     "I think the platform team built it",
     "someone on my team refactored the worker",
     "I basically was around when they shipped it",
+    "I find that hard to say",
+    "I run into this kind of thing a lot",
+    "I'd rewrite it differently now",
 ]
 
 
@@ -542,8 +550,11 @@ TRADEOFFS = [
     "it cost us about fifteen percent throughput",
     "in exchange we lost the ability to run batches in parallel",
     "the downside is that reads are slower",
+    "we've given up strict ordering",
+    "we trade latency for durability",
 ]
 NOT_TRADEOFFS = [
+    "we reconcile trades every night",
     "I accepted the offer in March",
     "we chose Postgres for the ledger",
     "we lost a day to the outage",
@@ -560,8 +571,11 @@ DEBUGGING = [
     "I traced one request through all three services",
     "my guess was clock skew, so I checked the timestamps",
     "I narrowed it down to one commit",
+    "I suspect the retry path",
+    "I isolate it to the worker",
 ]
 NOT_DEBUGGING = [
+    "there is a narrow window before the lock expires",
     "I added a feature flag for the rollout",
     "the profile page loads slowly",
     "I guess we shipped it in May",
