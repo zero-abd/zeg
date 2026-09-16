@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The judge's record says what actually went wrong with a score.** Two different failures were
+recorded as one. A score with no quote at all was counted as a fabrication and described as
+having "cited a quote not present in the transcript", when nothing had been cited. And a quote
+taken from the interviewer's question got the same description, though it is in the transcript,
+just not in anything the candidate said. Both scores are still voided: evidence or it did not
+happen. But a score given without a citation is now recorded separately as uncited, with a note
+saying so, and a quote that is not in the candidate's answers is described as exactly that. The
+fabrication count now counts only fabrications. On the old code the two new tests failed; the
+existing fabrication test failed too, but only because its expected wording changed.
+
 **A judge's score is taken only as the whole number it gave.** The score went through `int()`.
 In Python that turns `true` into 1, so a boolean became a real score at the bottom of the
 rubric, and it truncates 3.9 to 3 and 2.5 to 2, each a number the model never gave. `false`

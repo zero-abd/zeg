@@ -129,8 +129,27 @@ def test_a_fabricated_quote_voids_the_score():
                              "reason": "impressive"}))
     d = j.score_dimension("ownership", UNITS)
     assert d.insufficient
-    assert "not present in the transcript" in d.note
+    assert "not found in the candidate's answers" in d.note
     assert j.fabrications == ["ownership"]
+
+
+def test_a_score_with_no_quote_is_not_called_a_fabrication():
+    """Nothing was made up. The note said it "cited a quote not present in the
+    transcript" when nothing had been cited, and it counted as a fabrication."""
+    j = ModelJudge(replying({"score": 4, "quote": None, "reason": "vibes"}))
+    d = j.score_dimension("ownership", UNITS)
+    assert d.insufficient
+    assert j.fabrications == []
+    assert j.uncited == ["ownership"]
+    assert "cited nothing" in d.note
+
+
+def test_an_interviewer_quote_is_described_accurately():
+    """It is in the transcript, just not in anything the candidate said."""
+    j = ModelJudge(replying({"score": 2, "quote": "What did it cost?", "reason": "ok"}))
+    d = j.score_dimension("tradeoffs", UNITS)
+    assert "not found in the candidate's answers" in d.note
+    assert "not present in the transcript" not in d.note
 
 
 def test_a_score_with_no_quote_at_all_is_void():

@@ -558,6 +558,8 @@ class ModelJudge(Judge):
         self.complete = complete
         self.prompt = prompt
         self.fabrications: List[str] = []
+        #: Dimensions scored with no quote at all. Not usable, and not a fabrication.
+        self.uncited: List[str] = []
 
     def score_dimension(self, dimension: str, units: Sequence[QAUnit]) -> DimensionScore:
         if not units:
@@ -585,16 +587,29 @@ class ModelJudge(Judge):
         if score is None:
             return DimensionScore(dimension, None, [], reason or "No evidence found.")
 
-        if not quote or not _appears_in(quote, units):
-            # The score might be right. It is not usable without a citation, and a
-            # citation that cannot be located is the one thing a report must never
-            # carry, so the score goes with it.
+        if not quote:
+            # A score with nothing cited. Evidence or it did not happen, so it is not
+            # used. But nothing was made up either, and this used to be counted and
+            # described as a fabrication: "cited a quote not present", when nothing had
+            # been cited at all.
+            self.uncited.append(dimension)
+            return DimensionScore(
+                dimension,
+                None,
+                [],
+                "Scored %s but cited nothing, so the score is not used." % score,
+            )
+        if not _appears_in(quote, units):
+            # The score might be right. A citation that cannot be located in what the
+            # candidate said is the one thing a report must never carry, so the score
+            # goes with it. "Not present in the transcript" was wrong for a quote taken
+            # from the interviewer's question, which is in the transcript.
             self.fabrications.append(dimension)
             return DimensionScore(
                 dimension,
                 None,
                 [],
-                "Scored %s but cited a quote not present in the transcript." % score,
+                "Scored %s but cited a quote not found in the candidate's answers." % score,
             )
 
         at = _timestamp_of(quote, units)
