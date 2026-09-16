@@ -389,3 +389,64 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     consented(iv)
     actions = iv.on_event(UserTranscript("um", final=True), 815)
     assert any("time I have" in s for s in spoken(actions))
+
+
+# --- the model asking something it must not ask -------------------------------------
+
+
+def streamed(iv, deltas, t=100.0):
+    """The agent's own reply arriving word by word, as the runtime sends it."""
+    out = []
+    for delta in deltas:
+        out.extend(iv.on_event(AgentText(delta, final=False), t))
+    return out
+
+
+def test_a_prohibited_question_from_the_model_is_cut_off(iv):
+    """The block list gates our own lines before they are spoken. The model speaks for
+    itself, so this question reached the candidate's ear unflagged and unrecorded as a
+    compliance event."""
+    from zeg.prompts import PROHIBITED_REDIRECT
+
+    consented(iv)
+    actions = streamed(iv, ["So before we go on, ", "are you ", "married", "?"])
+
+    assert spoken(actions) == [PROHIBITED_REDIRECT]
+    assert any("prohibited question (family)" in f for f in iv.record.flags)
+
+
+def test_the_agent_is_only_cut_off_once_for_one_question(iv):
+    consented(iv)
+    streamed(iv, ["are you married", "?"])
+    more = streamed(iv, [" I mean, are you married?"])
+    assert spoken(more) == []
+    assert len(iv.record.flags) == 1
+
+
+def test_a_prohibited_question_that_only_arrives_whole_is_still_cut_off(iv):
+    """A backend that reports the reply in one piece, rather than as it is spoken."""
+    from zeg.prompts import PROHIBITED_REDIRECT
+
+    consented(iv)
+    actions = iv.on_event(AgentText("How old are you, by the way?", final=True), 100)
+    assert spoken(actions) == [PROHIBITED_REDIRECT]
+    assert any("prohibited question (age)" in f for f in iv.record.flags)
+
+
+def test_an_ordinary_question_from_the_model_is_left_alone(iv):
+    consented(iv)
+    actions = streamed(iv, ["What did you ", "personally do ", "on that project?"])
+    actions += iv.on_event(AgentText("What did you personally do on that project?", final=True), 101)
+    assert spoken(actions) == []
+    assert iv.record.flags == []
+
+
+def test_the_next_reply_is_watched_again_after_a_redirect(iv):
+    """The flag is per question, not per call."""
+    consented(iv)
+    streamed(iv, ["are you married?"])
+    iv.on_event(AgentText("Sorry, let me stay on the technical side. Tell me more about "
+                          "the part of that work you did yourself.", final=True), 101)
+    actions = streamed(iv, ["and ", "where are you originally from", "?"], t=120)
+    assert spoken(actions), "the second prohibited question was not cut off"
+    assert len(iv.record.flags) == 2

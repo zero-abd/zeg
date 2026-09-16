@@ -26,6 +26,15 @@ CONSENT_UNANSWERED = (
     "arrange a call with a person instead. Thanks for your time."
 )
 
+#: Spoken over the agent when it starts asking something it must not ask. Saying it
+#: cancels the model's own reply, so the question is cut off rather than finished. The
+#: candidate hears a change of subject, not an apology for a question they were half
+#: asked, and the flag on the record says what happened.
+PROHIBITED_REDIRECT = (
+    "Sorry, let me stay on the technical side. Tell me more about the part of that "
+    "work you did yourself."
+)
+
 #: Spoken when the wall clock reaches the wrap-up mark, regardless of context.
 WRAP_UP = (
     "That is about all the time I have. Is there anything you wanted to ask before "

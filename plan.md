@@ -195,6 +195,25 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A prohibited question from the model is cut off and put on the record.** The block list
+gated only our own fixed lines. The model speaks for itself, so its questions arrive as
+transcript text after the fact: fed "So before we go on, are you married?", the interview
+recorded it as an ordinary agent turn, raised no flag and did nothing, even though the block
+list recognises the phrase. The docstring claimed the check runs before synthesis, which was
+true only for our lines.
+
+The interview now watches the agent's own text as it streams and, on a match, speaks a fixed
+redirect. Saying anything cancels the model's reply in the client, so the question is
+interrupted rather than finished, and a flag names the category and the phrase. One redirect
+per reply; the next reply is watched again. A false positive costs one changed subject,
+which is the trade the block list was always written for.
+
+What this does not do: the candidate has already heard however much was spoken before the
+words reached us, and a backend that reports a reply only when it is finished can only be
+cut off after the fact. Detection is a word list, so it catches phrasings it knows. On the
+old interview four of the five new tests failed; the fifth, that an ordinary question is left
+alone, passed on both.
+
 **A report from a call that was cut short says so.** Every failure path now ends the call
 with whatever was gathered, which is right: a candidate who answered twelve minutes of
 questions should still be scoreable. But the report then reads exactly like one from a

@@ -15,13 +15,20 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscript
-from .blocklist import ProhibitedQuestion
+from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
 from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
-from .prompts import CONSENT_DECLINED, CONSENT_UNANSWERED, GREETING, SYSTEM_PROMPT, WRAP_UP
+from .prompts import (
+    CONSENT_DECLINED,
+    CONSENT_UNANSWERED,
+    GREETING,
+    PROHIBITED_REDIRECT,
+    SYSTEM_PROMPT,
+    WRAP_UP,
+)
 
 #: How often the model is re-grounded. Its audio context is roughly two minutes, so a
 #: briefing older than this is worth resending even if nothing changed.
@@ -239,6 +246,10 @@ class Interview:
         self._hesitations = 0
         #: When either side was last heard: agent audio, or any caller transcript.
         self._last_heard_s = 0.0
+        #: The agent's reply as it streams in, and whether this one has been cut off
+        #: for asking something prohibited.
+        self._agent_text = ""
+        self._redirected = False
 
     # --- lifecycle ------------------------------------------------------------
 
@@ -312,13 +323,28 @@ class Interview:
             return []
 
         if isinstance(event, AgentText) and event.final:
+            self._agent_text = ""
             # A backend echoes back what it spoke, including the fixed utterances we
             # handed it with say(). Recording both put the greeting in the transcript
             # twice. The echo is a confirmation, not a second turn.
+            # Recorded before the guard runs, so a question and the line that cut it
+            # off appear in the order the candidate heard them.
             if not self._already_recorded(event.text):
                 self.record.transcript.append(Turn(t_s, "agent", event.text))
                 self.engine.note_agent(event.text, t_s)
-            return []
+            redirect = [] if self._redirected else self._guard_agent(event.text, t_s)
+            self._redirected = False
+            return redirect
+
+        if isinstance(event, AgentText):
+            # The model speaks for itself, so the gate cannot stop a prohibited question
+            # before it is asked: by the time we have the words, the candidate is
+            # hearing them. Watching the text as it streams is what makes cutting it
+            # off possible at all.
+            self._agent_text += event.text
+            if self._redirected:
+                return []
+            return self._guard_agent(self._agent_text, t_s)
 
         if isinstance(event, UserTranscript) and event.final:
             return self._on_answer(event.text, t_s)
@@ -397,6 +423,25 @@ class Interview:
             self._session_started_s = t_s
             self._last_brief_s = t_s  # the seed already carries the briefing
         return actions
+
+    def _guard_agent(self, text: str, t_s: float) -> List[Action]:
+        """Cut the agent off if it has started asking something it must not ask.
+
+        The block list gates our own fixed lines before they are spoken. It cannot do
+        that for the model's own speech, which is already in the candidate's ear by the
+        time the words reach us. So this is the second line: say a fixed redirect, which
+        cancels the model's reply, and put it on the record. A false positive costs one
+        changed subject; a missed one is a prohibited question asked in full.
+        """
+        violation = check(text)
+        if violation is None:
+            return []
+        self._redirected = True
+        self.record.flags.append(
+            "The agent started asking a prohibited question (%s) and was cut off: %r"
+            % (violation.category, violation.matched)
+        )
+        return self._say(PROHIBITED_REDIRECT, t_s)
 
     def _resolve_consent(self, text: str, t_s: float) -> List[Action]:
         """No recording, no interview. Silence is not agreement."""

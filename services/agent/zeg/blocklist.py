@@ -1,8 +1,13 @@
 """Questions the agent must never ask.
 
-This is enforcement, not guidance. The check runs on outbound text before it reaches
-synthesis, so a model that generates a prohibited question produces a blocked turn
-rather than a spoken one.
+This is enforcement, not guidance. For the lines that are ours, the check runs before
+the text is spoken, so a prohibited one produces a blocked turn rather than a spoken one.
+
+The model speaks for itself, and there it cannot work that way: by the time the words
+reach us the candidate is already hearing them. The interview watches that text as it
+streams and cuts the reply off with a fixed redirect, so the question is interrupted
+rather than finished, and the record says it happened. Detection is the same list either
+way.
 
 It lives in code because a prompt instruction is a request and this is a requirement.
 A model asked nicely to avoid these will comply almost always, and "almost always"
