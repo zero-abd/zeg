@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The summary says what the consent gate did, not just "declined".** The same misreporting fixed
+inside the interview, still in the demo summary: anything that was not a yes printed "declined", so a
+candidate who said nothing and a call that failed before the question was ever settled both read as a
+refusal. It now prints granted, declined, not answered, or never settled. Four new cases; on the
+previous commit they fail only as an ImportError, since the function is new, and the old behaviour is
+the measurement above: three different outcomes, all printing "declined". Suite: 1389 passed.
+
 **A topic the call never reached says so, instead of reading like an empty answer.** The second gap
 against docs/05, which asks for the topics that went uncovered "and why": every uncovered dimension
 read "nothing in the transcript speaks to this", whether the candidate was asked and said nothing or

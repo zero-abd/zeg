@@ -45,7 +45,7 @@ def main(argv=None) -> int:
 
     print("backend            %s" % backend.name)
     print("call duration      %.1f s" % result.duration_s)
-    print("consent            %s" % ("granted" if result.consent else "declined"))
+    print("consent            %s" % consent_line(result.consent, result.ended))
     print("interruptions      %d" % result.interruptions)
     print("briefings sent     %d" % len(result.steers))
     print("probes issued      %d" % len(result.probes))
@@ -65,6 +65,21 @@ def main(argv=None) -> int:
         print(report_for(result).render())
 
     return 0
+
+
+def consent_line(consent, ended) -> str:
+    """What the consent gate actually did.
+
+    Anything that was not a yes printed "declined", so a candidate who said nothing, and
+    a call that failed before the question was ever settled, both read as a refusal.
+    """
+    if consent:
+        return "granted"
+    if ended == "no answer to the consent question":
+        return "not answered"
+    if consent is None:
+        return "never settled"
+    return "declined"
 
 
 def report_for(result):

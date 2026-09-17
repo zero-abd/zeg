@@ -4,6 +4,8 @@ The report is the artefact: the console output is one way of looking at it, and
 anything that keeps a report rather than a terminal scrollback keeps this object.
 """
 
+import pytest
+
 from zeg.cli import report_for
 from zeg.conversation import DrivenResult, TranscriptEntry as T
 
@@ -113,3 +115,17 @@ def test_the_report_still_only_scores_the_interview():
     call = a_call([])
     call.interview_started_s = 22  # everything before the last question is outside it
     assert report_for(call).overall is None
+
+
+@pytest.mark.parametrize("consent, ended, expected", [
+    (True, None, "granted"),
+    (False, "consent declined", "declined"),
+    (False, "no answer to the consent question", "not answered"),
+    (None, "backend failed: the connection dropped", "never settled"),
+])
+def test_the_summary_says_what_the_consent_gate_did(consent, ended, expected):
+    """Everything that was not a yes printed "declined", including a candidate who said
+    nothing and a call that failed before the question was settled."""
+    from zeg.cli import consent_line
+
+    assert consent_line(consent, ended) == expected
