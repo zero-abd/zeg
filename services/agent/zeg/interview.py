@@ -597,7 +597,10 @@ class Interview:
 
         asking = not hesitation and is_question(text) and not signals(text)
         holding = hesitation or asking
-        if not holding:
+        # Past the wrap-up the candidate is asking about the job and saying thanks. Noted,
+        # "I'd love to hear more about on-call" and "okay great, that sounds reasonable"
+        # became claims, and the closing briefings listed them as what they had claimed.
+        if not holding and not self._wrapped:
             self.engine.note_caller(text, t_s)
 
         actions: List[Action] = []

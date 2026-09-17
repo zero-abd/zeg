@@ -282,6 +282,18 @@ def test_a_question_at_the_wrap_up_does_not_end_the_call(text):
     assert not iv.record.ended
 
 
+def test_what_the_candidate_says_after_the_wrap_up_is_not_a_claim():
+    from zeg.backends.base import UserTranscript
+
+    iv = wrapped_up_interview()
+    before = len(iv.engine.state.claims)
+    iv.on_event(UserTranscript("I'd love to hear more about how on-call works for the team",
+                               final=True), 820)
+    iv.on_event(UserTranscript("okay great, that sounds really reasonable to me", final=True), 840)
+    assert len(iv.engine.state.claims) == before
+    assert "on-call" not in iv.engine.briefing(850)
+
+
 def test_a_bare_no_ends_the_call_only_as_the_answer_to_the_wrap_up():
     from zeg.backends.base import AgentText, UserTranscript
 

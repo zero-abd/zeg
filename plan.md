@@ -195,6 +195,12 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**What the candidate says after the wrap-up is not a claim.** Turns past the wrap-up were still
+noted by the engine, so "I'd love to hear more about how on-call works for the team" and "okay great,
+that sounds really reasonable to me" became claims (measured), and any briefing in the close listed
+them as what the candidate had claimed. Scoring already excluded them through the interview window;
+the engine now does too. One new test, failing on the previous commit. Suite: 1285 passed.
+
 **A candidate with no questions at the wrap-up is thanked and the call ends.** Nothing ended a call
 between the wrap-up and the time limit: measured, "no, I think I'm good, thanks" at 13:40 was followed
 by 76 seconds of silent, recorded line and then "We're out of time", and the "no" went into the
