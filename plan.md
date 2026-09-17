@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A fixed line never merges into the model's half-finished reply.** Before speaking a fixed line,
+such as the wrap-up or a redirect, the client cancels the model's reply, but only a reply it has
+heard about. A reply the runtime had opened a moment earlier was left running. The runtime then
+ignored the fixed line's own open, because a response was already open, and the two merged.
+Measured on the server session: "Tell me more about That is about all the time I have.", one
+completed response. The candidate hears a sentence run straight into the wrap-up, and the transcript
+records that merged line alongside the fixed line the interview already recorded. The runtime now
+cancels an open reply itself when a fixed line arrives, so the fixed line gets its own response
+whatever the client knew. A fixed line with nothing open is unchanged. On the old server session the
+race test failed.
+
 **The record says who cut the disclosure off.** Before consent, the interview treated any report of
 the agent being interrupted as the candidate talking over the recording disclosure. It repeated the
 disclosure, which is right whatever the cause, and flagged "The candidate talked over the recording

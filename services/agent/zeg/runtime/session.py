@@ -239,11 +239,19 @@ class ServerSession:
             return [self.wire.error("bad_say", "say needs non-empty text")]
         if self._turn_id is not None:
             return [self.wire.error("say_mid_turn", "say is only valid at a turn boundary")]
+        out: List[Dict[str, Any]] = []
+        if self._response_id is not None:
+            # The client cancels the model's reply before a fixed line, but only one it has
+            # heard about. A reply opened here a moment before the fixed line arrived was
+            # left running, the fixed line's open was ignored because a response was already
+            # open, and the two merged: "Tell me more about That is about all the time I
+            # have." as one completed response.
+            out.extend(self._cancel("superseded"))
         # An action, like every other message that needs the model. It was stored as
         # state instead, and nothing ever came to collect it: the disclosure reached
         # the server and went no further.
         self.actions.append(Action("say", text))
-        return []
+        return out
 
     def _steer(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Context guidance for the model. Never spoken.

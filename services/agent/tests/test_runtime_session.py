@@ -311,6 +311,37 @@ def test_an_unnamed_cancel_still_stops_the_current_response():
     assert p.RESPONSE_CANCELLED in [m["type"] for m in out]
 
 
+def test_a_fixed_line_during_an_open_reply_gets_its_own_response():
+    """The client had not yet heard about a reply the runtime had just opened, so it did
+    not cancel it. The fixed line's open was ignored and the two merged into one completed
+    response: "Tell me more about That is about all the time I have."."""
+    session = configured_session()
+    out = session.on_frame(FrameResult(control="response_open", text_delta="Tell me more about ",
+                                       audio_pcm=SILENCE, audible=True))
+    reply = next(m["response_id"] for m in out if m["type"] == p.RESPONSE_STARTED)
+    session.drain_actions()
+
+    out = session.on_client(p.Wire().say("That is about all the time I have."))
+    assert [m["type"] for m in out] == [p.RESPONSE_CANCELLED, p.RESPONSE_DONE]
+    assert out[0]["response_id"] == reply
+    assert [a.kind for a in session.drain_actions()] == ["cancel", "say"]
+
+    out = session.on_frame(FrameResult(control="response_open",
+                                       text_delta="That is about all the time I have.",
+                                       audio_pcm=SILENCE, audible=True))
+    out += session.on_frame(FrameResult(control="response_close", audio_pcm=SILENCE))
+    started = [m for m in out if m["type"] == p.RESPONSE_STARTED]
+    texts = [m["text"] for m in out if m["type"] == p.RESPONSE_TEXT]
+    assert started and started[0]["response_id"] != reply
+    assert texts == ["That is about all the time I have."]
+
+
+def test_a_fixed_line_with_nothing_open_is_unchanged():
+    session = configured_session()
+    assert session.on_client(p.Wire().say("Hello.")) == []
+    assert [a.kind for a in session.drain_actions()] == ["say"]
+
+
 def test_the_runtime_never_invents_something_to_say():
     # A stalled response produces a terminal, never text.
     session = configured_session(watchdog=ResponseWatchdog(no_progress_frames=1))
