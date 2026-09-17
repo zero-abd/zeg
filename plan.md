@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A request to stop or to speak to a person is not scored as an answer.** The pairing step matched
+it with the question before it, so a model judge was shown "What tradeoff did you accept?" answered
+by "I'd rather speak to a person" in every dimension prompt, and a low score quoting it passed the
+quote check because the quote was exact. The pairing now skips turns the interview itself treats as
+a stop or a human request, and such a citation voids the score as unfound. The rule was checked
+against technical answers that mention stopping or a person ("we decided to stop the rollout", "I
+asked a person on the SRE team"): none matched. Two new tests, failing on the previous commit.
+Suite: 1260 passed.
+
 **What is said in the last seconds before the goodbye stays on the record.** A regression from the
 goodbye below: starting it six seconds early turned the limit into a window, and anything arriving
 in it closed the call before it was looked at. Measured on the previous commit, the candidate's

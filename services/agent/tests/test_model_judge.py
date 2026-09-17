@@ -144,6 +144,23 @@ def test_a_score_with_no_quote_is_not_called_a_fabrication():
     assert "cited nothing" in d.note
 
 
+@pytest.mark.parametrize("request_", [
+    "I'd rather speak to a person",
+    "actually I want to stop now",
+])
+def test_a_request_to_stop_is_not_an_answer_the_judge_can_cite(request_):
+    """It was paired with the question before it and shown to the judge as the answer, so
+    a low score quoting it passed the quote check."""
+    transcript = TRANSCRIPT + [T(40, "agent", "What would you do differently?"),
+                               T(50, "caller", request_)]
+    units = to_qa_units(transcript)
+    assert all(request_ not in u.answer for u in units)
+    j = ModelJudge(replying({"score": 1, "quote": request_, "reason": "declined"}))
+    d = j.score_dimension("tradeoffs", units)
+    assert d.insufficient
+    assert j.fabrications == ["tradeoffs"]
+
+
 def test_an_interviewer_quote_is_described_accurately():
     """It is in the transcript, just not in anything the candidate said."""
     j = ModelJudge(replying({"score": 2, "quote": "What did it cost?", "reason": "ok"}))

@@ -25,6 +25,7 @@ from .hesitation import is_hesitation
 from .memory import shorten
 from .prompts import INTERJECTIONS
 from .textnorm import fold
+from .withdrawal import reads_as_withdrawal, wants_a_human
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
 #: is a presentation of the same judgement, not a finer one.
@@ -144,6 +145,12 @@ def to_qa_units(transcript: Sequence, window: Optional[Sequence[float]] = None) 
             after_hesitation = False
             continue
         if entry.speaker != "caller":
+            continue
+        # Asking to stop, or for a person, is not an answer to anything. Paired as one, the
+        # judge was shown "What tradeoff did you accept?" answered by "I'd rather speak to a
+        # person", and a low score citing it passed the quote check because it was quoted
+        # exactly. The flag on the record is where that request belongs.
+        if reads_as_withdrawal(entry.text) or wants_a_human(entry.text):
             continue
         # A candidate asking something back has not answered either. It was paired as the
         # answer, and their real answer was then paired with the interviewer's reply to
