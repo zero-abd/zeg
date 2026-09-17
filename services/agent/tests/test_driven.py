@@ -249,6 +249,46 @@ def test_the_goodbye_replaces_an_answer_cut_off_by_the_limit():
     assert [a.text for a in actions if isinstance(a, Speak)] == [TIME_UP]
 
 
+def test_the_candidates_last_words_are_kept_when_the_goodbye_starts():
+    """Starting the goodbye early made the limit a window, and what the candidate said in
+    it was missing from the transcript."""
+    from zeg.backends.base import UserTranscript
+
+    iv = consented_interview()
+    iv.on_event(UserTranscript("we cut p99 latency to 30 ms by sharding", final=True), 895)
+    assert "we cut p99 latency to 30 ms by sharding" in [
+        t.text for t in iv.record.transcript if t.speaker == "caller"
+    ]
+
+
+@pytest.mark.parametrize("text, reason, flag", [
+    ("actually, can you stop the recording?", "consent withdrawn", "asked to stop"),
+    ("I'd rather speak to a person", "human requested", "speak to a person"),
+])
+def test_a_request_to_stop_near_the_limit_is_still_on_the_record(text, reason, flag):
+    """Both ended the call as a time limit and left no flag, so nobody was told the
+    recording might not be usable or that a person had been asked for."""
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import Speak
+    from zeg.prompts import CONSENT_WITHDRAWN, HUMAN_REQUESTED
+
+    iv = consented_interview()
+    actions = iv.on_event(UserTranscript(text, final=True), 896)
+    assert iv.record.ended == reason
+    assert any(flag in f for f in iv.record.flags)
+    line = CONSENT_WITHDRAWN if reason == "consent withdrawn" else HUMAN_REQUESTED
+    assert [a.text for a in actions if isinstance(a, Speak)] == [line]
+
+
+def test_a_prohibited_question_near_the_limit_is_flagged():
+    from zeg.backends.base import AgentText
+
+    iv = consented_interview()
+    iv.on_event(AgentText("How old are you, by the way?", final=True), 896)
+    assert any("prohibited question" in f for f in iv.record.flags)
+    assert iv.record.ended == "time limit reached"
+
+
 def test_a_silent_candidate_cannot_hold_the_call_past_the_limit():
     """The limit was only checked when an event arrived. With the candidate silent and
     the agent done, no events came, and this call ran to 1029 seconds."""

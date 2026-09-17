@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**What is said in the last seconds before the goodbye stays on the record.** A regression from the
+goodbye below: starting it six seconds early turned the limit into a window, and anything arriving
+in it closed the call before it was looked at. Measured on the previous commit, the candidate's
+last answer was missing from the transcript; "can you stop the recording?" and "I'd rather speak
+to a person" ended as "time limit reached" with no flag; a prohibited question from the agent was
+not flagged. The closing path now records the turn first, ends a stop or a human request under its
+own reason and line with its flag, and flags a prohibited question it spoke over. Four new tests,
+all failing on the previous commit. Suite: 1258 passed.
+
 **The time limit ends an interview with a goodbye, within the limit.** At the limit the interview
 only ended the call: no closing words, mid-sentence if the agent was answering the candidate's own
 closing question. On the old interview, a candidate asking "so what is the team like?" three seconds

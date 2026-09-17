@@ -335,7 +335,7 @@ class Interview:
         if self.record.ended:
             return []
         if self._time_is_up(t_s):
-            return self._close_at_time_limit(t_s)
+            return self._close_at_time_limit(None, t_s)
         if (
             self.record.consent is None
             and self._asked_consent
@@ -370,18 +370,45 @@ class Interview:
         return (self.record.consent is True
                 and t_s >= self.call.max_duration_s - GOODBYE_LEAD_S)
 
-    def _close_at_time_limit(self, t_s: float) -> List[Action]:
+    def _close_at_time_limit(self, event, t_s: float) -> List[Action]:
         """End the call, saying goodbye to anyone who was being interviewed.
 
         The call used to simply drop at the limit, mid-sentence if the agent was answering
         the candidate's own closing question. Saying a line cancels the reply in flight, so
         the goodbye replaces a half sentence rather than talking over it. A call that never
         became an interview ends as it did.
+
+        The event that arrived at the limit is still put on the record first. Starting the
+        goodbye early made the limit a window, and in it the candidate's last words were
+        missing from the transcript, a request to stop or to speak to a person left no flag
+        and ended as a time limit, and a prohibited question from the agent was not flagged.
         """
+        line, reason = TIME_UP, "time limit reached"
+        if isinstance(event, UserTranscript) and event.final:
+            self.record.transcript.append(Turn(t_s, "caller", event.text))
+            if self.record.consent is True:
+                if wants_a_human(event.text):
+                    self._flag_human_requested(t_s)
+                    line, reason = HUMAN_REQUESTED, "human requested"
+                elif reads_as_withdrawal(event.text):
+                    self._flag_withdrawal(t_s)
+                    line, reason = CONSENT_WITHDRAWN, "consent withdrawn"
+        elif isinstance(event, AgentText):
+            text = event.text if event.final else self._agent_text + event.text
+            if event.final and not self._already_recorded(event.text):
+                self.record.transcript.append(Turn(t_s, "agent", event.text))
+            violation = None if self._redirected else check(text)
+            if violation is not None:
+                self.engine.note_prohibited(violation.category)
+                self.record.flags.append(
+                    "The agent asked a prohibited question (%s): %r. The closing line was "
+                    "spoken over it, so the candidate may have heard part of it."
+                    % (violation.category, violation.matched)
+                )
         actions: List[Action] = []
         if self.record.consent is True:
-            actions.extend(self._say(TIME_UP, t_s))
-        actions.extend(self._end("time limit reached"))
+            actions.extend(self._say(line, t_s))
+        actions.extend(self._end(reason))
         return actions
 
     def _on_silence(self, t_s: float) -> List[Action]:
@@ -430,7 +457,7 @@ class Interview:
         # The clock outranks the conversation. Checked before anything else so a
         # runaway model cannot talk past the limit.
         if self._time_is_up(t_s):
-            return self._close_at_time_limit(t_s)
+            return self._close_at_time_limit(event, t_s)
 
         if isinstance(event, AgentInterrupted):
             # The candidate started talking and the backend already stopped. Before
@@ -518,11 +545,7 @@ class Interview:
             # The disclosure offers this in the first sentence of the call. Asked for a
             # person, the interview used to issue its next probe: the candidate asked to
             # be taken off the call and was asked what they personally built.
-            mins, secs = divmod(int(t_s), 60)
-            self.record.flags.append(
-                "The candidate asked to speak to a person at %d:%02d, and the call was "
-                "ended for a human to pick up." % (mins, secs)
-            )
+            self._flag_human_requested(t_s)
             actions = self._say(HUMAN_REQUESTED, t_s)
             actions.extend(self._end("human requested"))
             return actions
@@ -539,12 +562,7 @@ class Interview:
             # consent gate exists to prevent. Whether what was recorded before may be
             # used is a decision for a human, so the record says so rather than
             # deciding it here.
-            mins, secs = divmod(int(t_s), 60)
-            self.record.flags.append(
-                "The candidate asked to stop at %d:%02d, after agreeing at the start. "
-                "A human must decide whether anything recorded before that may be used."
-                % (mins, secs)
-            )
+            self._flag_withdrawal(t_s)
             actions = self._say(CONSENT_WITHDRAWN, t_s)
             actions.extend(self._end("consent withdrawn"))
             return actions
@@ -607,6 +625,21 @@ class Interview:
             self._session_started_s = t_s
             self._last_brief_s = t_s  # the seed already carries the briefing
         return actions
+
+    def _flag_human_requested(self, t_s: float) -> None:
+        mins, secs = divmod(int(t_s), 60)
+        self.record.flags.append(
+            "The candidate asked to speak to a person at %d:%02d, and the call was "
+            "ended for a human to pick up." % (mins, secs)
+        )
+
+    def _flag_withdrawal(self, t_s: float) -> None:
+        mins, secs = divmod(int(t_s), 60)
+        self.record.flags.append(
+            "The candidate asked to stop at %d:%02d, after agreeing at the start. "
+            "A human must decide whether anything recorded before that may be used."
+            % (mins, secs)
+        )
 
     def _guard_agent(self, text: str, t_s: float) -> List[Action]:
         """Cut the agent off if it has started asking something it must not ask.
