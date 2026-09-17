@@ -692,8 +692,10 @@ Respond with JSON only:
   "reason": "one sentence"}}
 
 The quote must be copied exactly from one of the Candidate lines below, without the
-"Candidate:" label. The interviewer's words are never evidence about the candidate, even
-where a question repeats what the candidate said. A quote you cannot find in the
+"Candidate:" label. Quote one continuous passage: do not join or shorten passages with
+"...", because an elided quote is not checked as evidence.
+The interviewer's words are never evidence about the candidate, even where a question
+repeats what the candidate said. A quote you cannot find in the
 candidate's lines is a fabrication and the answer is null instead.
 
 Transcript:

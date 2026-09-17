@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Elided judge quotes stay rejected; the judge is told not to elide.** The open case from the entries
+below, decided rather than loosened: accepting parts joined with "..." would let an elision reverse
+who did the work ("I didn't write ... the fix" from "I didn't write the tests, Sam wrote the fix"),
+which is exactly what the quote check exists to stop. The judge prompt now asks for one continuous
+passage, so an honest judge is not voided for eliding, and a test pins both the rejection and the
+instruction (the instruction half fails on the previous commit). Suite: 1291 passed.
+
 **A unit written against its number does not void a judge quote.** "p99 dropped to 30ms" quoted from
 "30 ms", or "12 GB" from "12GB", was not found and the score was voided. A number and the letters
 written straight after it are now split on both sides of the comparison; "p99" stays one token and a

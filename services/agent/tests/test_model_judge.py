@@ -209,6 +209,20 @@ def test_a_unit_written_against_its_number_is_the_same_quote(quote, found):
     assert (not j.score_dimension("technical_depth", units).insufficient) is found
 
 
+def test_a_quote_joined_with_an_ellipsis_is_not_accepted():
+    """Deliberately strict. An elision can reverse who did the work: "I didn't write ...
+    the fix" from "I didn't write the tests, Sam wrote the fix". The prompt asks for one
+    continuous passage instead, so an honest judge is not voided for eliding."""
+    units = to_qa_units([
+        T(0, "agent", "What did you do?"),
+        T(9, "caller", "I didn't write the tests, Sam wrote the fix"),
+    ])
+    j = ModelJudge(replying({"score": 4, "quote": "I didn't write ... the fix", "reason": "x"}))
+    assert j.score_dimension("ownership", units).insufficient
+    assert "one continuous passage" in JUDGE_PROMPT
+    assert '"..."' in JUDGE_PROMPT
+
+
 def test_a_quote_that_drops_a_hedge_is_still_not_found():
     """ "I kind of led it" quoted as "I led it" overstates what was said."""
     units = to_qa_units([
