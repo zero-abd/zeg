@@ -530,6 +530,12 @@ OWNED = [
     "I took on the migration",
     "I took ownership of the reconciler",
     "My role was the reproduction harness",
+    # Non-native auxiliaries, and the pronoun dropped as terse speech does.
+    "I am rewrite the settlement worker",
+    "I'm fix the retry path",
+    "Rewrote the settlement worker myself.",
+    "Personally rewrote the settlement worker.",
+    "The retry path was slow. Profiled it myself over two days.",
 ]
 
 NOT_OWNED = [
@@ -545,6 +551,16 @@ NOT_OWNED = [
     "My job is at a payments company",
     "That was my manager's call",
     "It was my first job out of college",
+    "Found out later that the lock expired early.",
+    "Ran into a deadlock at midnight.",
+    "Led to duplicate payments.",
+    "Built by the platform team before I joined.",
+    "We rewrote it and moved on.",
+    "Rewrite it from scratch, that was the advice.",
+    "Fixed income trades settle a day later.",
+    # A dropped subject with nothing saying whose work it was: as likely "we" as "I".
+    "Isolated it to one merchant.",
+    "So built the harness first, then the fix.",
 ]
 
 
@@ -709,11 +725,13 @@ STRUCTURED = [
     "to answer your question directly, I wrote the lock",
     "short version: a race. Longer version: two workers claimed one batch",
     "step one was the repro, step two the fix",
+    "First is the lock, after is the backfill.",
 ]
 NOT_STRUCTURED = [
     "the first release was in May",
     "I then fixed the retry path",
     "we shipped it and moved on",
+    "The first alert came after the deploy.",
 ]
 
 

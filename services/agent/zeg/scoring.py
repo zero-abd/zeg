@@ -235,7 +235,10 @@ _CAUSAL = re.compile(
 #: checked, so "first we reproduced it, then we added the lock, and finally we
 #: backfilled" earned nothing for communication.
 _STRUCTURE = re.compile(
-    r"\bfirst(ly)?\b[^.?!]{0,80}\b(then|second(ly)?|next|after that|finally)\b"
+    # "after is" and "afterwards" as well as "after that": "First is the lock, after is the
+    # backfill" lost communication. Not a bare "after", which is as often about time.
+    r"\bfirst(ly)?\b[^.?!]{0,80}\b(then|second(ly)?|next|after (that|this|is|was)|afterwards"
+    r"|finally)\b"
     r"|\b(two|three|four|a couple of|a few) (parts|steps|stages|reasons|pieces|things)\b"
     r"|\bstep (one|two|1|2)\b|\bshort version\b|\bin short\b"
     r"|\bto answer your question\b",
@@ -302,10 +305,30 @@ _OWNERSHIP_VERBS = _tenses(
 _BETWEEN = r"personally|actually|myself|then|also|just|eventually|finally|really|first|later|mostly"
 #: "I've written", "I have reproduced", "I had built". Not "I'd", which is as often "I
 #: would" as "I had", and "I'd rewrite it differently" is not a claim of having done it.
-_AUXILIARY = r"(?:'ve|\s+have|\s+had)?"
+_AUXILIARY = r"(?:'ve|'m|\s+have|\s+had|\s+am|\s+was)?"
+
+#: An answer that starts with the verb, the pronoun dropped: "Rewrote the settlement worker
+#: myself." Common in terse speech and from speakers of languages that drop subject
+#: pronouns, and it scored ownership as nothing. Past forms only, so an imperative is not
+#: a claim; never followed by "by", so "Built by the platform team" is not either. "found",
+#: "ran" and "led" are left out: "Found out later", "Ran into a deadlock", "Led to
+#: duplicate payments" are not claims of doing the work.
+_DROPPED_SUBJECT_PAST = (
+    r"rewrote|rewritten|wrote|written|built|rebuilt|fixed|shipped|debugged|designed"
+    r"|redesigned|implemented|added|refactored|migrated|introduced|proposed|profiled"
+    r"|diagnosed|traced|reproduced|architected|deployed|rolled out|created|developed"
+    r"|authored|replaced|removed|optimi[sz]ed|tuned|benchmarked|instrumented|automated"
+    r"|investigated|wired up|patched|isolated|narrowed|ruled out|bisected|set up"
+)
 _FIRST_PERSON = re.compile(
     r"\bi" + _AUXILIARY + r"\s+(?:(?:" + _BETWEEN + r")\s+){0,2}(?:" + _OWNERSHIP_VERBS + r")\b"
-    r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
+    # A dropped subject is as often "we" as "I", so it counts only when the sentence says
+    # whose work it was: "Rewrote the settlement worker myself", "Personally rewrote it".
+    # Crediting every one over-credited "Isolated it to one merchant", said about a team.
+    + r"|(?:^|[.!?;]\s+)personally\s+(?:" + _DROPPED_SUBJECT_PAST + r")\b"
+    + r"|(?:^|[.!?;]\s+)(?:(?:and|so|then|also|just|actually)\s+)?"
+    + r"(?:" + _DROPPED_SUBJECT_PAST + r")\b(?!\s+(?:by|income)\b)(?=[^.!?]*\bmyself\b)"
+    + r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
     r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on|in\s+charge\s+of)\b"
     # Possessive claims, the most natural answer to the engine's own probe. None of nine
     # counted: "My part was the advisory-lock fix" scored ownership as nothing. Narrow on

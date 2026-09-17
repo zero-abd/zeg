@@ -195,6 +195,25 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Lean matched pairs found two more ways the scorer marked down how someone speaks.** The
+matched pairs carry several markers per dimension and a score caps at two, so a variant losing
+one could hide. Delivery variants run over the recognition eval's one-marker transcript instead.
+Filler, hedging and both tenses held there, confirming earlier fixes. Two did not.
+
+Non-native grammar: "I am rewrite the settlement worker" lost ownership, and "First is the lock,
+after is the backfill" lost communication. A dropped pronoun: "Rewrote the settlement worker
+myself", common in terse speech and from speakers of languages that drop subject pronouns, lost
+ownership. "I am", "I'm" and "I was" may now come before the verb, and "after is", "after this"
+and "afterwards" count as sequence words; a bare "after" does not, since "the first alert came
+after the deploy" is about time.
+
+The dropped pronoun needed a judgement. A verb with no subject is as often "we" as "I", and
+crediting every one made "Isolated it to one merchant", said of a team, score higher than "We
+isolated it". So it counts only when the sentence says whose work it was: "myself" in it, or
+opening with "personally". Past forms only, never followed by "by", and "Found out later", "Ran
+into a deadlock", "Led to duplicate payments" and "Fixed income trades" stay out. Both pairs join
+the bias eval. On the old scorer nine tests failed, including both pairs; the negatives passed.
+
 **The recognition eval can now see a single lost signal.** Its transcript carried several markers
 for every dimension, so a degradation that destroyed one could never move a score. That is why the
 hyphenated-compounds degradation held even on the scorer that could not read "gave-up": the same

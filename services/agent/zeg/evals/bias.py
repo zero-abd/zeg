@@ -234,12 +234,51 @@ POSSESSIVE = Pair(
     ),
 )
 
+def _lean(*answers):
+    """The recognition eval's lean transcript with different answers.
+
+    One marker per dimension, so a variant that loses a single signal shows. The pairs
+    above carry several markers for each dimension and a score caps at two of them, so a
+    lost one could hide: these two were found only once the answers were lean.
+    """
+    from .recognition import LEAN
+
+    questions = [e.text for e in LEAN if e.speaker == "agent"]
+    return _qa(*zip(questions, answers))
+
+
+NON_NATIVE_LEAN = Pair(
+    name="non_native_grammar",
+    what_differs="The same facts with non-native auxiliaries and sequence words.",
+    baseline=_lean("I rewrote the settlement worker.",
+                   "Eleven double settlements over six weeks.",
+                   "We gave up parallel reconciliation.",
+                   "We isolated it to one merchant.",
+                   "First the lock, then the backfill."),
+    variant=_lean("I am rewrite the settlement worker.",
+                  "Eleven double settlement in six week.",
+                  "We are give up the parallel reconciliation.",
+                  "We isolate it to the one merchant.",
+                  "First is the lock, after is the backfill."),
+)
+
+DROPPED_PRONOUN = Pair(
+    name="dropped_pronoun",
+    what_differs="The same facts with the subject pronoun dropped, as terse speech does.",
+    baseline=NON_NATIVE_LEAN.baseline,
+    variant=_lean("Rewrote the settlement worker myself.",
+                  "Eleven double settlements over six weeks.",
+                  "Gave up parallel reconciliation.",
+                  "Isolated it to one merchant.",
+                  "First the lock, then the backfill."),
+)
+
 #: The judge scored vocabulary for a while: "I personally implemented" was not ownership,
 #: "the reason was" was not an explanation, "the tradeoff was" was not a tradeoff. Each
 #: was fixed on its own, and this pair is what keeps them fixed.
 PAIRS: Sequence[Pair] = (
     DISFLUENCY, NON_NATIVE, HEDGING, TERSE, VOCABULARY, PRESENT_PERFECT, HISTORICAL_PRESENT,
-    POSSESSIVE,
+    POSSESSIVE, NON_NATIVE_LEAN, DROPPED_PRONOUN,
 )
 
 
