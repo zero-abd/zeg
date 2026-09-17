@@ -391,6 +391,29 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     assert any("time I have" in s for s in spoken(actions))
 
 
+# --- who cut the disclosure off --------------------------------------------------------
+
+
+@pytest.mark.parametrize("reason", ["no_progress", "trailing_silence", ""])
+def test_a_disclosure_cut_off_by_the_system_is_not_blamed_on_the_candidate(iv, reason):
+    """Every interruption was recorded as the candidate talking over the disclosure,
+    including a runtime stopping a stalled response."""
+    iv.start()
+    iv.on_event(AgentInterrupted(reason), 4.0)
+    actions = iv.on_event(UserTranscript("yes that is fine", final=True), 6.0)
+    assert any("AI interviewer" in s for s in spoken(actions)), "it is still repeated"
+    assert not any("candidate talked over" in f for f in iv.record.flags)
+    assert any("cut off by the system" in f for f in iv.record.flags)
+
+
+@pytest.mark.parametrize("reason", ["barge_in", "superseded"])
+def test_a_candidate_talking_over_the_disclosure_is_still_recorded_as_such(iv, reason):
+    iv.start()
+    iv.on_event(AgentInterrupted(reason), 4.0)
+    iv.on_event(UserTranscript("yes that is fine", final=True), 6.0)
+    assert any("candidate talked over the recording disclosure" in f for f in iv.record.flags)
+
+
 # --- a question instead of an answer, at the consent gate ----------------------------
 
 

@@ -121,6 +121,11 @@ _UNSURE = re.compile(
 #: limit. What counts as a hesitation lives in hesitation.py, shared with scoring.
 MAX_HESITATIONS_BEFORE_CONSENT = 2
 
+#: Interruption reasons that mean the candidate started talking: their own barge-in, or the
+#: runtime superseding a response because a new caller turn began. Anything else, such as a
+#: runtime stopping a stalled response, is the system's doing.
+CANDIDATE_INTERRUPTIONS = ("barge_in", "superseded")
+
 #: How many questions are answered before the consent gate judges the next reply the
 #: usual way. A candidate who only ever asks is not agreeing, and an agent that answers
 #: forever is one a candidate cannot get off the line.
@@ -253,6 +258,8 @@ class Interview:
         self._session_started_s = 0.0
         #: The candidate talked over the disclosure before consent was settled.
         self._disclosure_interrupted = False
+        #: Why it was interrupted, so the record says who did it.
+        self._disclosure_interrupt_reason: Optional[str] = None
         #: Hesitations waited through before consent was settled.
         self._hesitations = 0
         #: Questions answered before consent was settled.
@@ -333,6 +340,7 @@ class Interview:
             # recorded.
             if self.record.consent is None and self._asked_consent:
                 self._disclosure_interrupted = True
+                self._disclosure_interrupt_reason = event.reason
             return []
 
         if isinstance(event, AgentText) and event.final:
@@ -375,10 +383,21 @@ class Interview:
                 # they may not have heard in full. Taking it as one recorded consent to a
                 # recording the candidate had cut off before it was announced.
                 self._disclosure_interrupted = False
-                self.record.flags.append(
-                    "The candidate talked over the recording disclosure. It was repeated "
-                    "in full before consent was taken."
-                )
+                reason = self._disclosure_interrupt_reason
+                if reason in CANDIDATE_INTERRUPTIONS:
+                    self.record.flags.append(
+                        "The candidate talked over the recording disclosure. It was repeated "
+                        "in full before consent was taken."
+                    )
+                else:
+                    # Any interruption used to be recorded as the candidate talking over the
+                    # disclosure, including a runtime stopping a stalled response. The
+                    # repeat is right either way; blaming the candidate on the record is not.
+                    self.record.flags.append(
+                        "The recording disclosure was cut off by the system (%s), not by the "
+                        "candidate, and was repeated in full before consent was taken."
+                        % (reason or "no reason given")
+                    )
                 return self._say(self.greeting, t_s)
             if is_hesitation(text) and self._hesitations < MAX_HESITATIONS_BEFORE_CONSENT:
                 # Not an answer yet. Waiting grants no more consent than declining does,

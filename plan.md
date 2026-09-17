@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The record says who cut the disclosure off.** Before consent, the interview treated any report of
+the agent being interrupted as the candidate talking over the recording disclosure. It repeated the
+disclosure, which is right whatever the cause, and flagged "The candidate talked over the recording
+disclosure". Measured: an interruption with the reason "no_progress" or "trailing_silence", a
+runtime stopping a stalled response, produced exactly that flag. A compliance record that blames the
+candidate for something the system did is wrong.
+
+Our own runtime reports its stalls as a finished response rather than a cancellation, so today this
+reaches the interview only through the backend contract, which allows it and whose client test
+relays exactly that. The interview now keeps the reason. A barge-in, or a response superseded
+because the candidate began a new turn, keeps the old wording. Anything else is recorded as cut off
+by the system, not the candidate. The disclosure is repeated either way. On the old interview the
+three system-reason tests failed and the two candidate-reason tests passed.
+
 **A barge-in cancels the response the candidate is hearing, not whichever is current.** The cancel
 message carried only a reason, and the runtime cancelled whatever response was open. The client
 plays agent audio out at speaking pace, so the runtime can finish generating a response while the
