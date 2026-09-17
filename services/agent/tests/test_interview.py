@@ -365,12 +365,45 @@ def test_the_answer_after_a_hesitation_is_the_one_that_counts(iv):
 
 def test_hesitating_without_ever_answering_does_not_hold_the_call_open(iv):
     """Checks the outcome, not which reply produced it: the old interview ended the call
-    on the first hesitation, the fixed one on the third, and both must end it."""
+    on the first hesitation, the fixed one on the third, and both must end it.
+
+    The reason changed from "consent declined" to "no answer": hesitating is not
+    refusing, and the record should not say the candidate declined.
+    """
     iv.start()
     for t in (5.0, 8.0, 11.0):
         iv.on_event(UserTranscript("um", final=True), t)
     assert iv.record.consent is False
+    assert iv.record.ended == "no answer to the consent question"
+
+
+@pytest.mark.parametrize("words", ["um", "hmm, let me think", "uh, hold on"])
+def test_running_out_of_patience_is_not_recorded_as_a_refusal(words):
+    """Three "let me think"s put a refusal on the record and told the candidate that was
+    completely fine. They never refused anything."""
+    from zeg.interview import Speak
+    from zeg.prompts import CONSENT_DECLINED, CONSENT_UNANSWERED
+
+    iv = Interview()
+    iv.start()
+    spoken = []
+    for t in (20.0, 40.0, 60.0):
+        spoken += [a.text for a in iv.on_event(UserTranscript(words, final=True), t)
+                   if isinstance(a, Speak)]
+    assert iv.record.ended == "no answer to the consent question"
+    assert CONSENT_UNANSWERED in spoken
+    assert CONSENT_DECLINED not in spoken
+
+
+def test_a_refusal_after_hesitating_is_still_a_refusal():
+    from zeg.prompts import CONSENT_DECLINED
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("um", final=True), 20.0)
+    actions = iv.on_event(UserTranscript("no thanks", final=True), 40.0)
     assert iv.record.ended == "consent declined"
+    assert any(getattr(a, "text", "") == CONSENT_DECLINED for a in actions)
 
 
 def test_a_reply_that_starts_with_a_hesitation_is_still_an_answer(iv):

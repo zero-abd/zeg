@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Running out of patience at the consent gate is not a refusal.** Two hesitations are waited through
+and the third is judged the usual way, which means read as not-a-yes: measured, three "hmm, let me
+think"s ended the call as "consent declined", spoke the line written for a refusal ("That is
+completely fine"), and put a refusal on a candidate's record when they had refused nothing. The third
+hesitation now ends the call the way silence does, as "no answer to the consent question". Consent is
+still not granted either way; only the record and the line change. A refusal after hesitating is
+still a refusal. Four new cases; the three that end without a refusal fail on the previous commit,
+and one existing test changed its expected reason for the same reason. Also audited every unbounded
+wait in the service after the synthesis hang: the runtime server's consumer wait is woken on both a
+frame and a model error, and the link and loop joins are already bounded. Suite: 1380 passed.
+
 **Speech synthesis gives up instead of hanging the call.** Found by accident: a `make test` run never
 finished, and a system voice process had been wedged for 28 minutes on one line. The synthesis call
 had no timeout at all, so the fallback tone the code promises ("never raises: tone on failure") could

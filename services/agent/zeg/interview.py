@@ -386,11 +386,7 @@ class Interview:
         ):
             # Consent was only ever settled by an answer. A candidate who never gave one
             # kept a recorded call open for the full fifteen minutes with no consent.
-            self.record.consent = False
-            self.engine.note_consent(False)
-            actions = self._say(CONSENT_UNANSWERED, t_s)
-            actions.extend(self._end("no answer to the consent question"))
-            return actions
+            return self._end_unanswered(t_s)
         if (
             self.record.consent is True
             and not self._wrapped
@@ -405,6 +401,18 @@ class Interview:
             self.record.wrapped_up_s = t_s
             return self._say(WRAP_UP, t_s)
         return self._on_silence(t_s)
+
+    def _end_unanswered(self, t_s: float) -> List[Action]:
+        """End a call the consent question never got an answer to.
+
+        Not a refusal: consent is not granted either way, but the record says which
+        happened, and only one of them is something the candidate did.
+        """
+        self.record.consent = False
+        self.engine.note_consent(False)
+        actions = self._say(CONSENT_UNANSWERED, t_s)
+        actions.extend(self._end("no answer to the consent question"))
+        return actions
 
     def _quiet_since(self) -> float:
         """When the line went quiet: the later of what was heard and what we are saying."""
@@ -576,11 +584,16 @@ class Interview:
                     )
                 return self._say(self.greeting, t_s)
             self._disclosure_heard = True
-            if is_hesitation(text) and self._hesitations < MAX_HESITATIONS_BEFORE_CONSENT:
+            if is_hesitation(text):
                 # Not an answer yet. Waiting grants no more consent than declining does,
                 # and declining ended the interview for someone who was still thinking.
-                self._hesitations += 1
-                return []
+                if self._hesitations < MAX_HESITATIONS_BEFORE_CONSENT:
+                    self._hesitations += 1
+                    return []
+                # Out of patience, but still not a refusal: a third "let me think" was
+                # read as one, so the record said the candidate declined to be recorded
+                # and they were told that was completely fine. Nothing was answered.
+                return self._end_unanswered(t_s)
             question = asks_about_consent(text)
             refusing = bool(_NO.search(_AGREEMENT_IDIOM.sub(" yes ", fold(text))))
             if question is not None and not refusing:
