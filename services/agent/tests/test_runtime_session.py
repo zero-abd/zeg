@@ -278,6 +278,39 @@ def test_a_response_that_went_quiet_after_speaking_is_closed_as_completed():
     assert [a.kind for a in session.drain_actions()] == ["cancel"]
 
 
+def open_and_close_a_response(session):
+    out = session.on_frame(FrameResult(control="response_open", text_delta="What broke?",
+                                       audio_pcm=SILENCE, audible=True))
+    rid = next(m["response_id"] for m in out if m["type"] == p.RESPONSE_STARTED)
+    session.on_frame(FrameResult(control="response_close", audio_pcm=SILENCE))
+    return rid
+
+
+def test_a_cancel_for_a_response_that_already_ended_does_not_stop_the_next_one():
+    """The client plays audio at speaking pace, so a barge-in often lands after the
+    runtime has finished that response and opened the next. The cancel named nothing,
+    and the next response, possibly a fixed line such as the wrap-up, was cancelled."""
+    session = configured_session()
+    first = open_and_close_a_response(session)
+    out = session.on_frame(FrameResult(control="response_open", audio_pcm=SILENCE, audible=True))
+    second = next(m["response_id"] for m in out if m["type"] == p.RESPONSE_STARTED)
+    session.drain_actions()
+
+    out = session.on_client(p.Wire().cancel("barge_in", response_id=first))
+    assert out == []
+    assert not [a for a in session.drain_actions() if a.kind == "cancel"]
+
+    out = session.on_client(p.Wire().cancel("barge_in", response_id=second))
+    assert [m["type"] for m in out] == [p.RESPONSE_CANCELLED, p.RESPONSE_DONE]
+
+
+def test_an_unnamed_cancel_still_stops_the_current_response():
+    session = configured_session()
+    session.on_frame(FrameResult(control="response_open", audio_pcm=SILENCE, audible=True))
+    out = session.on_client(p.Wire().cancel("barge_in"))
+    assert p.RESPONSE_CANCELLED in [m["type"] for m in out]
+
+
 def test_the_runtime_never_invents_something_to_say():
     # A stalled response produces a terminal, never text.
     session = configured_session(watchdog=ResponseWatchdog(no_progress_frames=1))

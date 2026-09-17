@@ -217,7 +217,7 @@ class ServerSession:
         if kind == p.TURN_COMMIT:
             return self._turn_commit(msg)
         if kind == p.CANCEL:
-            return self._cancel(msg.get("reason") or "barge_in")
+            return self._cancel(msg.get("reason") or "barge_in", msg.get("response_id"))
         if kind == p.SAY:
             return self._say(msg)
         if kind == p.STEER:
@@ -371,8 +371,13 @@ class ServerSession:
         self._settling_frames = 0
         return out
 
-    def _cancel(self, reason: str) -> List[Dict[str, Any]]:
+    def _cancel(self, reason: str, response_id: Optional[str] = None) -> List[Dict[str, Any]]:
         if self._response_id is None:
+            return []
+        if response_id is not None and response_id != self._response_id:
+            # A cancel for a response that has already ended. The candidate talked over
+            # the tail of the last one while its audio was still playing, and this one,
+            # possibly a fixed line such as the wrap-up, was cancelled in its place.
             return []
         response_id = self._response_id
         self._cancel_reason = reason

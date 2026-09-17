@@ -167,8 +167,13 @@ class Wire:
             raise ProtocolError("turn numbers start at 1")
         return self._msg(TURN_COMMIT, turn=turn)
 
-    def cancel(self, reason: str = "barge_in") -> Dict[str, Any]:
-        return self._msg(CANCEL, reason=reason)
+    def cancel(self, reason: str = "barge_in", response_id: Optional[str] = None) -> Dict[str, Any]:
+        """Stop a response. Name it: the client plays audio out at speaking pace, so a
+        barge-in often lands after the runtime has finished that response and opened the
+        next one, and an unnamed cancel stopped whichever was current."""
+        if response_id is None:
+            return self._msg(CANCEL, reason=reason)
+        return self._msg(CANCEL, reason=reason, response_id=response_id)
 
     def stop(self) -> Dict[str, Any]:
         return self._msg(STOP)

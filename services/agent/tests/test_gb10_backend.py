@@ -430,6 +430,24 @@ def test_audio_for_a_cancelled_response_is_dropped(audio):
     assert not [e for e in events if isinstance(e, AgentAudio)]
 
 
+def test_a_barge_in_names_the_response_the_candidate_is_hearing(audio):
+    """The runtime may have finished that response while its audio is still queued here,
+    and opened another; an unnamed cancel stopped the other one."""
+    link = FakeLink()
+    sess = session(link, audio)
+    link.deliver(link.wire.response_started("r1", "t1"))
+    for n in range(4):
+        link.deliver(agent_frame(link, frame=n))
+    link.deliver(link.wire.response_done("r1", "completed", "model_turn_end"))
+    drive(sess, audio, 2)  # the runtime is done with r1; its audio is still queued here
+    assert sess.agent_speaking
+
+    drive(sess, audio, GB10Config().min_speech_frames, speaking=True)
+    cancels = link.of_type(p.CANCEL)
+    assert cancels, "the candidate talked over the agent and nothing was cancelled"
+    assert cancels[-1]["response_id"] == "r1"
+
+
 def test_the_runtime_cancelling_first_is_also_reported(audio):
     # Its own watchdog may close a response we never interrupted.
     link = FakeLink()

@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A barge-in cancels the response the candidate is hearing, not whichever is current.** The cancel
+message carried only a reason, and the runtime cancelled whatever response was open. The client
+plays agent audio out at speaking pace, so the runtime can finish generating a response while the
+candidate is still hearing it and open the next one. A candidate talking over the tail of the first
+then cancelled the second, which could be a fixed line the interview had just asked for, such as the
+wrap-up or the redirect over a prohibited question. The client now remembers the response whose
+audio is queued or playing and names it in the cancel, and the runtime ignores a cancel for a
+response that has already ended. A cancel with no id behaves as before, so nothing else had to
+change at once. Against the old runtime session the stale-cancel test failed, and against the old
+client the cancel carried no response id at all.
+
 **The codec pipeline serves more than one response.** The runtime decodes codec tokens one frame
 behind the model so the decode cost hides under the next step, and `flush()` drains the last frame
 at the end of a response. Whether to decode on `submit` was decided by a "started" flag, and it

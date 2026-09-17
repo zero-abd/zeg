@@ -286,6 +286,9 @@ class GB10Session(VoiceSession):
 
         # Response state.
         self._response_id: Optional[str] = None
+        #: The response whose audio is queued or playing. Outlives `_response_id`, which
+        #: clears when the runtime says the response is done, while its audio still plays.
+        self._playing_response_id: Optional[str] = None
         self._response_text = ""
         self._interrupted = False
         #: Fixed lines asked for while the caller's turn was open. The server refuses a
@@ -542,7 +545,9 @@ class GB10Session(VoiceSession):
         self._playout.clear()
         if report:
             self._pending.append(AgentInterrupted())
-        self._link.send(self._wire.cancel(reason))
+        # Name the response whose audio the candidate is hearing. It may already be over on
+        # the runtime, which has opened the next one, and an unnamed cancel stopped that.
+        self._link.send(self._wire.cancel(reason, response_id=self._playing_response_id))
 
     def _emit_playout(self) -> None:
         """Release one 20 ms frame of agent audio per caller frame.
@@ -600,6 +605,7 @@ class GB10Session(VoiceSession):
 
         if kind == p.RESPONSE_STARTED:
             self._response_id = msg.get("response_id")
+            self._playing_response_id = self._response_id
             self._response_text = ""
             self._interrupted = False
             return
