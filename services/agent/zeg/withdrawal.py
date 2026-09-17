@@ -24,7 +24,8 @@ from .textnorm import fold
 #: any recording: "the recording", "recording me", "being recorded".
 _RECORDING = re.compile(
     r"\b(stop|end|cancel|delete|erase|turn off|switch off|shut off)\b[^.?!]{0,40}"
-    r"\b(the|this|that) recording\b"
+    # "stop the recording of logs at debug" is about logs, and ended the interview.
+    r"\b(the|this|that) recording\b(?!\s+of\b)"
     r"|\bstop recording\s+(me|this|us|the call|the interview)\b"
     r"|\bdo ?n'?t record\s+(me|this|us)\b"
     r"|\b(not|no longer) (want to be|wish to be|comfortable being|happy being) recorded\b"
@@ -38,7 +39,9 @@ _RECORDING = re.compile(
 #: this said so: no gerund after it, no object after it.
 _BARE_STOP = (
     r"stop\b(?!\s+(\w+ing\b|the\b|a\b|an\b|my\b|our\b|its\b|it\b|that\b|those\b"
-    r"|these\b|them\b|this\s+\w))"
+    # "stop and think", "stop me if this is too much" and "stop there, that's the gist"
+    # are someone pacing an answer, and each ended the interview.
+    r"|these\b|them\b|this\s+\w|and\b|me\b|there\b))"
 )
 
 #: Stopping the interview itself, said plainly.
@@ -48,10 +51,17 @@ _CALL = re.compile(
     + r"|\bplease\s+" + _BARE_STOP
     # "cancel the call to the payments API" is a sentence about work. The interview is
     # not something you cancel *to* anything.
-    + r"|\b(stop|end|cancel)\s+(the|this)\s+(interview|call)\b(?!\s+to\b)"
+    + r"|\b(stop|end|cancel)\s+(this\s+(interview|call)|the\s+interview)\b(?!\s+to\b)"
+    # "The call" is often a call in the system: "we end the call when the websocket
+    # drops" ended the interview. Only asked for, it is this one.
+    r"|\b(can|could) (we|you)\s+(stop|end|cancel)\s+the\s+call\b(?!\s+to\b)"
+    r"|\b(please|let'?s)\s+(stop|end|cancel)\s+the\s+call\b(?!\s+to\b)"
+    r"|\bi (do ?n'?t|do not) want to (continue|go on|keep going|do this)"
+    r"(\s+any ?more)?\W*$"
     r"|\bi (withdraw|revoke)\b"
     r"|\bi (no longer|do ?n'?t|do not) consent\b"
-    r"|\bi'?d like to (end\b|" + _BARE_STOP + r")",
+    # "I'd like to end on that point" closes an answer, not the interview.
+    r"|\bi'?d like to (end\b(?!\s+(on|with)\b)|" + _BARE_STOP + r")",
     re.I,
 )
 
@@ -64,9 +74,14 @@ _HUMAN = re.compile(
     r"\b(person|human|someone|somebody|recruiter)\b"
     r"|\bi'?d (rather|prefer)\b[^.?!]{0,30}\b(person|human|recruiter)\b"
     r"|\bi would (rather|prefer)\b[^.?!]{0,30}\b(person|human|recruiter)\b"
+    # The person was optional here, so "I want to talk to someone on the SRE team" was a
+    # request to end the call. Someone on, from or at somewhere is a colleague.
     r"|\bi want to (speak|talk) to (a|an|some)\w*\b[^.?!]{0,20}"
-    r"\b(person|human|someone|somebody|recruiter)?\b"
-    r"|\b(put me through|transfer me|hand me over)\b",
+    r"\b(person|human|recruiter|(someone|somebody)(?!\s+(on|from|at|in|about)\b))\b"
+    r"|\bis there (a|an) (real )?(person|human|recruiter)\b"
+    r"|\bis there (someone|somebody|anyone|anybody)\b[^.?!]{0,20}\b(talk|speak)\b"
+    # Only to someone, or at the end: "put me through the question again" is not this.
+    r"|\b(put me through|transfer me|hand me over)(\s+to\b|\s*(please)?\W*$)",
     re.I,
 )
 

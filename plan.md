@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Stop and person requests: nine false endings removed, three missed requests heard.** A batch of
+technical answers and real requests through the mid-interview checks found both directions wrong.
+Ending the interview on an ordinary answer: "I'd like to stop and think about that", "please stop me
+if this is too much detail", "I want to stop there, that's the gist", "we end the call when the
+websocket drops", "let's stop the recording of logs at debug", "I'd like to end on that point", "I
+want to talk to someone on the SRE team", "can you put me through the question again", "hand me over
+the next question". Missed: "I don't want to continue", "I don't want to do this anymore", "is there
+a person / someone I can talk to?". Each rule was narrowed or added for its own case (a bare stop
+followed by "and", "me" or "there"; "the call" only when asked for; "the recording of" something
+else; someone on, at or in a place; put through or transfer only to someone or at the end). "Could I
+talk to someone from your platform team" is still a person request, on purpose: the policy leans
+towards honouring one. Nineteen new cases; thirteen fail on the previous commit. Suite: 1350 passed.
+
 **Seven more plain agreements are consent.** A batch of 47 realistic replies to the recording
 question found eight read as refusals, each ending the call: "no, that's fine", "I don't have a
 problem with that", "all good", "I'm good with that", "you can record", "you may record it", "feel

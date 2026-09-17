@@ -31,6 +31,11 @@ WITHDRAWALS = [
     "Can we end the call?",
     "Take me off the recording.",
     "I'd rather you didn't record this.",
+    "I don't want to continue.",
+    "I don't want to do this anymore.",
+    "Let's end the interview here.",
+    "Can we end this call?",
+    "I'm done, I want to stop.",
 ]
 
 #: Things a software engineer says in an ordinary answer. Every one of these ending the
@@ -47,6 +52,13 @@ ORDINARY_ANSWERS = [
     "We turn off the cache during the migration.",
     "It stops when the queue drains.",
     "I want to stop guessing and actually measure it.",
+    # Each of these ended the interview.
+    "I'd like to stop and think about that for a second.",
+    "Please stop me if this is too much detail.",
+    "I want to stop there, that's the gist of it.",
+    "We end the call when the websocket drops.",
+    "Let's stop the recording of logs at debug level.",
+    "I'd like to end on that point.",
 ]
 
 
@@ -67,6 +79,11 @@ HUMAN_REQUESTS = [
     "Could I talk to a real person?",
     "May I speak to a recruiter?",
     "Can you put me through to someone?",
+    "Is there a person I can talk to?",
+    "Is there someone I can speak to?",
+    "I want to talk to someone else, a person.",
+    "Can I speak to someone?",
+    "Can you transfer me to a recruiter?",
 ]
 
 #: Ordinary answers that mention talking to people. Ending the interview on any of these
@@ -77,6 +94,10 @@ ABOUT_COLLEAGUES = [
     "You can talk to the API directly if you need to.",
     "I had to speak to three teams before anyone owned it.",
     "The service talks to a person-lookup endpoint.",
+    # Each of these ended the interview.
+    "I want to talk to someone on the SRE team before changing it.",
+    "Can you put me through the question again?",
+    "Hand me over the next question.",
 ]
 
 
