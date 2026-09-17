@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The answer to "are you an AI?" is not carried as the last question.** Asked mid-answer, the fixed
+reply became the interviewer's last line in the rollover seed, so a fresh session was told "Yes, I
+am an AI interviewer" and never learned which question was still pending. It is now an interjection,
+like the silence nudge. Scoring already paired correctly here, and before consent the reply is always
+followed by the consent question, so nothing else changes. One new test, failing on the previous
+commit. Suite: 1261 passed.
+
 **A request to stop or to speak to a person is not scored as an answer.** The pairing step matched
 it with the question before it, so a model judge was shown "What tradeoff did you accept?" answered
 by "I'd rather speak to a person" in every dimension prompt, and a low score quoting it passed the

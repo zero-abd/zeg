@@ -189,6 +189,23 @@ def test_a_nudge_is_not_carried_as_the_last_question():
     ]
 
 
+def test_the_answer_to_are_you_an_ai_is_not_carried_as_the_last_question():
+    """Asked mid-answer, the seed said the interviewer's last line was "Yes, I am an AI
+    interviewer", and the fresh session never learned which question was pending."""
+    from zeg.backends.base import AgentText, UserTranscript
+    from zeg.interview import Interview
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("yes that is fine", final=True), 5)
+    iv.on_event(AgentText("What tradeoff did you accept in the rewrite?", final=True), 10)
+    iv.on_event(UserTranscript("wait, are you an AI?", final=True), 15)
+    iv.on_event(UserTranscript("we chose consistency over latency", final=True), 30)
+    lines = iv.seed(31).last_exchange
+    assert lines[0] == "Interviewer: What tradeoff did you accept in the rewrite?"
+    assert "we chose consistency over latency" in lines[-1]
+
+
 def test_a_long_answer_keeps_the_figure_it_ends_on():
     """Cut from the end, the seed kept the lead-in and dropped the number."""
     answer = (

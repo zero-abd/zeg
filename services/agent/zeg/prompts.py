@@ -83,7 +83,9 @@ SILENCE_NUDGE = "Take your time. If it helps, I can ask about something else."
 #: question in the report, and a rolled session was told that was the last thing asked.
 #: Deliberately a closed list: a line without a question mark is often still a question
 #: ("Tell me about the rollout."), so absence of "?" cannot be the rule.
-INTERJECTIONS = (SILENCE_NUDGE,)
+#: The answer to "are you an AI?" is one too: asked mid-answer, a rolled session was seeded
+#: with it as the last thing the interviewer said, and never learned the question pending.
+INTERJECTIONS = (SILENCE_NUDGE, CONSENT_ANSWERS["ai"])
 
 #: Spoken when the silence goes on. It carries a question of its own, because moving on to
 #: nothing leaves the candidate in the same silence.
