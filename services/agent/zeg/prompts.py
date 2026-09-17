@@ -5,6 +5,18 @@ choices, so they are literals here rather than instructions in a system prompt.
 See docs/06-compliance.md.
 """
 
+#: Words a second of speech carries, for estimating how long one of these lines takes to
+#: say. Rough on purpose, and used only to keep one line from landing on another: a timer
+#: that speaks cancels whatever is in flight, and the wrap-up mark has to leave room for
+#: the wrap-up and the goodbye before the call ends.
+WORDS_PER_SECOND = 2.6
+
+
+def speech_seconds(text: str) -> float:
+    """About how long this line takes to say."""
+    return len(text.split()) / WORDS_PER_SECOND
+
+
 GREETING = (
     "Hi, thanks for making the time. Before we start, two things you should know. "
     "I am an AI interviewer, not a person. And this call is recorded so a human "

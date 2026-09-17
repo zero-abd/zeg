@@ -75,7 +75,15 @@ class CallConfig:
     silence_move_on_s: float = 15.0
 
     def __post_init__(self) -> None:
+        from .prompts import TIME_UP, WRAP_UP, speech_seconds  # local: prompts import nothing
+
         if self.wrap_up_at_s is None:
             # Ninety seconds for the candidate's questions and the close, but never before
             # three quarters of the call: 810 of 900, 510 of 600, 225 of 300, 45 of 60.
             self.wrap_up_at_s = int(max(self.max_duration_s * 0.75, self.max_duration_s - 90))
+        # Room for the wrap-up and the goodbye that follows it. Measured: a 30 second call
+        # wrapped up at 22 and said goodbye at 24, cutting the wrap-up off after two
+        # seconds of a ten second line, and a 900 second call asked to wrap up at 899
+        # reached the goodbye first and never wrapped up at all.
+        latest = self.max_duration_s - speech_seconds(WRAP_UP) - speech_seconds(TIME_UP) - 2.0
+        self.wrap_up_at_s = max(0.0, min(float(self.wrap_up_at_s), latest))

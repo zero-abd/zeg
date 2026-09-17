@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The wrap-up mark leaves room for the wrap-up and the goodbye.** Sweeping odd call configurations
+for anything that breaks: nothing raised, but a 900 second call asked to wrap up at 899 reached the
+goodbye at 894 first and never wrapped up at all, and a 30 second call wrapped up at 22 and said
+goodbye at 24, cutting a ten second line off after two. The wrap-up mark is now clamped to leave room
+for both lines; the ordinary calls are untouched (900 wraps at 810, 600 at 510). The speech-length
+estimate moved to prompts.py beside the lines it measures, so config and the interview share one.
+Four new cases, two failing on the previous commit. Suite: 1398 passed.
+
 **The report names two or three notable moments.** The last item of the docs/05 format that code can
 supply: the report had none. Two kinds, both drawn from the markers the rubric already scores on and
 never from a model, so a moment cannot claim anything the scores do not: the answer that carried

@@ -38,6 +38,7 @@ from .prompts import (
     SYSTEM_PROMPT,
     TIME_UP,
     WRAP_UP,
+    speech_seconds,
 )
 
 #: How often the model is re-grounded. Its audio context is roughly two minutes, so a
@@ -63,11 +64,6 @@ CONSENT_ANSWER_TIMEOUT_S = 15.0
 #: first silence cost them the interview without ever repeating the question.
 CONSENT_REASK_AFTER_S = 7.0
 
-#: Words a second of speech carries, for estimating how long a line of ours takes to say.
-#: Rough on purpose: it exists so a timer cannot speak over a line that is still playing
-#: when the backend does not report the line's own audio back to us. Measured against the
-#: disclosure, which is about 45 words and runs a little under twenty seconds.
-WORDS_PER_SECOND = 2.6
 
 #: Consent detection. The two failure directions are not equally bad, so the rules are
 #: not symmetrical. See `reads_as_consent`.
@@ -802,7 +798,7 @@ class Interview:
         # When this line should be finished, so a timer does not cut it off. Saying a line
         # cancels whatever is in flight: the consent re-ask landed seven seconds into a
         # disclosure that takes about seventeen to say.
-        self._spoken_until_s = max(self._spoken_until_s, t_s + len(safe.split()) / WORDS_PER_SECOND)
+        self._spoken_until_s = max(self._spoken_until_s, t_s + speech_seconds(safe))
         if safe == self.greeting:
             self._disclosure_heard = False  # spoken again, so it can be talked over again
         self.record.transcript.append(Turn(t_s, "agent", safe))
