@@ -64,3 +64,45 @@ def test_the_one_page_report_does_not_become_the_transcript():
     )
     assert "Tell me about it." not in a.render()
     assert "Tell me about it." in a.render_transcript()
+
+
+def _mixed_call():
+    from zeg.conversation import TranscriptEntry as T
+
+    return [
+        T(0, "agent", "What did you personally do?"),
+        T(30, "caller", "I wrote the advisory-lock fix myself because the root cause was "
+                        "a double read, and p99 dropped from 900 ms to 40 ms"),
+        T(60, "agent", "What did you give up to get that?"),
+        T(80, "caller", "we basically did various things around that"),
+    ]
+
+
+def test_the_report_names_a_notable_moment_of_each_kind():
+    """The format asks for two or three notable moments. There were none at all."""
+    from zeg.report import assemble_report
+
+    rendered = assemble_report(_mixed_call(), consent=True, interview_started_s=0).render()
+    assert "Notable moments:" in rendered
+    assert "Specific across" in rendered
+    assert "stayed general" in rendered
+
+
+def test_every_notable_moment_is_quoted_and_checkable():
+    from zeg.report import assemble_report
+    from zeg.scoring import notable_moments
+
+    report = assemble_report(_mixed_call(), consent=True, interview_started_s=0)
+    moments = notable_moments(report.moments_from)
+    assert moments
+    for moment in moments:
+        assert moment.quote in report.render_transcript()
+
+
+def test_a_call_with_nothing_notable_says_nothing():
+    from zeg.conversation import TranscriptEntry as T
+    from zeg.report import assemble_report
+
+    plain = [T(0, "agent", "Tell me about it."), T(30, "caller", "I wrote the lock fix")]
+    assert "Notable moments:" not in assemble_report(
+        plain, consent=True, interview_started_s=0).render()

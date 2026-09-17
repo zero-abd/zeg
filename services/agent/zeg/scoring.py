@@ -76,6 +76,8 @@ class Assessment:
     #: report, as the media gateway will, had no way to show a quote in context or to let
     #: a reviewer check one. Kept off `render`, which is the one page.
     transcript: Sequence = field(default_factory=tuple)
+    #: The question-and-answer pairs the score was drawn from, for the notable moments.
+    moments_from: Sequence = field(default_factory=tuple)
 
     def render_transcript(self) -> str:
         """The whole call, for a reviewer who wants to see a quote in its place."""
@@ -140,6 +142,14 @@ class Assessment:
                 out.append('      [%02d:%02d] "%s"' % (m, s, excerpt(e.quote, d.dimension)))
             elif d.note:
                 out.append("      %s" % d.note)
+        moments = notable_moments(self.moments_from)
+        if moments:
+            out.append("")
+            out.append("Notable moments:")
+            for moment in moments:
+                mins, secs = divmod(int(moment.at_s), 60)
+                out.append("  [%02d:%02d] %s" % (mins, secs, moment.note))
+                out.append('      "%s"' % shorten(" ".join(moment.quote.split()), 72))
         if self.flags:
             out.append("")
             out.append("Flags, for a human to weigh:")
@@ -148,6 +158,47 @@ class Assessment:
         out.append("")
         out.append("A human reviews this before any decision. zeg does not decide.")
         return "\n".join(out)
+
+
+@dataclass
+class Moment:
+    """Something in the call worth a reviewer's attention, with its place in it."""
+
+    at_s: float
+    note: str
+    quote: str
+
+
+def notable_moments(units: Sequence[QAUnit], limit: int = 3) -> List[Moment]:
+    """The two or three moments the report format asks for.
+
+    Derived from the same markers the rubric scores on, never from a model, so a moment
+    cannot say anything the scores do not: the answer that carried evidence across the
+    most dimensions, and the answers that stayed general when asked for specifics. Both
+    are quoted, because a moment a reviewer cannot check is worth nothing.
+    """
+    best, best_count = None, 1
+    for unit in units:
+        found = len(signals(unit.answer))
+        if found > best_count:
+            best, best_count = unit, found
+    out: List[Moment] = []
+    if best is not None:
+        out.append(Moment(
+            best.answered_at_s,
+            "Specific across %d of the five dimensions in one answer" % best_count,
+            best.answer,
+        ))
+    for unit in units:
+        if len(out) >= limit:
+            break
+        if _VAGUE.search(normalise(unit.answer)) and not signals(unit.answer):
+            out.append(Moment(
+                unit.answered_at_s,
+                "Asked %r and stayed general" % shorten(unit.question, 48),
+                unit.answer,
+            ))
+    return out[:limit]
 
 
 def _names(dimensions: Sequence[str]) -> str:
@@ -629,6 +680,7 @@ def score_call(
             duration_s=duration,
             judge=judge.name,
             transcript=tuple(transcript),
+            moments_from=tuple(units),
         )
 
     total_w = sum(role.weights.get(s.dimension, 1.0) for s in scored)
@@ -655,6 +707,7 @@ def score_call(
         duration_s=duration,
         judge=judge.name,
         transcript=tuple(transcript),
+        moments_from=tuple(units),
     )
 
 

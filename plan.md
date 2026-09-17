@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The report names two or three notable moments.** The last item of the docs/05 format that code can
+supply: the report had none. Two kinds, both drawn from the markers the rubric already scores on and
+never from a model, so a moment cannot claim anything the scores do not: the answer that carried
+evidence across the most dimensions, and answers that stayed general when asked for specifics, each
+quoted with its timestamp. A test asserts every moment's quote appears in the transcript the report
+carries, so a reviewer can check it. Nothing notable renders nothing. Three new tests, two failing on
+the previous commit. Still not done, and not codeable here: audio links, which need somewhere to
+store and serve the recording. Suite: 1394 passed.
+
 **The report carries the transcript, so a cited quote can be checked.** The last structural gap
 against docs/05, which asks for the full transcript collapsed: the report object held scores, quotes
 and flags but not a word of what was said. The demo prints the transcript separately, so this only
