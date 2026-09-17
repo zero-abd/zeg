@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The driving contract is written where a driver will read it.** Several recent entries ended with a
+note for whoever integrates the media gateway: call `tick` on every frame, wait for both sides to be
+quiet before a rollover and rebuild its seed then, call `Interview.report()` at the end. Those notes
+lived in this log and nowhere in the code. The `Interview` docstring still said only "feed it
+backend events, perform the actions it returns", and the `Rollover` docstring still said to swap at
+the turn boundary, which is the behaviour that cut speakers off. Both now state the contract, each
+point noting the bug it prevents, with `InterviewRunner` named as the reference for the first four
+and the demo's `report_for` for the fifth. Documentation only; no behaviour changed.
+
 **Every way of driving a call produces the same report.** The scoring window and the report's flags
 were assembled beside the runner and the demo only. The media gateway will drive an `Interview`
 directly, and all it had was `transcript_for_scoring()`, which returns everything. Scoring that, the

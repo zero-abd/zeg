@@ -195,11 +195,16 @@ class Probe:
 
 @dataclass
 class Rollover:
-    """Open a fresh model session primed with this, and swap at this turn boundary.
+    """Open a fresh model session primed with this, once both sides are quiet.
 
     The model's context horizon is shorter than the interview, so the session is
     replaced rather than allowed to drift past what it can hold. The candidate hears a
     beat of silence; they do not hear the agent forget them.
+
+    Not at once: the request can arrive while the candidate has started their next
+    sentence or the agent is still replying. Wait for both to stop, and rebuild the seed
+    with `Interview.seed(t_s)` at the moment of the swap, since this one was built when
+    the rollover was asked for.
     """
 
     seed: SessionSeed
@@ -238,7 +243,33 @@ class InterviewRecord:
 
 
 class Interview:
-    """Drive one call. Feed it backend events, perform the actions it returns."""
+    """Drive one call. The interview decides; the driver moves audio and performs actions.
+
+    A driver, the runner here or the media gateway, does five things. Each was a bug while
+    it was missing. `InterviewRunner` is the reference for the first four, and the demo's
+    `report_for` for the fifth.
+
+    1. At the start, perform what `start()` returns: the disclosure and consent request.
+    2. For every backend event, call `on_event(event, t_s)` and perform what comes back, in
+       order.
+    3. On every frame, event or not, call `tick(t_s)` and perform what comes back. The time
+       limit, the spoken wrap-up, the consent timeout and the silence nudges live there. A
+       driver that only forwards events leaves a quiet candidate on a silent, recorded line
+       past the time limit.
+    4. On `Rollover`, do not swap at once. Wait until the session reports both
+       `caller_speaking` and `agent_speaking` false, rebuild the seed with `seed(t_s)`,
+       close the old session, open the new one with the seed's system prompt and steer it
+       with `seed.context()`. Swapping on arrival cut the candidate or the agent off
+       mid-sentence and handed the new session a stale seed. If the new session cannot be
+       opened, end the call and keep what was gathered.
+    5. At the end, call `report(errors=...)` with any failures the driver saw. Not
+       `score_call(transcript_for_scoring())`, which scores the consent exchange and drops
+       every compliance flag.
+
+    Performing actions: `Speak` is `session.say(text)`; `Brief` and `Probe` are
+    `session.steer(...)`; on `EndCall`, let a line spoken in the same batch play before
+    closing, or the candidate who declined never hears why the call ended.
+    """
 
     def __init__(
         self,
