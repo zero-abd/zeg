@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Calls shorter than fifteen minutes wrap up and move through every phase.** Calls run "up to"
+fifteen minutes, but the wrap-up time was a fixed 810 seconds and the phase plan was written in
+absolute seconds for a fifteen-minute call. Measured: a ten-minute call was due to wrap up after it
+had already ended, so a silent candidate was never told the interview was closing and the call
+simply stopped; it also never reached the scenario or close phases. A five-minute call never left
+the first depth phase, so every briefing near its end named the wrong phase and the wrong goal. The
+only test for a shorter call passed an explicit wrap-up time and so never exercised the default.
+
+The wrap-up now defaults to ninety seconds before the end, never before three quarters of the call:
+810 of 900, 510 of 600, 225 of 300. An explicit value is kept. The default plan is fitted to the
+call, with every phase before the close ending where the wrap-up starts and the close ending with the
+call; for fifteen minutes it is exactly the plan as written. On the old code six of the new tests
+failed; the fifteen-minute cases and the explicit override passed on both.
+
 **Making room for a fixed line is not reported as the candidate interrupting.** The previous entry
 had the runtime cancel an open reply when a fixed line arrives, and it used the reason
 "superseded", which already meant a new caller turn had begun. The client reports a cancellation it

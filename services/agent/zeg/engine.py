@@ -57,6 +57,23 @@ DEFAULT_PLAN: Sequence[Phase] = (
     Phase("close", 900, "Their questions, next steps, thank you."),
 )
 
+def _fit_to_call(plan: Sequence[Phase], call: CallConfig) -> Tuple[Phase, ...]:
+    """The default plan stretched or shrunk to the call's length.
+
+    Its boundaries were absolute seconds for a fifteen-minute call. A ten-minute call never
+    reached the scenario or the close, and a five-minute one never left the first depth
+    phase, so every briefing near the end named the wrong phase and the wrong goal. The
+    phases before the close now end where the wrap-up starts, and the close ends with the
+    call. For fifteen minutes this is exactly the plan as written.
+    """
+    from dataclasses import replace
+
+    ratio = call.wrap_up_at_s / plan[-2].until_s
+    fitted = [replace(p, until_s=p.until_s * ratio) for p in plan[:-1]]
+    fitted.append(replace(plan[-1], until_s=call.max_duration_s))
+    return tuple(fitted)
+
+
 #: The probe ladder. Stop descending when an answer becomes specific and costly to
 #: fabricate, or when two consecutive levels return generality.
 PROBE_LADDER = (
@@ -135,7 +152,7 @@ class InterviewEngine:
         plan: Sequence[Phase] = DEFAULT_PLAN,
     ) -> None:
         self.call = call or CallConfig()
-        self.plan = tuple(plan)
+        self.plan = tuple(_fit_to_call(plan, self.call) if plan is DEFAULT_PLAN else plan)
         self.state = InterviewState()
 
     # --- clock ---------------------------------------------------------------

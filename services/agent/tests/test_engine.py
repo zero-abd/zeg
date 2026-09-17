@@ -247,6 +247,38 @@ def test_a_long_claim_keeps_the_figure_it_ends_on(eng):
     assert "down to 30" in eng.briefing(200)
 
 
+@pytest.mark.parametrize("minutes,wrap_up", [(15, 810), (10, 510), (5, 225), (1, 45)])
+def test_the_wrap_up_follows_the_length_of_the_call(minutes, wrap_up):
+    """It was a fixed 810 seconds, so a ten-minute call was due to wrap up after it had
+    ended."""
+    assert CallConfig(max_duration_s=minutes * 60).wrap_up_at_s == wrap_up
+
+
+def test_an_explicit_wrap_up_is_kept():
+    assert CallConfig(max_duration_s=600, wrap_up_at_s=400).wrap_up_at_s == 400
+
+
+@pytest.mark.parametrize("minutes", [15, 10, 5])
+def test_every_call_reaches_every_phase_in_order(minutes):
+    """A ten-minute call never reached the scenario or the close, and a five-minute one
+    never left the first depth phase."""
+    call = CallConfig(max_duration_s=minutes * 60)
+    eng = InterviewEngine(call=call)
+    seen = []
+    for t in range(0, call.max_duration_s, 5):
+        name = eng.phase_at(t).name
+        if not seen or seen[-1] != name:
+            seen.append(name)
+    assert seen == [p.name for p in eng.plan]
+    assert eng.phase_at(call.wrap_up_at_s).name == "close"
+
+
+def test_a_fifteen_minute_call_keeps_the_plan_as_written(eng):
+    from zeg.engine import DEFAULT_PLAN
+
+    assert [(p.name, p.until_s) for p in eng.plan] == [(p.name, p.until_s) for p in DEFAULT_PLAN]
+
+
 def test_a_shorter_call_moves_the_wrap_up(eng):
     short = InterviewEngine(call=CallConfig(max_duration_s=300, wrap_up_at_s=240))
     assert short.should_wrap_up(250)

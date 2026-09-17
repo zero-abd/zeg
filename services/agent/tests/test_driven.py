@@ -320,6 +320,20 @@ def test_a_silent_candidate_is_not_kept_on_a_recorded_call_without_consent():
     assert r.agent_audio_frames > 0
 
 
+def test_a_shorter_call_still_tells_the_candidate_it_is_closing():
+    """The wrap-up was a fixed 810 seconds. On a ten-minute call it was due after the call
+    had ended, so the call simply stopped without the candidate being told."""
+    from zeg.prompts import WRAP_UP
+
+    caller = [CONSENT, CallerTurn("we rewrote the payment reconciler after an outage",
+                                  speak_s=4.0, pause_after_s=700.0)]
+    r = run(caller, call=CallConfig(max_duration_s=600))
+    wrap = [t for t in r.transcript if t.speaker == "agent" and t.text == WRAP_UP]
+    assert len(wrap) == 1, "never told the interview was closing"
+    assert wrap[0].at_s < 600
+    assert r.ended == "time limit reached"
+
+
 class RecordsCloses(OneAtATime):
     """Notes, for every session closed, whether the caller was mid-turn at the time."""
 

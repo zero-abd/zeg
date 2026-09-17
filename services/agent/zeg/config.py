@@ -6,6 +6,7 @@ synthesis stage emits 22.05 kHz, while telephony and most conferencing paths del
 """
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 # --- Audio -------------------------------------------------------------------
 
@@ -65,7 +66,16 @@ class CallConfig:
     """Limits the interview engine enforces regardless of what the model wants."""
 
     max_duration_s: int = 15 * 60
-    wrap_up_at_s: int = 13 * 60 + 30
+    #: When to start closing. Derived from the call's length unless given: it was a fixed
+    #: 810 seconds, so a 10-minute call was due to wrap up after it had already ended and
+    #: the candidate was never told the interview was closing.
+    wrap_up_at_s: Optional[int] = None
     silence_nudge_s: float = 4.0
     silence_rephrase_s: float = 8.0
     silence_move_on_s: float = 15.0
+
+    def __post_init__(self) -> None:
+        if self.wrap_up_at_s is None:
+            # Ninety seconds for the candidate's questions and the close, but never before
+            # three quarters of the call: 810 of 900, 510 of 600, 225 of 300, 45 of 60.
+            self.wrap_up_at_s = int(max(self.max_duration_s * 0.75, self.max_duration_s - 90))
