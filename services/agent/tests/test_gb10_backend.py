@@ -185,6 +185,49 @@ def test_the_session_reports_the_agent_speaking_until_its_audio_is_delivered(aud
     assert not sess.agent_speaking
 
 
+def test_a_fixed_line_on_its_way_counts_as_the_agent_speaking(audio):
+    """Nothing said so between sending a line and the runtime starting it, and a rollover
+    waiting for quiet closed the session in that gap: the line was never heard."""
+    link = FakeLink()
+    sess = session(link, audio)
+    drive(sess, audio, 1)
+    sess.say("Sorry, let me stay on the technical side.")
+    drive(sess, audio, 3)
+    assert sess.agent_speaking, "the line has been sent and not started"
+    link.deliver(link.wire.response_started("r1", None))
+    link.deliver(link.wire.response_done("r1", "completed", "model_turn_end"))
+    drive(sess, audio, 1)
+    assert not sess.agent_speaking
+
+
+def test_a_line_the_runtime_never_starts_does_not_hold_the_agent_speaking(audio):
+    link = FakeLink()
+    sess = session(link, audio, say_start_frames=10)
+    sess.say("That is about all the time I have.")
+    drive(sess, audio, 11)
+    assert not sess.agent_speaking
+
+
+def test_a_refused_line_is_not_on_its_way(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.say("hello")
+    link.deliver(link.wire.error("say_mid_turn", "say is only valid at a turn boundary"))
+    drive(sess, audio, 1)
+    assert not sess.agent_speaking
+
+
+def test_a_line_on_its_way_is_not_something_to_barge_in_on(audio):
+    """Nothing is playing yet. Reported as an interruption, a candidate saying hello as
+    the disclosure was sent would read as talking over it."""
+    link = FakeLink()
+    sess = session(link, audio)
+    sess.say("hello")
+    events = drive(sess, audio, 10, speaking=True)
+    assert not [e for e in events if isinstance(e, AgentInterrupted)]
+    assert not link.of_type(p.CANCEL)
+
+
 def test_the_session_reports_an_open_turn_as_the_caller_speaking(audio):
     link = FakeLink()
     sess = session(link, audio, endpoint_silence_ms=200)

@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A fixed line on its way counts as the agent speaking.** The client only knew the agent was speaking
+once the runtime reported the response started, so straight after `say()` both `agent_speaking` and
+`caller_speaking` were false (measured). A rollover waiting for quiet, as the driving contract tells
+every driver to do, could close the session in that gap and the line was never heard: for example the
+redirect spoken over a prohibited question, once the cancelled reply ended. A sent, unstarted line now
+counts, for at most 3 s so a lost one cannot hold off rollovers, and a refused one stops counting. It
+is kept out of the barge-in check, since nothing is playing yet to interrupt. Four new tests: the
+line counting fails on the previous commit, the bound test only because the setting did not exist,
+and two guards (refusal, no barge-in) pass on both. Suite: 1278 passed.
+
 **A briefing no longer says an answer held what it was asked for when it did not.** Answers are kept
 under their probe whenever they are not vague, and were labelled by the probe: measured, "the figure:
 it was faster afterwards" and "their own part: we sharded it by merchant". A fresh session reads that

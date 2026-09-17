@@ -94,6 +94,11 @@ class GB10Config:
     #: long means it is wedged, not busy.
     watchdog_frames: int = 200
 
+    #: How long a fixed line that has been sent counts as the agent speaking before the
+    #: runtime starts it. 150 frames is 3 s, far past a prefill of one sentence. Bounded
+    #: so a line the runtime lost cannot hold off a rollover for the rest of the call.
+    say_start_frames: int = 150
+
     #: Hard session limit, in model frames. 16 minutes. The interview wall clock in
     #: CallConfig ends the call 90 seconds before this, so reaching it means the
     #: layer above failed, which is why it is reported as an error.
@@ -342,6 +347,10 @@ class GB10Session(VoiceSession):
         #: Fixed lines asked for while the caller's turn was open. The server refuses a
         #: say mid-turn, so they wait here and go out the moment the turn commits.
         self._deferred_says = []
+        #: Fixed lines sent that the runtime has not started speaking yet, and the
+        #: transport frame the latest went out on.
+        self._says_unstarted = 0
+        self._say_sent_frame = 0
 
         self._link.send(
             self._wire.configure(
@@ -415,7 +424,12 @@ class GB10Session(VoiceSession):
             # Stop the model's own reply to make room, without calling it an
             # interruption: nobody talked over the agent.
             self._stop_response("superseded", report=False)
+        self._send_say(text)
+
+    def _send_say(self, text: str) -> None:
         self._link.send(self._wire.say(text))
+        self._says_unstarted += 1
+        self._say_sent_frame = self._transport_frames
 
     def steer(self, text: str) -> None:
         """Guidance into the model's context. Never reaches the speaker."""
@@ -524,7 +538,7 @@ class GB10Session(VoiceSession):
         # the server has already seen the turn close.
         held, self._deferred_says = self._deferred_says, []
         for text in held:
-            self._link.send(self._wire.say(text))
+            self._send_say(text)
 
     def _enqueue(self, pcm: bytes) -> None:
         """Aggregate 20 ms transport frames into 80 ms model frames."""
@@ -562,7 +576,19 @@ class GB10Session(VoiceSession):
 
     @property
     def agent_speaking(self) -> bool:
-        return self._speaking
+        """Also true while a fixed line is on its way, for a bounded time.
+
+        Between sending a line and the runtime starting it, nothing local said the agent
+        was about to speak. A rollover waiting for quiet took that gap and closed the
+        session, and the line was never heard: a redirect spoken over a prohibited
+        question, say, leaving the candidate on silence. Not part of `_speaking`, which
+        drives barge-in: nothing is playing yet, so there is nothing to interrupt.
+        """
+        return self._speaking or self._say_on_its_way()
+
+    def _say_on_its_way(self) -> bool:
+        return (self._says_unstarted > 0
+                and self._transport_frames - self._say_sent_frame < self._cfg.say_start_frames)
 
     @property
     def _speaking(self) -> bool:
@@ -656,6 +682,9 @@ class GB10Session(VoiceSession):
             self._playing_response_id = self._response_id
             self._response_text = ""
             self._interrupted = False
+            # The runtime does not say whether this is our line or the model's own reply.
+            # Either way something is now speaking, which is all the count is for.
+            self._says_unstarted = max(0, self._says_unstarted - 1)
             return
 
         if kind == p.RESPONSE_TEXT:
@@ -708,6 +737,8 @@ class GB10Session(VoiceSession):
 
         if kind == p.ERROR:
             error = msg.get("error") or {}
+            if error.get("code") in ("bad_say", "say_mid_turn"):
+                self._says_unstarted = max(0, self._says_unstarted - 1)  # refused, not coming
             self._pending.append(
                 BackendError(
                     "%s: %s" % (error.get("code", "error"), error.get("message", "")),
