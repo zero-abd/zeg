@@ -868,7 +868,8 @@ def _normalise(text: str) -> str:
     Genuine quotes were rejected, and the score voided, over a trailing full stop the
     transcript did not have or a straight apostrophe where recognition wrote a curly one.
     """
-    words = _QUOTE_PUNCT.sub(" ", _QUOTE_FILLER.sub(" ", fold(text))).lower().split()
+    spaced = _NUMBER_UNIT.sub(" ", _QUOTE_FILLER.sub(" ", fold(text)))
+    words = _QUOTE_PUNCT.sub(" ", spaced).lower().split()
     return " %s " % " ".join(words) if words else ""
 
 
@@ -877,6 +878,11 @@ def _normalise(text: str) -> str:
 #: fabrication. Narrower than the content filter on purpose: "I kind of led it" quoted as
 #: "I led it" overstates what was said, so hedges must still match.
 _QUOTE_FILLER = re.compile(r"\b(u+m+|u+h+|e+r+m*|a+h+|you know)\b", re.I)
+
+#: Between a number and the unit written against it. "30ms" and "30 ms" are the same thing,
+#: and a recogniser writes one where a judge writes the other, which voided the score. Only
+#: digit then letter, so "p99" stays one token.
+_NUMBER_UNIT = re.compile(r"(?<=\d)(?=[^\W\d_])")
 
 
 def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:

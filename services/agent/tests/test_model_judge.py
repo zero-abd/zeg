@@ -195,6 +195,20 @@ def test_a_quote_with_the_filler_tidied_out_is_not_fabrication():
     assert not j.fabrications
 
 
+@pytest.mark.parametrize("quote, found", [
+    ("p99 dropped to 30ms", True),
+    ("we kept 12 GB of cache", True),
+    ("p99 dropped to 300 ms", False),   # a different number is still not what was said
+])
+def test_a_unit_written_against_its_number_is_the_same_quote(quote, found):
+    units = to_qa_units([
+        T(0, "agent", "What changed?"),
+        T(9, "caller", "p99 dropped to 30 ms and we kept 12GB of cache"),
+    ])
+    j = ModelJudge(replying({"score": 3, "quote": quote, "reason": "a figure"}))
+    assert (not j.score_dimension("technical_depth", units).insufficient) is found
+
+
 def test_a_quote_that_drops_a_hedge_is_still_not_found():
     """ "I kind of led it" quoted as "I led it" overstates what was said."""
     units = to_qa_units([

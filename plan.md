@@ -195,6 +195,12 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A unit written against its number does not void a judge quote.** "p99 dropped to 30ms" quoted from
+"30 ms", or "12 GB" from "12GB", was not found and the score was voided. A number and the letters
+written straight after it are now split on both sides of the comparison; "p99" stays one token and a
+different number ("300 ms") still fails. Three new cases; the two spacing ones fail on the previous
+commit. The ellipsis case noted below is still open. Suite: 1290 passed.
+
 **A judge quote with the filler tidied out is not a fabrication.** The quote check ignored case,
 spacing and punctuation but not filler, so "I wrote the retry budget myself after the outage", quoted
 from "I, uh, wrote the retry budget myself, you know, after the outage", voided the score. Recognised
