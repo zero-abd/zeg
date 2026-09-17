@@ -11,6 +11,8 @@ help:
 	@echo "make setup          create .venv and install dev deps"
 	@echo "make test           run the agent test suite"
 	@echo "make demo           run a scripted interview through the mock backend"
+	@echo "make evals          run the scoring eval suite"
+	@echo "                    one at a time: bias redteam consent asr gate gaming"
 	@echo "make web            run the landing page dev server"
 	@echo "make deck           rebuild the pitch deck into deck.html"
 	@echo "make gateway-setup  install the gateway's transport deps (aiortc, aiohttp)"
@@ -52,6 +54,9 @@ asr:
 
 gate:
 	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.gate import run_gate; print(run_gate().render())"
+
+gaming:
+	cd $(AGENT) && PYTHONPATH=. $(PY) -c "from zeg.evals.gaming import run_gaming; print(run_gaming().render())"
 
 web:
 	cd web && npm run dev

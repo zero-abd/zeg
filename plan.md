@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**How gameable the scoring is, measured.** The mirror of the bias eval: there two answers say the
+same thing and must score the same, here two calls sound the same and must not. Measured first: a
+call of confident, first-person, rubric-shaped answers that name nothing ("I single-handedly designed,
+built and delivered the whole platform myself", "I improved performance by 100x") scored 9/10, the
+same as a call describing real work. That is the cheapest attack on a screening tool and it needs no
+tooling. `make gaming` now reports the gap per pair; today one pair separates 9 to 7 and the other
+does not separate at all. The heuristic judge cannot separate them by construction, so the eval's own
+test is a strict xfail that turns into a real failure the day a judge closes the gap. The first
+corpus was thrown away: three of its four pairs were two questions long, never reached a score, and
+so read as passing while measuring nothing; a test now pins that both halves of every pair score.
+Suite: 1409 passed, 5 xfailed.
+
 **The decoder pipeline says where it has to be wired in.** The method sweep found `PipelinedDecoder`
 built by the model and never submitted to: the one-frame pipelining the codec module calls the whole
 trick is not in the path, for the same reason pinning is not, which is that the step seam is unwired.
