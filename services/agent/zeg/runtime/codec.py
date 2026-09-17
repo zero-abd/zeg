@@ -73,13 +73,14 @@ class PipelinedDecoder:
     def __init__(self, decode: Callable[[object], bytes]) -> None:
         self._decode = decode
         self._pending: Optional[object] = None
-        self._started = False
 
     def submit(self, tokens: object) -> Optional[bytes]:
-        previous = self._pending
-        self._pending = tokens
-        if not self._started:
-            self._started = True
+        # Decode only what is actually in flight. A "started" flag used to decide this, and
+        # it stayed set after flush() emptied the pipeline, so the first frame of the next
+        # response asked the codec to decode None: a strict codec raised, and the session
+        # died at the start of the agent's second reply.
+        previous, self._pending = self._pending, tokens
+        if previous is None:
             return None
         return self._decode(previous)
 

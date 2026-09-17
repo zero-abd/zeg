@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The codec pipeline serves more than one response.** The runtime decodes codec tokens one frame
+behind the model so the decode cost hides under the next step, and `flush()` drains the last frame
+at the end of a response. Whether to decode on `submit` was decided by a "started" flag, and it
+stayed set after `flush()` had emptied the pipeline. So the first frame of the next response asked
+the codec to decode None. Reproduced with a codec that rejects None: the first response was fine and
+the second raised. On the box that is the model step failing, and the session dying, at the start of
+the agent's second reply. Every existing test covered a single response. `submit` now decodes only
+what is actually in flight, so each response starts one frame behind cleanly. On the old decoder the
+new two-response test raised exactly that error.
+
 **Clefts, passives, spoken quantities, named costs and hands-on debugging now count.** Twelve of
 sixteen further ordinary phrasings were not recognised: "It was me who rewrote the worker", "I'm
 the one who rewrote it", "The worker was rewritten by me"; "twice a week", "half the batches",

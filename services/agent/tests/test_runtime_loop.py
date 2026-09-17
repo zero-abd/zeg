@@ -190,6 +190,29 @@ def test_nothing_is_ever_more_than_one_frame_in_flight():
     assert not decoder.in_flight
 
 
+def test_the_decoder_serves_a_second_response_after_a_flush():
+    """Every test here covered one response. After flush() the pipeline was empty but
+    still marked started, so the next response's first frame asked the codec to decode
+    None, and a strict codec raised: the session died at the agent's second reply."""
+    asked = []
+
+    def decode(tokens):
+        asked.append(tokens)
+        if tokens is None:
+            raise TypeError("cannot decode None")
+        return b"pcm:%d" % tokens
+
+    decoder = PipelinedDecoder(decode)
+    assert decoder.submit(1) is None
+    assert decoder.submit(2) == b"pcm:1"
+    assert decoder.flush() == b"pcm:2"
+
+    assert decoder.submit(3) is None, "the second response starts one frame behind too"
+    assert decoder.submit(4) == b"pcm:3"
+    assert decoder.flush() == b"pcm:4"
+    assert None not in asked
+
+
 def test_flushing_an_empty_pipeline_is_harmless():
     decoder = PipelinedDecoder(lambda tokens: b"")
     assert decoder.flush() is None
