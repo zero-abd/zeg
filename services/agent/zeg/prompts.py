@@ -78,6 +78,13 @@ PROHIBITED_REDIRECT = (
 #: candidate got silence back, for as long as the interview had left.
 SILENCE_NUDGE = "Take your time. If it helps, I can ask about something else."
 
+#: Fixed lines that are not questions and do not replace the question still waiting for an
+#: answer. After a nudge, the candidate's answer was paired with "Take your time" as its
+#: question in the report, and a rolled session was told that was the last thing asked.
+#: Deliberately a closed list: a line without a question mark is often still a question
+#: ("Tell me about the rollout."), so absence of "?" cannot be the rule.
+INTERJECTIONS = (SILENCE_NUDGE,)
+
 #: Spoken when the silence goes on. It carries a question of its own, because moving on to
 #: nothing leaves the candidate in the same silence.
 SILENCE_MOVE_ON = (

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
 from .hesitation import is_hesitation
+from .prompts import INTERJECTIONS
 
 #: 80 ms frames, so 12.5 per second of conversation.
 FRAMES_PER_SECOND = 12.5
@@ -140,6 +141,10 @@ def last_exchange(transcript: Sequence) -> List[str]:
     for i in range(len(entries) - 1, -1, -1):
         t = entries[i]
         if t.speaker == "agent":
+            if t.text in INTERJECTIONS and any(e.speaker == "agent" for e in entries[:i]):
+                # "Take your time" is not what was asked. The seed carried it as the last
+                # question, and a fresh session did not know what was being answered.
+                continue
             question, cut = t.text, i
             break
         if t.speaker == "caller" and not is_hesitation(t.text):

@@ -23,6 +23,7 @@ from .asks import is_question
 from .engine import DIMENSIONS, Evidence
 from .hesitation import is_hesitation
 from .memory import shorten
+from .prompts import INTERJECTIONS
 from .textnorm import fold
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
@@ -131,6 +132,10 @@ def to_qa_units(transcript: Sequence, window: Optional[Sequence[float]] = None) 
     after_hesitation = False
     for entry in transcript:
         if entry.speaker == "agent":
+            if pending is not None and entry.text in INTERJECTIONS:
+                # A nudge such as "Take your time" is not a new question. The one before
+                # it is still what the candidate is answering.
+                continue
             if pending is not None and after_hesitation and "?" not in entry.text:
                 # Encouragement after a hesitation, like "take your time", is not a new
                 # question. The question before it is still the one being answered.

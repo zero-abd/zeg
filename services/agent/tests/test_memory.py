@@ -173,6 +173,22 @@ def test_an_answered_question_still_reads_question_then_answer():
     ]
 
 
+def test_a_nudge_is_not_carried_as_the_last_question():
+    """A fresh session was told "Take your time" was the last thing asked, and did not
+    know what the candidate was answering."""
+    from zeg.prompts import SILENCE_NUDGE
+
+    lines = last_exchange([
+        Turn(0, "agent", "What did you personally do there?"),
+        Turn(9, "agent", SILENCE_NUDGE),
+        Turn(14, "caller", "I wrote the advisory lock fix myself"),
+    ])
+    assert lines == [
+        "Interviewer: What did you personally do there?",
+        "Candidate: I wrote the advisory lock fix myself",
+    ]
+
+
 def test_a_long_answer_keeps_the_figure_it_ends_on():
     """Cut from the end, the seed kept the lead-in and dropped the number."""
     answer = (

@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A nudge is not mistaken for the question being answered.** The silence nudge added in the previous
+entry is an agent line, and two places took the last agent line as the question. After "What did you
+personally do on that project?", then "Take your time...", then "I wrote the advisory lock fix
+myself", the report paired the answer with the nudge as its question, and a rollover seed told the
+fresh session the nudge was the last thing asked. Both now skip known interjections when deciding
+what the question was.
+
+The rule is a closed list of interjections, which today holds only the nudge, not "a line without a
+question mark". Prompts are often imperative, "Tell me about the rollout instead.", and a test pins
+that such a line still replaces an unanswered question. On the old code both nudge tests failed and
+that guard passed.
+
 **A candidate who goes quiet after a question is not left in silence.** The call config had three
 silence settings, a nudge at 4 s, a rephrase at 8 s and a move-on at 15 s, and nothing used any of
 them. The model only speaks in reply to a finished caller turn, so a candidate who went quiet after

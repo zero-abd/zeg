@@ -404,6 +404,31 @@ def test_a_hesitation_after_an_answer_is_not_merged_into_it():
     assert units[0].answer == "I wrote the advisory lock fix myself"
 
 
+def test_a_nudge_is_not_paired_as_the_question():
+    """After "Take your time", the answer was paired with the nudge as its question."""
+    from zeg.prompts import SILENCE_NUDGE
+
+    units = to_qa_units([
+        T(0, "agent", "What did you personally do on that project?"),
+        T(9, "agent", SILENCE_NUDGE),
+        T(14, "caller", "I wrote the advisory lock fix myself."),
+    ])
+    assert [(u.question, u.answer) for u in units] == [
+        ("What did you personally do on that project?", "I wrote the advisory lock fix myself."),
+    ]
+
+
+def test_a_prompt_without_a_question_mark_still_replaces_an_unanswered_question():
+    """Why the rule is a closed list of interjections and not "no question mark":
+    "Tell me about the rollout instead." is a question."""
+    units = to_qa_units([
+        T(0, "agent", "What did you personally do on that project?"),
+        T(9, "agent", "Tell me about the rollout instead."),
+        T(14, "caller", "We rolled it out region by region over two weeks."),
+    ])
+    assert [u.question for u in units] == ["Tell me about the rollout instead."]
+
+
 def test_a_candidates_question_is_not_paired_as_the_answer():
     """It was: the probe was "answered" by the candidate's question, and their real answer
     was paired with the interviewer's explanation of the team."""
