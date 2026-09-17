@@ -904,3 +904,22 @@ def test_answers_with_nothing_in_them_still_cost_a_point():
     ]
     ownership = next(d for d in score_call(units_call).dimensions if d.dimension == "ownership")
     assert ownership.score == 2, "one hit is 3, and two content-free answers of three cost 1"
+
+
+@pytest.mark.parametrize("text, counts", [
+    ("we isolated it to 1 merchant", False),      # the word is not a figure, nor is the digit
+    ("we isolated it to one merchant", False),
+    ("version 1 of the api", False),
+    ("it took 1 ms", True),
+    ("p99 was 1 second", True),
+    ("it was 1%", True),
+    ("we cut it to 1.5x", True),
+    ("11 double settlements", True),
+    ("we had 1 outage in 2 years", True),
+])
+def test_a_lone_one_is_a_figure_only_when_it_measures_something(text, counts):
+    """"One merchant" was deliberately not a figure and "1 merchant" was, so the same
+    answer scored 3 or 4 depending on how the recogniser wrote the word."""
+    from zeg.scoring import has_number, normalise
+
+    assert has_number(normalise(text)) is counts

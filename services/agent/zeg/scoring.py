@@ -453,6 +453,17 @@ _RE_SPLIT = re.compile(
 )
 
 
+#: A lone "1" with nothing measured by it. "One merchant" is deliberately not a figure, and
+#: the digit for it was, so the same answer scored 3 or 4 depending on how the recogniser
+#: chose to write the word. Rewritten to the word rather than removed, so it still reads.
+_BARE_ONE = re.compile(
+    r"(?<![\d.,])1(?![\d.,])"
+    r"(?!\s*(?:%|(?:ms|s|x|k|m|gb|mb|qps|rps|percent|millisecond|second|minute|hour|day"
+    r"|week|month|year)s?\b))",
+    re.I,
+)
+
+
 def normalise(text: str) -> str:
     """What the candidate said, with delivery and transcription artefacts removed.
 
@@ -460,7 +471,7 @@ def normalise(text: str) -> str:
     recogniser spelled a compound word is neither. Everything that judges content runs on
     this; everything quoted back keeps their own words.
     """
-    out = strip_repairs(strip_filler(text))
+    out = _BARE_ONE.sub(" one ", strip_repairs(strip_filler(text)))
     out = _JOINED.sub(" ", out)
     return _RE_SPLIT.sub("re", out)
 

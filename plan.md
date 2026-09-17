@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A lone "1" is a figure only when it measures something.** A new recognition degradation, spoken
+numbers written as digits, found the score moving up: the lean transcript went 7/10 to 8/10 because
+"we isolated it to one merchant" became "1 merchant" and counted as a figure. The word was
+deliberately excluded ("one of the things" is not a measurement) and the digit was not, so the same
+answer scored 3 or 4 on technical depth depending on how the recogniser wrote it. A bare 1 now reads
+as the word unless something is measured by it: "1 ms", "1 second", "1%", "1.5x", "1,200" and "1
+outage in 2 years" all still count; "1 merchant" and "version 1" do not. Nine new cases plus the
+degradation; three fail on the previous commit. Suite: 1370 passed.
+
 **Four prohibited questions that got through are blocked; a product feature is not.** A batch through
 the guard found "Are you a US citizen?" (a word between the article and the noun), "What is your
 religion?" (only "what religion" was matched), "When did you graduate from college?" (only "what year

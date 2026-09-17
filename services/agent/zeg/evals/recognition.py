@@ -99,7 +99,25 @@ def hyphenated_compounds(text: str) -> str:
     )
 
 
+#: Number words to digits. A recogniser writes "eleven" or "11" depending on the model,
+#: the audio and the moment, and a figure is the thing the scorer most needs to see.
+_DIGITS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6",
+           "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11",
+           "twelve": "12", "twenty": "20", "thirty": "30", "forty": "40", "fifty": "50"}
+
+
+def digits_for_words(text: str) -> str:
+    """Spoken numbers written as digits, which is the other half of the same choice."""
+    return re.sub(
+        r"\b(%s)\b" % "|".join(_DIGITS),
+        lambda m: _DIGITS[m.group(0).lower()],
+        text,
+        flags=re.I,
+    )
+
+
 DEGRADATIONS = (
+    ("digits_for_words", digits_for_words),
     ("hyphenated_compounds", hyphenated_compounds),
     ("unpunctuated", unpunctuated),
     ("run_on", run_on),
