@@ -15,8 +15,8 @@ moves is a defect rather than a curiosity.
 """
 
 import re
-from dataclasses import dataclass
-from typing import Callable, List, Optional, Sequence
+from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional, Sequence
 
 from ..conversation import TranscriptEntry as T
 from ..scoring import Judge, score_call
@@ -96,11 +96,29 @@ class RecognitionResult:
     degraded_score: Optional[int]
     clean_band: str
     degraded_band: str
+    #: Each dimension's score on the clean and the degraded transcript. The report a
+    #: recruiter reads shows these, so one moving is a scoring gap whatever the overall
+    #: rounds to. The matched-pair eval missed exactly that for the same reason.
+    clean_dimensions: Dict[str, Optional[int]] = field(default_factory=dict)
+    degraded_dimensions: Dict[str, Optional[int]] = field(default_factory=dict)
+
+    @property
+    def moved_dimensions(self) -> List[str]:
+        return [d for d, s in self.clean_dimensions.items()
+                if self.degraded_dimensions.get(d) != s]
+
+    @property
+    def vacuous(self) -> bool:
+        """Neither transcript scored, so "held" would mean nothing equals nothing."""
+        return self.clean_score is None and self.degraded_score is None
 
     @property
     def held(self) -> bool:
+        if self.vacuous:
+            return False
         return (self.clean_score == self.degraded_score
-                and self.clean_band == self.degraded_band)
+                and self.clean_band == self.degraded_band
+                and not self.moved_dimensions)
 
     @property
     def lost(self) -> int:
@@ -126,16 +144,22 @@ class RecognitionReport:
         out = ["clean transcript scores %s"
                % ("%d/10" % self.clean_score if self.clean_score else "nothing"), ""]
         for r in self.results:
-            mark = "ok  " if r.held else "LOST"
+            mark = "ok  " if r.held else ("VOID" if r.vacuous else "LOST")
             out.append("  %s %-18s %s -> %s   %s"
                        % (mark, r.name,
                           _n(r.clean_score), _n(r.degraded_score), r.degraded_band))
+            for d in r.moved_dimensions:
+                out.append("       %s moved: %s -> %s" % (
+                    d.replace("_", " "), r.clean_dimensions[d], r.degraded_dimensions.get(d)))
         out.append("")
-        out.append("verdict       %s"
-                   % ("recognition quality does not move the score"
-                      if self.held else
-                      "a worse transcript scores worse, which marks candidates down "
-                      "for how clearly the machine heard them"))
+        if any(r.vacuous for r in self.results):
+            verdict = "inconclusive, nothing scored on either transcript"
+        elif self.held:
+            verdict = "recognition quality does not move the score"
+        else:
+            verdict = ("a worse transcript scores worse, which marks candidates down "
+                       "for how clearly the machine heard them")
+        out.append("verdict       %s" % verdict)
         return "\n".join(out)
 
 
@@ -150,6 +174,10 @@ def run_recognition(judge: Optional[Judge] = None,
     for name, fn in DEGRADATIONS:
         got = score_call(degrade(transcript, fn), judge=judge)
         results.append(
-            RecognitionResult(name, base.overall, got.overall, base.band, got.band)
+            RecognitionResult(
+                name, base.overall, got.overall, base.band, got.band,
+                clean_dimensions={d.dimension: d.score for d in base.dimensions},
+                degraded_dimensions={d.dimension: d.score for d in got.dimensions},
+            )
         )
     return RecognitionReport(results, base.overall)

@@ -100,6 +100,43 @@ def test_the_report_names_a_degradation_that_lost_points():
     assert "how clearly the machine heard them" in text
 
 
+def test_a_dimension_that_moved_is_a_loss_even_when_the_overall_holds():
+    """The matched-pair eval missed filler costing ownership because it compared only
+    the overall score. This instrument had the same blind spot."""
+    from zeg.evals.recognition import RecognitionReport, RecognitionResult
+
+    clean = {"technical_depth": 4, "ownership": 4, "tradeoffs": 3, "debugging": 4,
+             "communication": 3}
+    degraded = dict(clean, ownership=3, tradeoffs=4)  # same mean, same overall
+    r = RecognitionResult("stutter", 9, 9, "advance", "advance",
+                          clean_dimensions=clean, degraded_dimensions=degraded)
+    assert not r.held
+    text = RecognitionReport([r], 9).render()
+    assert "ownership moved: 4 -> 3" in text
+    assert "does not move the score" not in text
+
+
+def test_a_judge_that_scores_nothing_is_not_a_clean_bill_of_health():
+    """Nothing equals nothing. The report said recognition quality did not move the
+    score, about a judge that never produced one."""
+    from zeg.scoring import DimensionScore, Judge
+
+    class NoEvidence(Judge):
+        def score_dimension(self, dimension, units):
+            return DimensionScore(dimension, None, [], "nothing")
+
+    report = run_recognition(judge=NoEvidence())
+    assert not report.held
+    assert "inconclusive" in report.render()
+
+
+@pytest.mark.parametrize("name,fn", DEGRADATIONS, ids=[n for n, _ in DEGRADATIONS])
+def test_each_degradation_holds_on_every_dimension(name, fn):
+    clean = {d.dimension: d.score for d in score_call(CLEAN).dimensions}
+    got = {d.dimension: d.score for d in score_call(degrade(CLEAN, fn)).dimensions}
+    assert got == clean, name
+
+
 def test_degradations_actually_change_the_text():
     """A degradation that is a no-op tests nothing."""
     for name, fn in DEGRADATIONS:

@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The recognition eval compares every dimension and cannot pass on nothing.** The recognition
+eval scores the same answers clean and degraded the way a recogniser degrades them. It had both
+blind spots the matched-pair eval had. A degradation "held" if the overall score and band
+matched, never the dimension scores, which is how filler costing ownership went unseen there.
+And a judge that scored nothing was reported as held, "recognition quality does not move the
+score", because nothing equals nothing: measured on the old instrument, held was True for a judge
+that never produced a score. A degradation now holds only if every dimension matches, a result
+with nothing on either side is void and the verdict inconclusive, and any dimension that moved is
+named. Run dimension by dimension, all five degradations still hold on the current judge, so this
+guards against a future regression rather than fixing a live one. On the old instrument the
+no-score test failed on its assertion; the moved-dimension test failed only because the field did
+not exist.
+
 **Scoring pairs an answer with its question even when the candidate asked something first.** The
 scorer pairs each interviewer question with the next thing the candidate says. After "What did you
 personally do on that project?", a candidate who asked "Sorry, can you tell me more about the role
