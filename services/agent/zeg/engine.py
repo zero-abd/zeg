@@ -90,6 +90,25 @@ PROBE_LADDER = (
 RUNG_LABELS = ("their own part", "the figure", "the tradeoff", "what broke afterwards")
 assert len(RUNG_LABELS) == len(PROBE_LADDER)
 
+def _answers_rung(rung: int, text: str) -> bool:
+    """Whether an answer contains what its probe asked for, by the scorer's own markers.
+
+    An answer is kept under its probe whenever it is not vague, and it was labelled as if
+    it held what was asked: "the figure: it was faster afterwards". A fresh session read
+    that as a figure given and did not ask for one.
+    """
+    from .scoring import has_number, normalise, signals  # local: scoring imports engine
+
+    found = signals(text)
+    if rung == 0:
+        return "ownership" in found
+    if rung == 1:
+        return has_number(normalise(text))
+    if rung == 2:
+        return "tradeoffs" in found
+    return bool(found)
+
+
 #: Lines a briefing spends on claims and the answers under the live one. Without answers
 #: that is the same four claims as before; a fully answered ladder leaves room for one
 #: older claim beside it.
@@ -363,7 +382,11 @@ class InterviewEngine:
         answer usually ends on its figure."""
         live, older = self.state.claims[-1], self.state.claims[-max_claims:-1]
         live_lines = ["  - %s" % shorten(live.text, 90)] + [
-            "      %s: %s" % (RUNG_LABELS[rung], shorten(text, 90))
+            "      %s: %s" % (
+                RUNG_LABELS[rung] if _answers_rung(rung, text)
+                else "asked for %s, not given" % RUNG_LABELS[rung],
+                shorten(text, 90),
+            )
             for rung, text in live.answers
         ]
         room = max(0, CLAIM_LINES - len(live_lines))

@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A briefing no longer says an answer held what it was asked for when it did not.** Answers are kept
+under their probe whenever they are not vague, and were labelled by the probe: measured, "the figure:
+it was faster afterwards" and "their own part: we sharded it by merchant". A fresh session reads that
+as covered and does not ask again. Each answer is now checked for what its rung asks, with the
+scorer's own markers (ownership, a number spoken or written, a tradeoff, any evidence for what
+broke), and one without it reads "asked for the figure, not given: ...". The existing labels are
+unchanged for answers that do hold it. One new test, failing on the previous commit. Suite: 1274
+passed.
+
 **A probe issued alongside a rollover survives it.** At the hard horizon one answer produces both a
 probe and a rollover (measured at 2:02 of a call whose ladder kept descending). The probe was
 steered into the session about to be closed, the seed never mentioned it, and the engine still

@@ -243,6 +243,17 @@ def test_a_probe_answer_is_kept_with_the_claim_it_answers(eng):
     assert "the figure: it caused eleven double settlements in six weeks" in b
 
 
+def test_an_answer_without_what_was_asked_is_not_labelled_as_having_it(eng):
+    """Labelled "the figure: it was faster afterwards", a fresh session took the figure as
+    given and did not ask for one."""
+    eng.note_caller("we rewrote the payment reconciler after an outage", 100)
+    probe_and_answer(eng, ["we sharded it by merchant", "it was faster afterwards"])
+    b = eng.briefing(200)
+    assert "asked for their own part, not given: we sharded it by merchant" in b
+    assert "asked for the figure, not given: it was faster afterwards" in b
+    assert "\n      the figure:" not in b
+
+
 def test_a_fully_answered_ladder_fits_in_a_short_briefing(eng):
     for i, older in enumerate(["we moved billing to a queue in twelve weeks",
                                "I led the search index migration last year",
