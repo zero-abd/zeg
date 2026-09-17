@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
 
+from .asks import is_question
 from .engine import DIMENSIONS, Evidence
 from .hesitation import is_hesitation
 from .memory import shorten
@@ -139,7 +140,10 @@ def to_qa_units(transcript: Sequence, window: Optional[Sequence[float]] = None) 
             continue
         if entry.speaker != "caller":
             continue
-        if is_hesitation(entry.text):
+        # A candidate asking something back has not answered either. It was paired as the
+        # answer, and their real answer was then paired with the interviewer's reply to
+        # their question. The same rule the interview applies live.
+        if is_hesitation(entry.text) or (is_question(entry.text) and not signals(entry.text)):
             # A candidate thinking out loud has not answered. Taken as the answer, "um"
             # got the question and the real answer was paired with whatever came next.
             after_hesitation = after_hesitation or pending is not None

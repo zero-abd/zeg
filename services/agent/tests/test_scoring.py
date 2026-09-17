@@ -404,6 +404,29 @@ def test_a_hesitation_after_an_answer_is_not_merged_into_it():
     assert units[0].answer == "I wrote the advisory lock fix myself"
 
 
+def test_a_candidates_question_is_not_paired_as_the_answer():
+    """It was: the probe was "answered" by the candidate's question, and their real answer
+    was paired with the interviewer's explanation of the team."""
+    units = to_qa_units([
+        T(0, "agent", "What did you personally do on that project?"),
+        T(5, "caller", "Sorry, can you tell me more about the role first?"),
+        T(9, "agent", "Sure. The team runs the payments ledger and the reconciler."),
+        T(15, "caller", "Okay. I wrote the advisory lock fix myself."),
+    ])
+    assert [(u.question, u.answer) for u in units] == [
+        ("What did you personally do on that project?",
+         "Okay. I wrote the advisory lock fix myself."),
+    ]
+
+
+def test_an_answer_with_a_question_mark_on_it_is_still_paired():
+    units = to_qa_units([
+        T(0, "agent", "Any numbers?"),
+        T(5, "caller", "we cut p99 from 400ms to 30ms, right?"),
+    ])
+    assert [u.answer for u in units] == ["we cut p99 from 400ms to 30ms, right?"]
+
+
 def test_a_question_answered_only_with_a_hesitation_has_no_answer():
     assert to_qa_units([
         T(30, "agent", "What did you personally do there?"),

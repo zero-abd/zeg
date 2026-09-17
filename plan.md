@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Scoring pairs an answer with its question even when the candidate asked something first.** The
+scorer pairs each interviewer question with the next thing the candidate says. After "What did you
+personally do on that project?", a candidate who asked "Sorry, can you tell me more about the role
+first?" had that recorded as the answer, and their real answer, "I wrote the advisory lock fix
+myself", was then paired with the interviewer's explanation of the team as its question. The
+heuristic judge mostly reads answers, so its numbers barely moved, but a model judge is shown the
+pairs. A candidate's question is now skipped when pairing, the way a hesitation already was, using
+the same rule the interview applies live, so an answer that carries evidence ("we cut p99 from
+400ms to 30ms, right?") still pairs as an answer. On the old scorer the pairing test failed.
+
 **A candidate's question is not probed as if it were a claim.** Mid-interview, a question from the
 candidate reached the engine as an ordinary answer. Measured: "Sorry, what does this team actually
 work on day to day?", "How does the team split on-call" and "Can you tell me more about the role
