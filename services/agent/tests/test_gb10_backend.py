@@ -448,6 +448,33 @@ def test_a_barge_in_names_the_response_the_candidate_is_hearing(audio):
     assert cancels[-1]["response_id"] == "r1"
 
 
+def test_a_reply_replaced_by_a_fixed_line_is_not_reported_as_an_interruption(audio):
+    """The runtime cancels an open reply to make room for a fixed line. Reported as an
+    interruption, it reached the interview as the candidate talking over the disclosure,
+    when nobody had said a word."""
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import Interview
+
+    link = FakeLink()
+    sess = session(link, audio)
+    link.deliver(link.wire.response_started("r1", "t1"))
+    link.deliver(agent_frame(link))
+    link.deliver(link.wire.response_cancelled("r1", p.REPLACED_BY_FIXED_LINE))
+    link.deliver(link.wire.response_done("r1", "cancelled", p.REPLACED_BY_FIXED_LINE))
+    events = drive(sess, audio, 2)
+
+    assert not [e for e in events if isinstance(e, AgentInterrupted)]
+    assert not [e for e in events if isinstance(e, AgentAudio)], "its audio is still dropped"
+
+    iv = Interview()
+    iv.start()
+    for e in events:
+        iv.on_event(e, 4.0)
+    iv.on_event(UserTranscript("yes that is fine", final=True), 6.0)
+    assert iv.record.consent is True
+    assert not any("talked over" in f for f in iv.record.flags)
+
+
 def test_the_runtime_cancelling_first_is_also_reported(audio):
     # Its own watchdog may close a response we never interrupted.
     link = FakeLink()

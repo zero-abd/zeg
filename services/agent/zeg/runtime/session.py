@@ -246,7 +246,10 @@ class ServerSession:
             # left running, the fixed line's open was ignored because a response was already
             # open, and the two merged: "Tell me more about That is about all the time I
             # have." as one completed response.
-            out.extend(self._cancel("superseded"))
+            # Its own reason, not "superseded", which means a new caller turn began. Reusing
+            # it made the client report an interruption, and before consent the interview
+            # flagged the candidate for talking over the disclosure when nobody had spoken.
+            out.extend(self._cancel(p.REPLACED_BY_FIXED_LINE))
         # An action, like every other message that needs the model. It was stored as
         # state instead, and nothing ever came to collect it: the disclosure reached
         # the server and went no further.

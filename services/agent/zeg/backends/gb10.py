@@ -629,7 +629,12 @@ class GB10Session(VoiceSession):
             if not self._interrupted:
                 self._interrupted = True
                 self._playout.clear()
-                self._pending.append(AgentInterrupted(reason=msg.get("reason") or "cancelled"))
+                reason = msg.get("reason") or "cancelled"
+                # Replaced by a fixed line is not an interruption, the same as the client
+                # replacing a reply itself. Reported, it read as the candidate talking over
+                # the disclosure when nobody had said a word.
+                if reason != p.REPLACED_BY_FIXED_LINE:
+                    self._pending.append(AgentInterrupted(reason=reason))
             return
 
         if kind == p.RESPONSE_DONE:

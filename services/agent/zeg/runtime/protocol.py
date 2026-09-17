@@ -46,6 +46,10 @@ MAX_SESSION_FRAMES = 12_000
 
 #: WebSocket close codes we use. 1000 is a normal close; 1013 says "try later",
 #: which is the honest answer when a conversation is already in progress.
+#: The reason on a response the runtime cancelled to make room for a fixed line. Nobody
+#: interrupted anybody, so a client must not report it as an interruption.
+REPLACED_BY_FIXED_LINE = "replaced_by_fixed_line"
+
 CLOSE_NORMAL = 1000
 CLOSE_BUSY = 1013
 

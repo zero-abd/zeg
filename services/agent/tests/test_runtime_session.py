@@ -324,6 +324,7 @@ def test_a_fixed_line_during_an_open_reply_gets_its_own_response():
     out = session.on_client(p.Wire().say("That is about all the time I have."))
     assert [m["type"] for m in out] == [p.RESPONSE_CANCELLED, p.RESPONSE_DONE]
     assert out[0]["response_id"] == reply
+    assert out[0]["reason"] == p.REPLACED_BY_FIXED_LINE, "not 'superseded', which means a new turn"
     assert [a.kind for a in session.drain_actions()] == ["cancel", "say"]
 
     out = session.on_frame(FrameResult(control="response_open",

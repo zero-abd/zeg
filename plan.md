@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Making room for a fixed line is not reported as the candidate interrupting.** The previous entry
+had the runtime cancel an open reply when a fixed line arrives, and it used the reason
+"superseded", which already meant a new caller turn had begun. The client reports a cancellation it
+did not start as an interruption, and the interview counts "superseded" as the candidate's doing.
+Traced end to end: the runtime's cancel reached the client as an interruption, and before consent
+the interview flagged "The candidate talked over the recording disclosure" and repeated it, when
+nobody had said a word. That entry introduced the path.
+
+The runtime now uses its own reason, `replaced_by_fixed_line`, and the client stops that reply
+locally without reporting it, the same as when the client replaces a reply itself. Its audio is still
+dropped. Against the old client the end-to-end test failed with the flag present; against the old
+server session the cancel carried "superseded".
+
 **A fixed line never merges into the model's half-finished reply.** Before speaking a fixed line,
 such as the wrap-up or a redirect, the client cancels the model's reply, but only a reply it has
 heard about. A reply the runtime had opened a moment earlier was left running. The runtime then
