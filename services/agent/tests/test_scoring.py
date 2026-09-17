@@ -923,3 +923,32 @@ def test_a_lone_one_is_a_figure_only_when_it_measures_something(text, counts):
     from zeg.scoring import has_number, normalise
 
     assert has_number(normalise(text)) is counts
+
+
+def test_the_band_is_followed_by_a_sentence_that_justifies_it():
+    """The format the docs ask for is the band and the single sentence that justifies it.
+    The band stood alone, and the call length the assessment carried was never rendered."""
+    lines = score_call(strong()).render().splitlines()
+    sentence = lines[2]
+    assert "evidence for" in sentence.lower()
+    assert "Call length" in sentence
+
+
+def test_the_sentence_names_what_was_scored_and_what_was_not():
+    a = Assessment(
+        4,
+        "do not advance",
+        [DimensionScore("technical_depth", 2, []), DimensionScore("ownership", 3, []),
+         DimensionScore("tradeoffs", None, [])],
+        duration_s=754,
+    )
+    assert a.justification() == (
+        "Evidence for ownership; little for technical depth; nothing on tradeoffs. "
+        "Call length 12:34."
+    )
+
+
+def test_a_call_with_nothing_scorable_still_reads_as_a_sentence():
+    a = Assessment(None, "insufficient signal",
+                   [DimensionScore("ownership", None, [])], duration_s=65)
+    assert a.justification() == "Nothing on ownership. Call length 1:05."

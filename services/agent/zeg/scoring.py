@@ -77,6 +77,27 @@ class Assessment:
     def insufficient_dimensions(self) -> List[str]:
         return [d.dimension for d in self.dimensions if d.insufficient]
 
+    def justification(self) -> str:
+        """The one sentence under the band, and how long the call was.
+
+        The format the docs ask for is "the recommendation band and the single sentence
+        that justifies it", and the band stood alone. Built from the scores themselves
+        rather than from a model, so it cannot say anything the rubric does not.
+        """
+        strong = [d.dimension for d in self.dimensions if d.score is not None and d.score >= 3]
+        weak = [d.dimension for d in self.dimensions if d.score is not None and d.score <= 2]
+        thin = self.insufficient_dimensions
+        parts = []
+        if strong:
+            parts.append("evidence for %s" % _names(strong))
+        if weak:
+            parts.append("little for %s" % _names(weak))
+        if thin:
+            parts.append("nothing on %s" % _names(thin))
+        mins, secs = divmod(int(self.duration_s), 60)
+        sentence = "; ".join(parts) if parts else "nothing scorable was said"
+        return "%s%s. Call length %d:%02d." % (sentence[0].upper(), sentence[1:], mins, secs)
+
     def render(self) -> str:
         """One page. A recruiter reads it in ninety seconds."""
         out = []
@@ -92,6 +113,7 @@ class Assessment:
             )
         elif self.judge:
             out.append("Scored by the %s judge." % self.judge)
+        out.append(self.justification())
         out.append("")
         for d in self.dimensions:
             label = d.dimension.replace("_", " ")
@@ -113,6 +135,14 @@ class Assessment:
         out.append("")
         out.append("A human reviews this before any decision. zeg does not decide.")
         return "\n".join(out)
+
+
+def _names(dimensions: Sequence[str]) -> str:
+    """Dimension names as a reader would say them: a, b and c."""
+    plain = [d.replace("_", " ") for d in dimensions]
+    if len(plain) == 1:
+        return plain[0]
+    return "%s and %s" % (", ".join(plain[:-1]), plain[-1])
 
 
 # --- Turning a transcript into units -----------------------------------------

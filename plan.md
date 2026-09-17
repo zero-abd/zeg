@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The report's band carries the sentence that justifies it, and the call length.** Reading a rendered
+report end to end against docs/05: the format asks for "the recommendation band and the single
+sentence that justifies it", and the band stood alone, while the duration the assessment had carried
+all along was never rendered. One line now sits under the band: "Evidence for ownership; little for
+technical depth; nothing on tradeoffs. Call length 12:34." Built from the rubric scores themselves,
+not from a model, so it cannot claim anything the scores do not. Still missing against that format,
+and not done here: two or three notable moments, and the collapsed transcript with audio links. Three
+new tests, all failing on the previous commit. Suite: 1383 passed.
+
 **Running out of patience at the consent gate is not a refusal.** Two hesitations are waited through
 and the third is judged the usual way, which means read as not-a-yes: measured, three "hmm, let me
 think"s ended the call as "consent declined", spoke the line written for a refusal ("That is
