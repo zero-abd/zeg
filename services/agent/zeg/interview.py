@@ -735,6 +735,10 @@ class Interview:
         separate re-ask would cut off the answer it follows. A request to repeat gets the
         disclosure again, which ends with the question anyway.
         """
+        # Either line ends with the question, so the silence timer must not ask it again
+        # seven seconds later: answered at 15 s, the candidate heard it again at 22 s.
+        self._reasked_consent = True
+        self._reasked_at_s = t_s
         if kind == "repeat":
             return self._say(self.greeting, t_s)
         return self._say("%s %s" % (CONSENT_ANSWERS[kind], CONSENT_REASK), t_s)

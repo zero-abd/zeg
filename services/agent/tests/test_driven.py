@@ -441,6 +441,23 @@ def test_the_consent_question_is_repeated_once_not_twice():
     assert said.count(CONSENT_REASK) == 1
 
 
+def test_answering_a_consent_question_counts_as_the_repeat():
+    """The answer ends with the question, and the silence timer asked it again seven
+    seconds later: the candidate heard it twice in quick succession."""
+    from zeg.backends.base import AgentAudio, UserTranscript
+    from zeg.interview import Speak
+    from zeg.prompts import CONSENT_REASK
+
+    iv = Interview()
+    iv.start()
+    for t in range(0, 14):
+        iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), float(t))
+    iv.on_event(UserTranscript("what happens to the recording?", final=True), 15.0)
+    later = [a.text for t in range(16, 30) for a in iv.tick(float(t)) if isinstance(a, Speak)]
+    assert CONSENT_REASK not in later
+    assert not iv.record.ended, "the wait runs from the answer, not from the disclosure"
+
+
 def test_an_answer_to_the_repeated_consent_question_is_taken():
     from zeg.backends.base import UserTranscript
 

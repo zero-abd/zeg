@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Answering a consent question counts as the repeat.** A regression from the entry below, found by
+checking the new timer against the other consent paths: both answers end with the question, so a
+candidate who asked "what happens to the recording?" at 15 s heard the question again at 22 s, seven
+seconds later. Answering now marks the question as repeated and restarts the wait from there, so the
+call ends at 30 s if nothing follows. One new test, failing on the previous commit. Suite: 1373
+passed.
+
 **The consent question is asked once more before silence ends the call.** Measured: the disclosure
 finished at 13 s and the call ended at 27 s, never repeating the question. Silence there is often a
 candidate who did not hear it or is still deciding, and they lost the interview for it. It is now
