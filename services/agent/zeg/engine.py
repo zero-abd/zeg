@@ -261,6 +261,17 @@ class InterviewEngine:
         self.state.probe_outstanding = True
         return rung
 
+    def abandon_ladder(self) -> None:
+        """Stop descending the current claim, so the next substantive answer starts anew.
+
+        For a question the candidate could not answer at all. Not the same as a stalled
+        ladder, which means two general answers, and saying so in the briefing would be
+        untrue.
+        """
+        if self.state.claims:
+            self.state.claims[-1].probed_to = len(PROBE_LADDER)
+        self.state.probe_outstanding = False
+
     @property
     def ladder_stalled(self) -> bool:
         """Two general answers in a row. The engine stops descending and moves on.

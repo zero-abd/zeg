@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate who goes quiet after a question is not left in silence.** The call config had three
+silence settings, a nudge at 4 s, a rephrase at 8 s and a move-on at 15 s, and nothing used any of
+them. The model only speaks in reply to a finished caller turn, so a candidate who went quiet after
+the agent's question got silence back. Measured on the interview: no action at all for over twelve
+minutes, until the wrap-up.
+
+Silence after a question now gets a fixed nudge at 4 s ("Take your time. If it helps, I can ask about
+something else."), then, if it goes on, a move-on at 15 s that carries a question of its own, since
+moving on to nothing leaves the candidate in the same silence. The engine abandons the unanswered
+follow-up so the next answer starts a new thread; that is not recorded as a stalled ladder, which
+means two general answers. Each line is said once per silence, and only after consent, before the
+wrap-up, and when the agent spoke last. After the candidate, the silence is the model's to fill.
+
+The rephrase setting is still unused, and deliberately: rephrasing a question the model asked needs
+the model to generate it, and a fixed line cannot. On the old interview the nudge and move-on tests
+failed; the three guards passed.
+
 **Calls shorter than fifteen minutes wrap up and move through every phase.** Calls run "up to"
 fifteen minutes, but the wrap-up time was a fixed 810 seconds and the phase plan was written in
 absolute seconds for a fifteen-minute call. Measured: a ten-minute call was due to wrap up after it

@@ -391,6 +391,67 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     assert any("time I have" in s for s in spoken(actions))
 
 
+# --- a candidate who goes quiet after a question -----------------------------------------
+
+
+def asked_and_waiting(iv, at=100.0):
+    """Consent given, an answer, then the agent's question heard ending at `at`."""
+    from zeg.audio import AudioFrame
+    from zeg.backends.base import AgentAudio
+
+    consented(iv)
+    iv.on_event(UserTranscript("we rewrote the payment reconciler after an outage", final=True), at - 30)
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), at)
+    return iv
+
+
+def test_a_silent_candidate_is_nudged_then_moved_on(iv):
+    """The silence settings were used nowhere, and the model only speaks after a caller
+    turn, so a candidate who went quiet got silence back until the wrap-up."""
+    from zeg.prompts import SILENCE_MOVE_ON, SILENCE_NUDGE
+
+    asked_and_waiting(iv)
+    assert iv.tick(103.0) == []
+    assert spoken(iv.tick(104.0)) == [SILENCE_NUDGE]
+    assert iv.tick(110.0) == []
+    actions = iv.tick(115.0)
+    assert spoken(actions) == [SILENCE_MOVE_ON]
+    assert any(isinstance(a, Brief) for a in actions)
+    assert iv.tick(200.0) == [], "each is said once per silence"
+
+
+def test_moving_on_abandons_the_question_that_went_unanswered(iv):
+    asked_and_waiting(iv)
+    assert iv.engine.probe_in_progress
+    iv.tick(104.0)
+    iv.tick(115.0)
+    assert not iv.engine.probe_in_progress
+
+
+def test_a_candidate_who_answers_after_the_nudge_is_not_moved_on(iv):
+    asked_and_waiting(iv)
+    iv.tick(104.0)
+    iv.on_event(UserTranscript("I wrote the advisory lock fix myself", final=True), 107.0)
+    assert iv.tick(130.0) == [], "the model owes the reply now, not us"
+
+
+def test_no_nudge_while_the_model_owes_the_reply(iv):
+    """After the candidate spoke, the silence is the model's to fill."""
+    consented(iv)
+    iv.on_event(UserTranscript("we rewrote the payment reconciler", final=True), 100.0)
+    assert iv.tick(120.0) == []
+
+
+def test_no_nudge_after_the_wrap_up(iv):
+    from zeg.audio import AudioFrame
+    from zeg.backends.base import AgentAudio
+
+    consented(iv)
+    iv.tick(850.0)  # the wrap-up
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 852.0)
+    assert iv.tick(870.0) == []
+
+
 # --- who cut the disclosure off --------------------------------------------------------
 
 

@@ -73,6 +73,18 @@ PROHIBITED_REDIRECT = (
     "work you did yourself."
 )
 
+#: Spoken when a candidate has said nothing for a few seconds after a question. The model
+#: only speaks in reply to a finished caller turn, so without a line of ours a silent
+#: candidate got silence back, for as long as the interview had left.
+SILENCE_NUDGE = "Take your time. If it helps, I can ask about something else."
+
+#: Spoken when the silence goes on. It carries a question of its own, because moving on to
+#: nothing leaves the candidate in the same silence.
+SILENCE_MOVE_ON = (
+    "No problem, let's move on. Can you tell me about a different project you worked on "
+    "recently?"
+)
+
 #: Spoken when the wall clock reaches the wrap-up mark, regardless of context.
 WRAP_UP = (
     "That is about all the time I have. Is there anything you wanted to ask before "

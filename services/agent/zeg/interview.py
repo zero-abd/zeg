@@ -32,6 +32,8 @@ from .prompts import (
     GREETING,
     HUMAN_REQUESTED,
     PROHIBITED_REDIRECT,
+    SILENCE_MOVE_ON,
+    SILENCE_NUDGE,
     SYSTEM_PROMPT,
     WRAP_UP,
 )
@@ -266,6 +268,13 @@ class Interview:
         self._consent_questions = 0
         #: When either side was last heard: agent audio, or any caller transcript.
         self._last_heard_s = 0.0
+        #: Who was heard last, "agent" or "caller". Silence after the agent is the
+        #: candidate's turn; silence after the candidate is the model's.
+        self._last_heard_from: Optional[str] = None
+        #: How far a silence after a question has gone: 0 nothing said, 1 nudged, 2 moved
+        #: on. Reset when the candidate speaks.
+        self._silence_stage = 0
+        self._nudged_at_s = 0.0
         #: The agent's reply as it streams in, and whether this one has been cut off
         #: for asking something prohibited.
         self._agent_text = ""
@@ -316,6 +325,34 @@ class Interview:
             self._wrapped = True
             self.record.wrapped_up_s = t_s
             return self._say(WRAP_UP, t_s)
+        return self._on_silence(t_s)
+
+    def _on_silence(self, t_s: float) -> List[Action]:
+        """A candidate who has said nothing since the agent's question.
+
+        The silence settings were defined and used nowhere, and the model only speaks in
+        reply to a finished caller turn, so a candidate who went quiet got silence back
+        until the wrap-up: measured, nothing for over twelve minutes. A nudge first, then a
+        move on that carries a question of its own. Each once per silence, and only when
+        the agent spoke last: after the candidate, the silence is the model's to fill.
+        """
+        if (self.record.consent is not True or self._wrapped
+                or self._last_heard_from != "agent"):
+            return []
+        quiet = t_s - self._last_heard_s
+        if self._silence_stage == 0 and quiet >= self.call.silence_nudge_s:
+            self._silence_stage = 1
+            self._nudged_at_s = t_s
+            return self._say(SILENCE_NUDGE, t_s)
+        # Measured from the nudge, or from its audio ending, whichever is later.
+        since_nudge = t_s - max(self._last_heard_s, self._nudged_at_s)
+        move_on_after = self.call.silence_move_on_s - self.call.silence_nudge_s
+        if self._silence_stage == 1 and since_nudge >= move_on_after:
+            self._silence_stage = 2
+            self.engine.abandon_ladder()
+            actions = self._say(SILENCE_MOVE_ON, t_s)
+            actions.append(Brief(self.engine.briefing(t_s)))
+            return actions
         return []
 
     def on_event(self, event, t_s: float) -> List[Action]:
@@ -325,6 +362,11 @@ class Interview:
 
         if isinstance(event, (AgentAudio, UserTranscript)):
             self._last_heard_s = max(self._last_heard_s, t_s)
+            if isinstance(event, AgentAudio):
+                self._last_heard_from = "agent"
+            else:
+                self._last_heard_from = "caller"
+                self._silence_stage = 0
 
         actions: List[Action] = []
 
