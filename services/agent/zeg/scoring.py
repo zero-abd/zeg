@@ -868,8 +868,15 @@ def _normalise(text: str) -> str:
     Genuine quotes were rejected, and the score voided, over a trailing full stop the
     transcript did not have or a straight apostrophe where recognition wrote a curly one.
     """
-    words = _QUOTE_PUNCT.sub(" ", fold(text)).lower().split()
+    words = _QUOTE_PUNCT.sub(" ", _QUOTE_FILLER.sub(" ", fold(text))).lower().split()
     return " %s " % " ".join(words) if words else ""
+
+
+#: Sounds, not words, dropped on both sides of a quote comparison. A judge tidying "I, uh,
+#: wrote the retry budget myself" into "I wrote the retry budget myself" was voided as a
+#: fabrication. Narrower than the content filter on purpose: "I kind of led it" quoted as
+#: "I led it" overstates what was said, so hedges must still match.
+_QUOTE_FILLER = re.compile(r"\b(u+m+|u+h+|e+r+m*|a+h+|you know)\b", re.I)
 
 
 def _appears_in(quote: str, units: Sequence[QAUnit]) -> bool:

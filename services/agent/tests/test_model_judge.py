@@ -180,6 +180,32 @@ def test_whitespace_and_case_differences_are_not_fabrication():
     assert j.score_dimension("ownership", UNITS).score == 3
 
 
+def test_a_quote_with_the_filler_tidied_out_is_not_fabrication():
+    """Recognised speech is full of "uh" and "you know", and a judge quoting it cleanly
+    had its score voided as made up."""
+    units = to_qa_units([
+        T(0, "agent", "What did you do?"),
+        T(9, "caller", "I, uh, wrote the retry budget myself, you know, after the outage"),
+    ])
+    j = ModelJudge(replying({"score": 3, "quote": "I wrote the retry budget myself after the outage",
+                             "reason": "first person"}))
+    d = j.score_dimension("ownership", units)
+    assert d.score == 3
+    assert d.evidence[0].at_s == 9
+    assert not j.fabrications
+
+
+def test_a_quote_that_drops_a_hedge_is_still_not_found():
+    """ "I kind of led it" quoted as "I led it" overstates what was said."""
+    units = to_qa_units([
+        T(0, "agent", "What did you do?"),
+        T(9, "caller", "I kind of led the rollout"),
+    ])
+    j = ModelJudge(replying({"score": 4, "quote": "I led the rollout", "reason": "led it"}))
+    assert j.score_dimension("ownership", units).insufficient
+    assert j.fabrications == ["ownership"]
+
+
 def test_a_quote_from_the_interviewer_is_not_evidence_about_the_candidate():
     """This used to be accepted, on purpose. The quote is in the transcript, but the
     candidate never said it, and a report citing it scores the candidate on the

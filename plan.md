@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A judge quote with the filler tidied out is not a fabrication.** The quote check ignored case,
+spacing and punctuation but not filler, so "I wrote the retry budget myself after the outage", quoted
+from "I, uh, wrote the retry budget myself, you know, after the outage", voided the score. Recognised
+speech is full of these and judges routinely tidy them. Pure filler (um, uh, er, ah, "you know") is
+now dropped on both sides; hedges are not, so "I kind of led the rollout" quoted as "I led the
+rollout" still fails. Found alongside, not fixed here: a unit spacing difference ("30ms" for "30 ms")
+and a quote joining two parts of an answer with an ellipsis are also voided. Two new tests: the
+filler case fails on the previous commit, the hedge guard passes on both. Suite: 1287 passed.
+
 **What the candidate says after the wrap-up is not a claim.** Turns past the wrap-up were still
 noted by the engine, so "I'd love to hear more about how on-call works for the team" and "okay great,
 that sounds really reasonable to me" became claims (measured), and any briefing in the close listed
