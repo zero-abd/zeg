@@ -63,6 +63,12 @@ CONSENT_ANSWER_TIMEOUT_S = 15.0
 #: first silence cost them the interview without ever repeating the question.
 CONSENT_REASK_AFTER_S = 7.0
 
+#: Words a second of speech carries, for estimating how long a line of ours takes to say.
+#: Rough on purpose: it exists so a timer cannot speak over a line that is still playing
+#: when the backend does not report the line's own audio back to us. Measured against the
+#: disclosure, which is about 45 words and runs a little under twenty seconds.
+WORDS_PER_SECOND = 2.6
+
 #: Consent detection. The two failure directions are not equally bad, so the rules are
 #: not symmetrical. See `reads_as_consent`.
 
@@ -320,6 +326,8 @@ class Interview:
         #: on a backend reporting the line's own audio back to us.
         self._reasked_consent = False
         self._reasked_at_s = 0.0
+        #: When the agent's own last fixed line should have finished playing.
+        self._spoken_until_s = 0.0
         #: The last probe instruction issued, for a seed taken before it is answered.
         self._last_probe: Optional[str] = None
         #: Hesitations waited through before consent was settled.
@@ -364,7 +372,7 @@ class Interview:
             self.record.consent is None
             and self._asked_consent
             and not self._reasked_consent
-            and t_s - self._last_heard_s >= CONSENT_REASK_AFTER_S
+            and t_s - self._quiet_since() >= CONSENT_REASK_AFTER_S
         ):
             # Ask once more before giving up. The timeout then starts again from this line,
             # so a candidate who missed the question has a full wait to answer it.
@@ -374,7 +382,7 @@ class Interview:
         if (
             self.record.consent is None
             and self._asked_consent
-            and t_s - max(self._last_heard_s, self._reasked_at_s) >= CONSENT_ANSWER_TIMEOUT_S
+            and t_s - max(self._quiet_since(), self._reasked_at_s) >= CONSENT_ANSWER_TIMEOUT_S
         ):
             # Consent was only ever settled by an answer. A candidate who never gave one
             # kept a recorded call open for the full fifteen minutes with no consent.
@@ -397,6 +405,10 @@ class Interview:
             self.record.wrapped_up_s = t_s
             return self._say(WRAP_UP, t_s)
         return self._on_silence(t_s)
+
+    def _quiet_since(self) -> float:
+        """When the line went quiet: the later of what was heard and what we are saying."""
+        return max(self._last_heard_s, self._spoken_until_s)
 
     def _time_is_up(self, t_s: float) -> bool:
         """At the limit, or close enough to it that a goodbye has to start now."""
@@ -774,6 +786,10 @@ class Interview:
         except ProhibitedQuestion as e:
             self.record.flags.append("Blocked a prohibited question: %s" % e.violation)
             return []
+        # When this line should be finished, so a timer does not cut it off. Saying a line
+        # cancels whatever is in flight: the consent re-ask landed seven seconds into a
+        # disclosure that takes about seventeen to say.
+        self._spoken_until_s = max(self._spoken_until_s, t_s + len(safe.split()) / WORDS_PER_SECOND)
         if safe == self.greeting:
             self._disclosure_heard = False  # spoken again, so it can be talked over again
         self.record.transcript.append(Turn(t_s, "agent", safe))

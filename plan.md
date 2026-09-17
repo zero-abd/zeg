@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A consent timer does not speak over a line we are still saying.** Continuing the audit of the new
+timer: a disclosure repeated after being talked over starts at 4 s and takes about sixteen seconds to
+say, and the re-ask fired at 11 s. Saying a line cancels the one in flight, so the disclosure would
+have been cut off mid-sentence. It only held together because backends report their own audio back to
+us and that keeps the quiet clock moving; the repeat timer was already fixed not to depend on that.
+The interview now estimates how long its own line takes (words over 2.6 a second, rough and
+documented as such) and treats the line as still playing until then. Measured after: repeat at 27 s,
+call ends at 47 s. One new test, failing on the previous commit; the timing test updated with the
+reason. Suite: 1376 passed.
+
 **Answering a consent question counts as the repeat.** A regression from the entry below, found by
 checking the new timer against the other consent paths: both answers end with the question, so a
 candidate who asked "what happens to the recording?" at 15 s heard the question again at 22 s, seven

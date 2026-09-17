@@ -412,8 +412,10 @@ def test_a_silent_candidate_hears_the_wrap_up_before_the_call_ends():
 
 
 def test_an_unanswered_consent_question_ends_the_call_after_a_quiet_wait():
-    """Updated when the question began being repeated once: the wait now runs from the
-    repeat, so the call ends later than it used to."""
+    """Updated twice: when the question began being repeated once, and when the timers
+    began waiting for our own line to finish rather than trusting the backend to report
+    its audio. The disclosure is about sixteen seconds of speech, so the quiet starts
+    there, not at the last audio frame the test happens to deliver."""
     from zeg.backends.base import AgentAudio
     from zeg.interview import EndCall, Speak
     from zeg.prompts import CONSENT_REASK, CONSENT_UNANSWERED
@@ -421,14 +423,32 @@ def test_an_unanswered_consent_question_ends_the_call_after_a_quiet_wait():
     iv = Interview()
     iv.start()
     iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 12.0)  # disclosure still playing
-    assert iv.tick(18.0) == [], "only 6 s since the agent stopped"
-    assert [a.text for a in iv.tick(19.0) if isinstance(a, Speak)] == [CONSENT_REASK]
-    assert iv.tick(33.0) == [], "the wait runs again from the repeat"
-    actions = iv.tick(34.0)
+    assert iv.tick(22.0) == [], "the disclosure is still being said"
+    assert [a.text for a in iv.tick(23.0) if isinstance(a, Speak)] == [CONSENT_REASK]
+    assert iv.tick(41.0) == [], "the wait runs again from the repeat"
+    actions = iv.tick(43.0)
     assert [a.text for a in actions if isinstance(a, Speak)] == [CONSENT_UNANSWERED]
     assert [type(a) for a in actions if isinstance(a, EndCall)] == [EndCall]
     assert iv.record.consent is False
     assert iv.record.ended == "no answer to the consent question"
+
+
+def test_a_timer_does_not_speak_over_the_disclosure_being_repeated():
+    """Saying a line cancels the one in flight. The re-ask landed seven seconds into a
+    repeated disclosure that takes about sixteen to say, cutting it off, whenever the
+    backend did not report our own audio back to us."""
+    from zeg.backends.base import AgentInterrupted, UserTranscript
+    from zeg.interview import Speak
+    from zeg.prompts import CONSENT_REASK
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(AgentInterrupted("barge_in"), 3.0)
+    iv.on_event(UserTranscript("sorry, go on", final=True), 4.0)   # disclosure repeated here
+    early = [a.text for t in range(5, 21) for a in iv.tick(float(t)) if isinstance(a, Speak)]
+    assert CONSENT_REASK not in early
+    later = [a.text for t in range(21, 40) for a in iv.tick(float(t)) if isinstance(a, Speak)]
+    assert CONSENT_REASK in later
 
 
 def test_the_consent_question_is_repeated_once_not_twice():
