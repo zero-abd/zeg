@@ -15,10 +15,19 @@ from .textnorm import fold
 
 _HESITATION = re.compile(r"(u+m+|u+h+|e+r+m*|a+h+|h+m+|well|so)", re.I)
 
+#: Asking for time. Said to the consent question, "hmm, let me think" was read as not
+#: agreeing, and the call was ended as declined on someone who was still deciding.
+_ASKING_FOR_TIME = (
+    r"\b(let me (think|see)|give me a (sec|second|moment|minute)|hold on|one sec(ond)?"
+    r"|good question|that's a good one)\b"
+)
+
 
 def is_hesitation(text: str) -> bool:
-    """True when a reply holds no words beyond hesitation sounds, or no words at all."""
-    words = re.findall(r"[a-z']+", fold(text).lower())
+    """True when a reply holds no words beyond hesitation sounds and asking for time, or
+    no words at all."""
+    plain = re.sub(_ASKING_FOR_TIME, " ", fold(text).lower())
+    words = re.findall(r"[a-z']+", plain)
     return all(_HESITATION.fullmatch(w) for w in words)
 
 
@@ -27,11 +36,7 @@ def is_hesitation(text: str) -> bool:
 _TRAILING = re.compile(r"(u+m+|u+h+|e+r+m*|a+h+|h+m+|and|but|or|because|cause|the|a|an|if|although)")
 
 #: Asking for time, at the end of what has been said so far.
-_THINKING = re.compile(
-    r"\b(let me (think|see)|give me a (sec|second|moment|minute)|hold on|one sec(ond)?"
-    r"|good question|that's a good one)\W*$",
-    re.I,
-)
+_THINKING = re.compile(_ASKING_FOR_TIME + r"\W*$", re.I)
 
 
 def sounds_unfinished(text: str) -> bool:

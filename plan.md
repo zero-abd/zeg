@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Asking for time is a hesitation, so it no longer ends the call at the consent question.** Measured:
+"hmm, let me think", "good question, give me a second" and "uh, hold on", said to the recording
+question, were read as not agreeing; the call ended as declined and the candidate was told a person
+would be arranged instead. Only bare sounds counted as hesitating. The shared definition now also
+treats a turn made only of sounds and requests for time as a hesitation, so the consent gate waits,
+the probe ladder is not used up, scoring does not pair it as an answer, and the rollover seed leaves
+it out. A turn with content in it ("good question, we used kafka") is still an answer. This also
+closes the gap noted in the entry below. Four new tests; the three consent cases fail on the previous
+commit. Suite: 1301 passed.
+
 **A turn that stops mid-thought is held like a hesitation.** Only a turn holding nothing but "um" got
 the longer endpoint, so "uh, let me think", "so the reason was, uh" and "we sharded it because"
 committed at the ordinary 640 ms pause and the model answered someone still thinking. The client

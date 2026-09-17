@@ -334,6 +334,28 @@ def test_a_hesitation_does_not_end_the_call_before_the_candidate_answers(sound):
     assert iv.record.consent is None
 
 
+@pytest.mark.parametrize("words", [
+    "hmm, let me think", "good question, give me a second", "uh, hold on",
+])
+def test_asking_for_time_does_not_end_the_call_before_the_candidate_answers(words):
+    """Read as not agreeing, the call ended as declined on someone still deciding, and
+    they were told the team would arrange a call with a person."""
+    iv = Interview()
+    iv.start()
+    actions = iv.on_event(UserTranscript(words, final=True), 14.0)
+    assert not any(isinstance(a, EndCall) for a in actions)
+    assert iv.record.consent is None
+    iv.on_event(UserTranscript("okay, yes that is fine", final=True), 20.0)
+    assert iv.record.consent is True
+
+
+def test_asking_for_time_with_an_answer_in_it_is_an_answer():
+    from zeg.hesitation import is_hesitation
+
+    assert not is_hesitation("good question, we used kafka for the queue")
+    assert not is_hesitation("let me think about the rollout order")
+
+
 def test_the_answer_after_a_hesitation_is_the_one_that_counts(iv):
     iv.start()
     iv.on_event(UserTranscript("um", final=True), 5.0)
