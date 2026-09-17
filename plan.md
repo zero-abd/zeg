@@ -195,6 +195,22 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Closing the client's real connection sends what was queued, closes it properly, and waits.** The
+client's websocket link had no tests: its docstring said it needed the runtime on the other end, and
+the websocket library is not installed here. Tested against a stand-in for the library, `close()`
+stopped the link's event loop outright. Three audio frames and the session's final stop, queued just
+before, never left. The connection was abandoned rather than closed, so the runtime would see an
+abrupt disconnect instead of the end of a session. And `close()` returned at once, so a rollover
+opened the next connection while this one was still open, on a runtime that serves one conversation
+at a time and refuses a second as busy.
+
+`close()` now asks the link's own loop to wait, up to a second, for the queue to empty, closes the
+connection, and waits up to two seconds for the link to finish. On the old link the three tests for
+those failed; nothing sent after close, a repeated close, and a connection the runtime ends marking
+the link closed passed on both. The stand-in exercises the thread, the queue and the close, not the
+wire itself; that still needs the real library and a runtime, which is a dependency to install on
+your say.
+
 **`--allow-silence` works on the box.** The runtime's opt-in fallback to the silent stand-in covered a
 missing GPU only. On the GB10 there is a GPU, so the real model was chosen, and its load fails until
 the weights are in place and the checkpoint-specific seams are wired. Simulated with a GPU present

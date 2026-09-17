@@ -135,8 +135,12 @@ class WebSocketLink(Link):
     must return immediately. An asyncio client behind a thread is the smallest
     thing that satisfies that without making every caller async.
 
-    Untested here — it needs the runtime on the other end.
+    Tested against a stand-in for the websocket library, not a live runtime: the thread,
+    the queue, the flush and the close are exercised, the wire itself is not.
     """
+
+    #: How long `close` waits for queued messages to go out and the connection to end.
+    close_timeout_s = 2.0
 
     def __init__(self, url: str, connect_timeout_s: float = 10.0) -> None:
         self.url = url
@@ -146,6 +150,7 @@ class WebSocketLink(Link):
         self._error: Optional[BaseException] = None
         self._loop: Any = None
         self._outbox: Any = None
+        self._ws: Any = None
         self._thread = threading.Thread(target=self._run, name="zeg-link", daemon=True)
         self._thread.start()
         if not self._ready.wait(connect_timeout_s):
@@ -175,6 +180,7 @@ class WebSocketLink(Link):
             async with websockets.connect(
                 self.url, ping_interval=None, ping_timeout=None
             ) as ws:
+                self._ws = ws
                 self._ready.set()
                 sender = asyncio.ensure_future(self._sender(ws))
                 try:
@@ -206,7 +212,22 @@ class WebSocketLink(Link):
     async def _sender(self, ws: Any) -> None:
         while True:
             msg = await self._outbox.get()
-            await ws.send(p.dumps(msg))
+            try:
+                await ws.send(p.dumps(msg))
+            finally:
+                # Counted either way, so a close waiting for the queue to empty is not
+                # held up by a send that failed.
+                self._outbox.task_done()
+
+    async def _close_gracefully(self) -> None:
+        import asyncio  # noqa: WPS433 - deliberate lazy import
+
+        try:
+            await asyncio.wait_for(self._outbox.join(), timeout=1.0)
+        except asyncio.TimeoutError:
+            pass
+        if self._ws is not None:
+            await self._ws.close()
 
     def send(self, msg: Dict[str, Any]) -> None:
         if self._closed.is_set() or self._loop is None or self._outbox is None:
@@ -220,9 +241,27 @@ class WebSocketLink(Link):
         return out
 
     def close(self) -> None:
-        if self._loop is not None and not self._closed.is_set():
-            self._loop.call_soon_threadsafe(self._loop.stop)
+        """Send what is queued, close the connection properly, and wait for it to end.
+
+        It stopped the event loop outright. Measured against a stand-in library: three
+        audio frames and the session's final stop, queued just before, never left; the
+        connection was abandoned rather than closed; and close returned at once, so a
+        rollover opened the next connection while this one was still open, on a runtime
+        that serves one conversation at a time.
+        """
+        import asyncio  # noqa: WPS433 - deliberate lazy import
+
+        if self._closed.is_set():
+            return
         self._closed.set()
+        loop = self._loop
+        if loop is None or not self._thread.is_alive():
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(self._close_gracefully(), loop)
+        except RuntimeError:
+            return  # the loop has already finished on its own
+        self._thread.join(timeout=self.close_timeout_s)
 
     @property
     def closed(self) -> bool:
