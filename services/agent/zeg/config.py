@@ -56,8 +56,9 @@ class BackendConfig:
 
     kind: str = "mock"  # "mock" | "gb10"
     checkpoint_dir: str = "/opt/zeg/weights"
-    device: str = "cuda"
-    dtype: str = "bfloat16"
+    # Nothing selected a device or a precision here: both were read nowhere, while the
+    # model build that would use them is a seam that is not wired up. They belong with
+    # that seam, not with a config that advertises control it does not have.
     audio: AudioConfig = field(default_factory=AudioConfig)
 
 
@@ -71,7 +72,11 @@ class CallConfig:
     #: the candidate was never told the interview was closing.
     wrap_up_at_s: Optional[int] = None
     silence_nudge_s: float = 4.0
-    silence_rephrase_s: float = 8.0
+    #: There is no rephrase stage between these two, and the setting for one is gone. A
+    #: rephrase has to be the question asked again in different words, which only the model
+    #: can write, and the model speaks only in reply to a finished caller turn: there is no
+    #: turn to reply to in a silence. A knob that reads like behaviour and changes nothing
+    #: is worse than no knob, because it gets tuned.
     silence_move_on_s: float = 15.0
 
     def __post_init__(self) -> None:

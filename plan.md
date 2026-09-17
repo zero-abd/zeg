@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Three settings that promised behaviour and changed nothing are gone.** Swept every config field for
+readers: `silence_rephrase_s` sat between the nudge and the move-on and was read nowhere, and
+`BackendConfig.device` and `dtype` advertised control over the model's GPU and precision that nothing
+uses. The rephrase stage cannot be built as the setting implies: a rephrase is the question asked
+again in different words, which only the model can write, and the model speaks only in reply to a
+finished caller turn, of which a silence has none. Device and precision belong with the model build,
+which is a seam that is not wired up. A test now walks every config field and fails on one nothing
+reads, so this cannot come back quietly. Nothing outside this service used any of them. Suite: 1404
+passed.
+
 **The speech-length estimate is measured, and a test keeps it honest.** Every timing margin rests on
 it and it was a guess. Synthesising all fifteen fixed lines gives 3.33 words a second at the median
 and 2.90 at the slowest, against the guessed 2.6, so the guess read long everywhere, which is the
