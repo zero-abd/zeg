@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Speech synthesis gives up instead of hanging the call.** Found by accident: a `make test` run never
+finished, and a system voice process had been wedged for 28 minutes on one line. The synthesis call
+had no timeout at all, so the fallback tone the code promises ("never raises: tone on failure") could
+never be reached; a demo would have hung the same way, silently. Timed at 15 s now: measured against a
+voice that never answers, the old code waited the full 20.6 s of it, the new code gave up at 15.0 s
+and used the tone. The temporary wav was also only deleted on the path where everything worked, so
+every failed line leaked one. Two new tests, both failing on the previous commit. Suite: 1376 passed.
+
 **A consent timer does not speak over a line we are still saying.** Continuing the audit of the new
 timer: a disclosure repeated after being talked over starts at 4 s and takes about sixteen seconds to
 say, and the re-ask fired at 11 s. Saying a line cancels the one in flight, so the disclosure would

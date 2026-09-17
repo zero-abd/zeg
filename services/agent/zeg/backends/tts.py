@@ -36,14 +36,22 @@ def _which_engine() -> Optional[str]:
     return None
 
 
+#: How long one line of synthesis may take before it is abandoned. A wedged system voice
+#: is not hypothetical: one held a `say` process for 28 minutes and hung the whole test
+#: suite, because there was no timeout at all. A demo would have hung the same way, and
+#: the fallback tone exists for exactly this.
+TTS_TIMEOUT_S = 15.0
+
+
 def _render_wav(text: str, engine: str, path: str) -> None:
     if engine == "say":
         subprocess.run(
             ["say", "--file-format=WAVE", "--data-format=LEI16@22050", "-o", path, text],
-            check=True, capture_output=True,
+            check=True, capture_output=True, timeout=TTS_TIMEOUT_S,
         )
     else:  # espeak-ng / espeak both write a 22.05 kHz mono 16-bit WAV with -w
-        subprocess.run([engine, "-s", "165", "-w", path, text], check=True, capture_output=True)
+        subprocess.run([engine, "-s", "165", "-w", path, text],
+                       check=True, capture_output=True, timeout=TTS_TIMEOUT_S)
 
 
 def _to_mono(pcm: bytes, channels: int) -> bytes:
@@ -72,6 +80,7 @@ def synth_frames(text: str, audio: AudioConfig, engine: Optional[str]) -> List[A
     rate = audio.output_sample_rate
     per = audio.output_frame_samples
     if engine:
+        path = None
         try:
             fd, path = tempfile.mkstemp(suffix=".wav")
             os.close(fd)
@@ -79,7 +88,6 @@ def synth_frames(text: str, audio: AudioConfig, engine: Optional[str]) -> List[A
             with wave.open(path, "rb") as w:
                 ch, sw, sr = w.getnchannels(), w.getsampwidth(), w.getframerate()
                 pcm = w.readframes(w.getnframes())
-            os.unlink(path)
             if sw == 2 and pcm:
                 pcm = _to_mono(pcm, ch)
                 if sr != rate:
@@ -87,6 +95,14 @@ def synth_frames(text: str, audio: AudioConfig, engine: Optional[str]) -> List[A
                 return _reframe(pcm, rate, per)
         except Exception:  # noqa: BLE001 - a demo must not crash on a TTS hiccup
             pass
+        finally:
+            # The temporary wav was only removed on the path where everything worked, so
+            # every failed or timed-out line left one behind.
+            if path is not None:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
     # Fallback: a tone sized to the text, so timing/lifecycle still work.
     words = max(1, len(text.split()))
     n = max(1, int(round(words / 2.5 * rate / per)))  # ~150 wpm
