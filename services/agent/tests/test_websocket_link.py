@@ -111,6 +111,68 @@ def test_close_is_idempotent(server):
     assert link.closed
 
 
+# --- when the runtime is not there -----------------------------------------------------
+
+
+class _Slow:
+    """A handshake that completes only when told to, if it is still waiting."""
+
+    def __init__(self, go, entered):
+        self.go, self.entered = go, entered
+
+    async def __aenter__(self):
+        while not self.go.is_set():
+            await asyncio.sleep(0.01)
+        self.entered.append(True)
+        return FakeServerConnection()
+
+    async def __aexit__(self, *exc):
+        return None
+
+
+def test_a_connect_timeout_fails_on_time_and_leaves_no_attempt_behind(monkeypatch):
+    """The timeout path waited two more seconds for a graceful close of a connection that
+    never opened, and the attempt kept running. Had the runtime come up a moment later, it
+    could still have connected and taken the runtime's one conversation."""
+    import threading
+
+    go, entered = threading.Event(), []
+    monkeypatch.setitem(sys.modules, "websockets",
+                        types.SimpleNamespace(connect=lambda url, **kw: _Slow(go, entered)))
+    started = time.monotonic()
+    with pytest.raises(RuntimeError) as failed:
+        WebSocketLink("ws://runtime", connect_timeout_s=0.3)
+    assert time.monotonic() - started < 1.5, "the timeout was held up"
+    assert "after 0.3s" in str(failed.value)
+
+    go.set()  # the runtime comes up now
+    time.sleep(0.2)
+    assert entered == [], "a timed-out attempt still connected"
+
+
+def test_a_refused_connection_says_so_at_once(monkeypatch):
+    class Refuse:
+        async def __aenter__(self):
+            raise ConnectionRefusedError("connection refused")
+
+        async def __aexit__(self, *exc):
+            return None
+
+    monkeypatch.setitem(sys.modules, "websockets",
+                        types.SimpleNamespace(connect=lambda url, **kw: Refuse()))
+    with pytest.raises(RuntimeError, match="could not reach the speech runtime"):
+        WebSocketLink("ws://runtime", connect_timeout_s=2)
+
+
+def test_a_malformed_message_from_the_runtime_is_a_fatal_error(server):
+    link = WebSocketLink("ws://runtime")
+    asyncio.run_coroutine_threadsafe(server._queue().put("not json"), link._loop).result(1)
+    time.sleep(0.1)
+    got = link.drain()
+    assert got and got[0]["type"] == p.ERROR and got[0]["error"]["fatal"] is True
+    link.close()
+
+
 def test_a_connection_the_runtime_ends_marks_the_link_closed(server):
     link = WebSocketLink("ws://runtime")
     loop = link._loop

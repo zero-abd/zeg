@@ -151,12 +151,13 @@ class WebSocketLink(Link):
         self._loop: Any = None
         self._outbox: Any = None
         self._ws: Any = None
+        self._main_task: Any = None
         self._thread = threading.Thread(target=self._run, name="zeg-link", daemon=True)
         self._thread.start()
         if not self._ready.wait(connect_timeout_s):
             self.close()
             raise RuntimeError(
-                "no speech runtime at %s after %.0fs. Start it with "
+                "no speech runtime at %s after %gs. Start it with "
                 "`python -m zeg.runtime` on the box." % (url, connect_timeout_s)
             )
         if self._error is not None:
@@ -174,6 +175,7 @@ class WebSocketLink(Link):
 
         async def main() -> None:
             self._loop = asyncio.get_event_loop()
+            self._main_task = asyncio.current_task()
             self._outbox = asyncio.Queue()
             # Keepalive off: a long model step is not a dead connection, and a ping
             # timeout that kills a session mid-answer is worse than no ping at all.
@@ -258,7 +260,14 @@ class WebSocketLink(Link):
         if loop is None or not self._thread.is_alive():
             return
         try:
-            asyncio.run_coroutine_threadsafe(self._close_gracefully(), loop)
+            if self._ws is None and self._main_task is not None:
+                # Never connected: cancel the attempt. Waiting for a graceful close held a
+                # connect timeout up by two more seconds, and the attempt kept running. If
+                # the runtime came up a moment later it could still connect, and take the
+                # one conversation the runtime serves from every real caller after it.
+                loop.call_soon_threadsafe(self._main_task.cancel)
+            else:
+                asyncio.run_coroutine_threadsafe(self._close_gracefully(), loop)
         except RuntimeError:
             return  # the loop has already finished on its own
         self._thread.join(timeout=self.close_timeout_s)

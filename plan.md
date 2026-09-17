@@ -195,6 +195,20 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A connect that times out fails on time and leaves nothing behind.** A regression from the previous
+entry. When the runtime accepted the connection but never completed the handshake, the link timed out
+and closed itself. The graceful close introduced there has nothing to close when the connection never
+opened, so it only waited: with a 0.3 s timeout the error arrived after 2.3 s. Worse, the connect
+attempt kept running. Verified against the stand-in: once the "runtime" came up after the timeout, the
+orphaned attempt connected, and on the real runtime it would take the one conversation it serves from
+every caller after it. The close it replaced stopped the event loop, which killed the attempt, so both
+problems were introduced by that entry.
+
+`close()` now cancels the attempt when the link never connected, and closes gracefully only when it
+did. The error message also gives the real timeout ("after 0.3s", where it rounded to "after 0s"). Tests
+also now cover a refused connection and a malformed message from the runtime, both already handled
+correctly. On the previous link the timeout test failed, and the late connect was confirmed separately.
+
 **Closing the client's real connection sends what was queued, closes it properly, and waits.** The
 client's websocket link had no tests: its docstring said it needed the runtime on the other end, and
 the websocket library is not installed here. Tested against a stand-in for the library, `close()`
