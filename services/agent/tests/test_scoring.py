@@ -164,6 +164,18 @@ def test_evidence_only_in_dimensions_a_role_ignores_is_not_enough():
     assert any("Only 0 of 2 dimensions" in f for f in a.flags)
 
 
+def test_a_gap_in_a_dimension_the_role_ignores_does_not_hold_back_the_band():
+    class NoCommunication(Judge):
+        def score_dimension(self, dimension, units):
+            return DimensionScore(dimension, None if dimension == "communication" else 4, [])
+
+    role = RolePack("no-communication",
+                    {d: (0.0 if d == "communication" else 1.0) for d in DIMENSIONS})
+    assert score_call(strong(), judge=NoCommunication(), role=role).band == "advance"
+    # Under a role that does count it, the same gap still holds the band back.
+    assert score_call(strong(), judge=NoCommunication()).band == "advance with reservations"
+
+
 def test_role_weighting_moves_the_headline():
     class Split(Judge):
         def score_dimension(self, dimension, units):

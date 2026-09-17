@@ -589,7 +589,12 @@ def score_call(
 
     return Assessment(
         overall=overall,
-        band=band_for(overall, scores),
+        # Gaps only in dimensions the role counts. A role that weights communication zero
+        # held a candidate at 10/10 on everything it does count to "with reservations",
+        # because they had not spoken to communication.
+        band=band_for(
+            overall, [s for s in scores if role.weights.get(s.dimension, 1.0) > 0]
+        ),
         dimensions=scores,
         flags=list(flags or ()),
         duration_s=duration,

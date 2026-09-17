@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A gap in a dimension the role ignores does not hold back the band.** "Advance" requires no
+dimension without evidence, and that check ignored role weights: under a role weighting
+communication zero, a candidate at 10/10 on everything the role counts was held at "advance with
+reservations" for not speaking to communication. The band now looks only at dimensions the role
+counts; under the generic role the same gap still holds it back. One new test, failing on the
+previous commit. Suite: 1271 passed.
+
 **A role that weights a dimension zero cannot crash the report.** When every dimension with evidence
 was one the role pack weighted zero, the overall divided by zero and the report for a finished call
 raised. Only dimensions the role counts now count toward the minimum of three, since a zero-weighted
