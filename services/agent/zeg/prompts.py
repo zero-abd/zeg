@@ -98,6 +98,13 @@ SILENCE_MOVE_ON = (
 #: if the agent was answering the candidate's own closing question.
 TIME_UP = "We're out of time. Thank you for talking with me today."
 
+#: Spoken when the candidate has nothing more to ask after the wrap-up. The call ends after
+#: it, instead of waiting out the clock on a silent, recorded line.
+CLOSING = (
+    "Thanks for your time today. The hiring team will review this and be in touch about "
+    "next steps. Goodbye."
+)
+
 #: Spoken when the wall clock reaches the wrap-up mark, regardless of context.
 WRAP_UP = (
     "That is about all the time I have. Is there anything you wanted to ask before "

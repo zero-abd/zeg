@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate with no questions at the wrap-up is thanked and the call ends.** Nothing ended a call
+between the wrap-up and the time limit: measured, "no, I think I'm good, thanks" at 13:40 was followed
+by 76 seconds of silent, recorded line and then "We're out of time", and the "no" went into the
+briefing as a claim. After the wrap-up, a short turn that plainly says there is nothing more ("I'm
+good", "that's all", "no questions", "nothing else"), or a bare "no" in direct reply to the wrap-up
+question, now gets a closing line and ends the call as "completed". A question, a longer turn, "I'm
+good at Go", or a "no" to some other question does not. Six new tests; the three closing cases fail
+on the previous commit, the three that must not close are guards. Suite: 1284 passed.
+
 **A fixed line on its way counts as the agent speaking.** The client only knew the agent was speaking
 once the runtime reported the response started, so straight after `say()` both `agent_speaking` and
 `caller_speaking` were false (measured). A rollover waiting for quiet, as the driving contract tells

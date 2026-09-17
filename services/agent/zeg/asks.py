@@ -95,3 +95,37 @@ def asks_about_consent(text: str):
         if pattern.search(plain):
             return kind
     return None
+
+
+#: Having nothing more to ask, said in a way that cannot be anything else. After the
+#: wrap-up only, where the agent has just asked whether they have questions.
+_NOTHING_MORE = re.compile(
+    r"\b(i'?m|i am) (good|all set|all good|fine)\b(?!\s+(at|with|in|on|for)\b)"
+    r"|\bthat'?s (all|it|everything)\b"
+    r"|\bno (more |other |further )?questions\b"
+    r"|\bnothing (else|more|from me|comes to mind)\b"
+    r"|\b(do ?n'?t|do not) have (any )?(more |other |further )?(questions|anything)\b"
+    r"|\bthat covers it\b",
+    re.I,
+)
+
+#: A bare no, which only means "no questions" as the reply to the wrap-up itself.
+_BARE_NO = re.compile(r"^\W*(no|nope|nah|not really)\b", re.I)
+
+#: Longer than this and the candidate is saying something, even if it starts with no.
+_MAX_CLOSING_WORDS = 12
+
+
+def has_nothing_more(text: str, replying_to_wrap_up: bool) -> bool:
+    """True when the candidate is telling us they have no more questions.
+
+    A call past its wrap-up with nothing left to say went on, silent and recorded, until
+    the time limit: measured, 76 seconds after "no, I think I'm good, thanks". A question,
+    or anything long enough to be more than a closing remark, is not this.
+    """
+    plain = fold(text).strip()
+    if not plain or is_question(plain) or len(plain.split()) > _MAX_CLOSING_WORDS:
+        return False
+    if _NOTHING_MORE.search(plain):
+        return True
+    return replying_to_wrap_up and bool(_BARE_NO.search(plain))

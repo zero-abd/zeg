@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscript
-from .asks import asks_about_consent, is_question
+from .asks import asks_about_consent, has_nothing_more, is_question
 from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
@@ -24,6 +24,7 @@ from .config import CallConfig
 from .engine import InterviewEngine
 from .memory import RolloverPolicy, SessionSeed, last_exchange
 from .prompts import (
+    CLOSING,
     CONSENT_ANSWERS,
     CONSENT_DECLINED,
     CONSENT_REASK,
@@ -576,6 +577,14 @@ class Interview:
             actions.extend(self._end("consent withdrawn"))
             return actions
 
+        if self._wrapped and has_nothing_more(text, self._last_agent_line() == WRAP_UP):
+            # Asked whether they had questions, they said no. The call used to carry on,
+            # silent and recorded, until the time limit, and the "no" went into the
+            # briefing as a claim.
+            actions = self._say(CLOSING, t_s)
+            actions.extend(self._end("completed"))
+            return actions
+
         # A hesitation mid-interview is the candidate thinking, not answering. Counted as
         # an answer it used up the outstanding probe, so every later answer was credited
         # to the wrong question, and it could revive a stalled ladder or trigger a rollover.
@@ -734,6 +743,12 @@ class Interview:
         self.record.transcript.append(Turn(t_s, "agent", safe))
         self.engine.note_agent(safe, t_s)
         return [Speak(safe)]
+
+    def _last_agent_line(self) -> Optional[str]:
+        for turn in reversed(self.record.transcript):
+            if turn.speaker == "agent":
+                return turn.text
+        return None
 
     def _already_recorded(self, text: str) -> bool:
         for turn in reversed(self.record.transcript):

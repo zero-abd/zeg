@@ -249,6 +249,49 @@ def test_the_goodbye_replaces_an_answer_cut_off_by_the_limit():
     assert [a.text for a in actions if isinstance(a, Speak)] == [TIME_UP]
 
 
+def wrapped_up_interview():
+    from zeg.backends.base import AgentAudio
+
+    iv = consented_interview()
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 809.0)
+    iv.tick(812)  # the wrap-up, once both sides are quiet
+    assert iv.record.wrapped_up_s == 812
+    return iv
+
+
+@pytest.mark.parametrize("text", ["no, I think I'm good, thanks", "nope", "that's all from me"])
+def test_a_candidate_with_no_questions_is_thanked_and_the_call_ends(text):
+    """The call went on, silent and recorded, for 76 seconds until the time limit."""
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import EndCall, Speak
+    from zeg.prompts import CLOSING
+
+    iv = wrapped_up_interview()
+    actions = iv.on_event(UserTranscript(text, final=True), 820)
+    assert [a.text for a in actions if isinstance(a, Speak)] == [CLOSING]
+    assert [a.reason for a in actions if isinstance(a, EndCall)] == ["completed"]
+    assert not any(text in c.text for c in iv.engine.state.claims)
+
+
+@pytest.mark.parametrize("text", ["no, but what is the team like?", "I'm good at Go, is that used here?"])
+def test_a_question_at_the_wrap_up_does_not_end_the_call(text):
+    from zeg.backends.base import UserTranscript
+
+    iv = wrapped_up_interview()
+    iv.on_event(UserTranscript(text, final=True), 820)
+    assert not iv.record.ended
+
+
+def test_a_bare_no_ends_the_call_only_as_the_answer_to_the_wrap_up():
+    from zeg.backends.base import AgentText, UserTranscript
+
+    iv = wrapped_up_interview()
+    iv.on_event(UserTranscript("what are the next steps?", final=True), 820)
+    iv.on_event(AgentText("A recruiter will reach out this week. Does that help?", final=True), 830)
+    iv.on_event(UserTranscript("no", final=True), 835)
+    assert not iv.record.ended
+
+
 def test_the_candidates_last_words_are_kept_when_the_goodbye_starts():
     """Starting the goodbye early made the limit a window, and what the candidate said in
     it was missing from the transcript."""
