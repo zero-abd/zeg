@@ -39,6 +39,24 @@ CLEAN: Sequence = (
 )
 
 
+#: The same kind of candidate with exactly one marker per dimension. CLEAN carries several
+#: for each, so a degradation that destroys one can never show: "gave up" arriving as
+#: "gave-up" lost the tradeoff, and CLEAN still scored it because the same answer also says
+#: "doubled". Here a single lost signal takes a dimension from 3 to nothing.
+LEAN: Sequence = (
+    T(0, "agent", "What did you personally do?"),
+    T(10, "caller", "I rewrote the settlement worker."),
+    T(30, "agent", "How often did it happen?"),
+    T(40, "caller", "Eleven double settlements over six weeks."),
+    T(60, "agent", "What did it cost?"),
+    T(70, "caller", "We gave up parallel reconciliation."),
+    T(90, "agent", "How did you find it?"),
+    T(100, "caller", "We isolated it to one merchant."),
+    T(120, "agent", "How did the fix go?"),
+    T(130, "caller", "First the lock, then the backfill."),
+)
+
+
 def unpunctuated(text: str) -> str:
     """Lowercase, no sentence punctuation. Plenty of recognisers emit exactly this."""
     return re.sub(r"[.,;:!?]", "", text).lower()

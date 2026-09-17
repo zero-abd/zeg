@@ -137,6 +137,29 @@ def test_each_degradation_holds_on_every_dimension(name, fn):
     assert got == clean, name
 
 
+def test_the_lean_transcript_has_exactly_one_marker_per_dimension():
+    """Its whole purpose. With backup markers, a degradation that destroys one signal
+    cannot show: the original transcript scored a lost "gave-up" as a tradeoff anyway
+    because the same answer also says "doubled"."""
+    from zeg.evals.recognition import LEAN
+    from zeg.scoring import DIMENSIONS, signals
+
+    per_answer = [signals(e.text) for e in LEAN if e.speaker == "caller"]
+    assert all(len(s) == 1 for s in per_answer), per_answer
+    assert sorted(d for s in per_answer for d in s) == sorted(DIMENSIONS)
+
+
+@pytest.mark.parametrize("name,fn", DEGRADATIONS, ids=[n for n, _ in DEGRADATIONS])
+def test_each_degradation_holds_on_the_lean_transcript(name, fn):
+    """Measured against the scorer from before the spelling fix, hyphenated compounds
+    took tradeoffs from 3 to nothing here, while the original transcript held."""
+    from zeg.evals.recognition import LEAN
+
+    clean = {d.dimension: d.score for d in score_call(LEAN).dimensions}
+    got = {d.dimension: d.score for d in score_call(degrade(LEAN, fn)).dimensions}
+    assert got == clean, name
+
+
 def test_degradations_actually_change_the_text():
     """A degradation that is a no-op tests nothing."""
     for name, fn in DEGRADATIONS:

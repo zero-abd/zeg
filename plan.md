@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The recognition eval can now see a single lost signal.** Its transcript carried several markers
+for every dimension, so a degradation that destroyed one could never move a score. That is why the
+hyphenated-compounds degradation held even on the scorer that could not read "gave-up": the same
+answer also said "doubled". A second transcript now carries exactly one marker per dimension,
+and a test pins that property so it cannot drift. Run against the scorer from before the spelling
+fix, hyphenated compounds took tradeoffs on it from 3 to nothing, and that test fails there as it
+should; every other degradation held. On the current scorer every degradation holds on both
+transcripts.
+
 **How a recogniser spelled a compound word no longer decides the score.** Recognisers write the
 same compound three ways: "trade off", "tradeoff", "trade-off". The scorer's patterns matched one
 spelling of each, and eight of sixteen spelling variants lost their evidence: "the trade off was",
