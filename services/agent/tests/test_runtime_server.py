@@ -181,6 +181,38 @@ def test_a_session_that_fails_outright_still_tells_the_client():
     assert not server._busy, "the server is free to serve the next call"
 
 
+def a_box_with_a_gpu_and_no_weights(monkeypatch, allow_silence):
+    from zeg.runtime import model as model_mod
+
+    monkeypatch.setattr(model_mod, "require_cuda", lambda: object())
+    return RuntimeServer(model_mod.ModelPaths("/nonexistent/weights"), allow_silence=allow_silence)
+
+
+def test_allow_silence_also_covers_a_model_that_cannot_be_loaded(monkeypatch, caplog):
+    """On the box there is a GPU, so the real model was chosen and its load failed, and
+    the runtime refused to start even with --allow-silence."""
+    import logging
+
+    from zeg.runtime.model import SilenceModel
+
+    server = a_box_with_a_gpu_and_no_weights(monkeypatch, allow_silence=True)
+    with caplog.at_level(logging.ERROR, logger="zeg.runtime"):
+        server.load()
+    assert isinstance(server.model, SilenceModel)
+    assert any("Serving SILENCE" in r.getMessage() for r in caplog.records), "said loudly"
+
+
+def test_without_allow_silence_a_model_that_cannot_load_is_still_fatal(monkeypatch):
+    """A runtime that quietly serves silence will do it during a demo."""
+    import pytest
+
+    from zeg.runtime.model import ModelUnavailable
+
+    server = a_box_with_a_gpu_and_no_weights(monkeypatch, allow_silence=False)
+    with pytest.raises(ModelUnavailable):
+        server.load()
+
+
 def test_closing_the_server_releases_the_model():
     model = StubModel()
     server = a_server(model)

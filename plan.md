@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**`--allow-silence` works on the box.** The runtime's opt-in fallback to the silent stand-in covered a
+missing GPU only. On the GB10 there is a GPU, so the real model was chosen, and its load fails until
+the weights are in place and the checkpoint-specific seams are wired. Simulated with a GPU present
+and no weights: the runtime refused to start even with `--allow-silence`, so the plumbing could not
+be run end to end on the one machine it matters most on. A model that cannot be loaded now falls back
+too, still only with the flag, and logged as an error that says it is serving silence and is not an
+interview. Without the flag a load failure stays fatal, which keeps the reason the fallback was made
+opt-in. On the old server the fallback test failed; the fatal-without-the-flag guard passed on both.
+
 **The driving contract is written where a driver will read it.** Several recent entries ended with a
 note for whoever integrates the media gateway: call `tick` on every frame, wait for both sides to be
 quiet before a rollover and rebuild its seed then, call `Interview.report()` at the end. Those notes

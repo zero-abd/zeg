@@ -85,7 +85,21 @@ class RuntimeServer:
         """
         log.info("platform: %s", codec_mod.describe_platform())
         self.model = model_mod.build_model(self.paths, allow_silence=self.allow_silence)
-        self.model.load()
+        try:
+            self.model.load()
+        except model_mod.ModelUnavailable as exc:
+            # The fallback used to cover a missing GPU only. On the box there is a GPU, so
+            # the real model was chosen and its load failed, weights not in place or a seam
+            # not wired yet, and the runtime refused to start even when asked to serve
+            # silence. Still opt-in, and said as loudly as the log allows.
+            if not self.allow_silence:
+                raise
+            log.error(
+                "the model could not be loaded (%s). Serving SILENCE because "
+                "--allow-silence was given: plumbing only, not an interview.", exc
+            )
+            self.model = model_mod.SilenceModel()
+            self.model.load()
         log.info("model loaded: %s", type(self.model).__name__)
 
     def run(self) -> None:
@@ -284,7 +298,8 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument(
         "--allow-silence",
         action="store_true",
-        help="serve silence instead of failing when there is no GPU. Plumbing only.",
+        help="serve silence instead of failing when there is no GPU or the model cannot be "
+        "loaded. Plumbing only.",
     )
     args = parser.parse_args(argv)
 
