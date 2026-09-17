@@ -262,6 +262,34 @@ def test_consent_is_not_taken_from_someone_who_talked_over_the_disclosure(iv):
     assert iv.record.consent is True
 
 
+def test_agreeing_over_the_answer_to_a_consent_question_is_consent(iv):
+    """The disclosure was heard in full and the candidate asked about it. Saying "that's
+    fine" over the answer discarded the consent, replayed the whole greeting, and flagged
+    them for talking over the disclosure."""
+    from zeg.backends.base import AgentInterrupted
+
+    iv.start()
+    iv.on_event(UserTranscript("what happens to the recording?", final=True), 16.0)
+    iv.on_event(AgentInterrupted("barge_in"), 19.0)
+    actions = iv.on_event(UserTranscript("oh okay, that's fine", final=True), 21.0)
+
+    assert iv.record.consent is True
+    assert not any("AI interviewer" in s for s in spoken(actions))
+    assert not [f for f in iv.record.flags if "disclosure" in f]
+
+
+def test_a_repeated_disclosure_can_be_talked_over_again(iv):
+    from zeg.backends.base import AgentInterrupted
+
+    iv.start()
+    actions = iv.on_event(UserTranscript("sorry, could you repeat that?", final=True), 14.0)
+    assert any("AI interviewer" in s for s in spoken(actions)), "the disclosure was not repeated"
+    iv.on_event(AgentInterrupted("barge_in"), 16.0)
+    iv.on_event(UserTranscript("yeah go ahead", final=True), 17.0)
+    assert iv.record.consent is None
+    assert any("talked over the recording disclosure" in f for f in iv.record.flags)
+
+
 def test_an_interruption_after_consent_does_not_ask_again(iv):
     from zeg.backends.base import AgentInterrupted
 

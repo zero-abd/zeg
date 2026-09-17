@@ -298,6 +298,9 @@ class Interview:
         self._disclosure_interrupted = False
         #: Why it was interrupted, so the record says who did it.
         self._disclosure_interrupt_reason: Optional[str] = None
+        #: The candidate has replied to the disclosure after hearing it without cutting in.
+        #: Cleared whenever it is spoken again.
+        self._disclosure_heard = False
         #: Hesitations waited through before consent was settled.
         self._hesitations = 0
         #: Questions answered before consent was settled.
@@ -461,10 +464,13 @@ class Interview:
 
         if isinstance(event, AgentInterrupted):
             # The candidate started talking and the backend already stopped. Before
-            # consent is settled the only thing the agent has said is the disclosure, so
-            # an interruption here means they may not have heard that the call is
-            # recorded.
-            if self.record.consent is None and self._asked_consent:
+            # consent is settled, an interruption of the disclosure means they may not
+            # have heard that the call is recorded. Once they have replied to it having
+            # heard it through, what is cut off is an answer to their own question: that
+            # used to discard the "that's fine" they said over it, replay the whole
+            # greeting, and flag them for talking over a disclosure they had heard.
+            if (self.record.consent is None and self._asked_consent
+                    and not self._disclosure_heard):
                 self._disclosure_interrupted = True
                 self._disclosure_interrupt_reason = event.reason
             return []
@@ -525,6 +531,7 @@ class Interview:
                         % (reason or "no reason given")
                     )
                 return self._say(self.greeting, t_s)
+            self._disclosure_heard = True
             if is_hesitation(text) and self._hesitations < MAX_HESITATIONS_BEFORE_CONSENT:
                 # Not an answer yet. Waiting grants no more consent than declining does,
                 # and declining ended the interview for someone who was still thinking.
@@ -719,6 +726,8 @@ class Interview:
         except ProhibitedQuestion as e:
             self.record.flags.append("Blocked a prohibited question: %s" % e.violation)
             return []
+        if safe == self.greeting:
+            self._disclosure_heard = False  # spoken again, so it can be talked over again
         self.record.transcript.append(Turn(t_s, "agent", safe))
         self.engine.note_agent(safe, t_s)
         return [Speak(safe)]

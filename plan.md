@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Agreeing over the answer to a consent question is consent.** Before consent, every interruption
+was taken as the candidate talking over the disclosure. A candidate who heard it through, asked
+"what happens to the recording?", and said "oh okay, that's fine" over the answer had that consent
+discarded, heard the whole greeting again, and was flagged for talking over the disclosure. The
+interview now notes when the candidate has replied to the disclosure having heard it without cutting
+in; later interruptions are not disclosure interruptions until it is spoken again. Two new tests: the
+scenario fails on the previous commit; a guard shows a repeated disclosure can still be talked over.
+Suite: 1266 passed.
+
 **The greeting phase ends when the candidate agrees, not at 60 seconds.** Phases were clock-only, so
 the briefing sent the moment consent was given said "Phase: greeting. Goal right now: Disclose AI,
 get recording consent", on every call: the model's first turn was pointed back at a gate fixed lines
