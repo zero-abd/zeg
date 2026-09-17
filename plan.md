@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A role that weights a dimension zero cannot crash the report.** When every dimension with evidence
+was one the role pack weighted zero, the overall divided by zero and the report for a finished call
+raised. Only dimensions the role counts now count toward the minimum of three, since a zero-weighted
+one adds nothing to the overall; such a call is "insufficient signal", and the flag counts against
+the dimensions the role uses. One new test, raising ZeroDivisionError on the previous commit. Suite:
+1270 passed.
+
 **A halfway overall score always rounds up.** The 1-4 mean was mapped onto 1-10 with round(), which
 rounds halves to even, so exactly-halfway profiles went both ways: 4,4,3,3 showed 8 from 8.5 and
 2,2,1,1 showed 2 from 2.5, while 3,3,2,2 showed 6 from 5.5. No band boundary is crossed in these

@@ -149,6 +149,21 @@ def test_a_halfway_overall_always_rounds_the_same_way(given, expected):
     assert score_call(strong(), judge=Fixed()).overall == expected
 
 
+def test_evidence_only_in_dimensions_a_role_ignores_is_not_enough():
+    """Every dimension with evidence weighted zero crashed the report dividing by zero."""
+    counted = ("ownership", "tradeoffs")
+
+    class OnlyIgnored(Judge):
+        def score_dimension(self, dimension, units):
+            return DimensionScore(dimension, None if dimension in counted else 3, [])
+
+    role = RolePack("narrow", {d: (1.0 if d in counted else 0.0) for d in DIMENSIONS})
+    a = score_call(strong(), judge=OnlyIgnored(), role=role)
+    assert a.overall is None
+    assert a.band == "insufficient signal"
+    assert any("Only 0 of 2 dimensions" in f for f in a.flags)
+
+
 def test_role_weighting_moves_the_headline():
     class Split(Judge):
         def score_dimension(self, dimension, units):

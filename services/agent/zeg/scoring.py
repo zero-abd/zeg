@@ -556,7 +556,12 @@ def score_call(
     duration = transcript[-1].at_s if len(transcript) else 0.0
 
     scores = [judge.score_dimension(d, units) for d in DIMENSIONS]
-    scored = [s for s in scores if not s.insufficient]
+    # Only dimensions the role counts. One weighted zero adds nothing to the overall, so it
+    # cannot be what makes the overall trustworthy; and when every dimension with evidence
+    # was weighted zero, the report crashed dividing by zero after the call had finished.
+    scored = [
+        s for s in scores if not s.insufficient and role.weights.get(s.dimension, 1.0) > 0
+    ]
 
     if len(scored) < MIN_SCORED_DIMENSIONS:
         return Assessment(
@@ -565,7 +570,7 @@ def score_call(
             dimensions=scores,
             flags=list(flags or ()) + [
                 "Only %d of %d dimensions had citable evidence. Offer a human screen."
-                % (len(scored), len(DIMENSIONS))
+                % (len(scored), sum(1 for d in DIMENSIONS if role.weights.get(d, 1.0) > 0))
             ],
             duration_s=duration,
             judge=judge.name,
