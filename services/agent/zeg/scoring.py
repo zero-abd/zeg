@@ -211,7 +211,11 @@ _NUMBER_WORDS = (
 _NUMBER = re.compile(
     r"\b\d+(\.\d+)?\s*(ms|s|x|%|k|m|gb|mb|qps|rps|percent)?\b"
     r"|\b(" + _NUMBER_WORDS + r")\b"
-    r"|\b(percent|per cent|doubled|doubles|tripled|triples|halved|quadrupled)\b",
+    r"|\b(percent|per cent|doubled|doubles|tripled|triples|halved|quadrupled)\b"
+    # Quantities said without a number: "twice a week", "half the batches", "tenfold".
+    # "half" only with something it is half of, so "the second half of the call" is not one.
+    r"|\b(twice|thrice|dozens?|(two|three|four|five|ten|hundred)fold)\b"
+    r"|(?<!second\s)(?<!first\s)\bhalf\s+(the|of|our|all|a|an)\b",
     re.I,
 )
 
@@ -328,7 +332,11 @@ _FIRST_PERSON = re.compile(
     + r"|(?:^|[.!?;]\s+)personally\s+(?:" + _DROPPED_SUBJECT_PAST + r")\b"
     + r"|(?:^|[.!?;]\s+)(?:(?:and|so|then|also|just|actually)\s+)?"
     + r"(?:" + _DROPPED_SUBJECT_PAST + r")\b(?!\s+(?:by|income)\b)(?=[^.!?]*\bmyself\b)"
-    + r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
+    # Clefts and passives: "It was me who rewrote it", "I'm the one who rewrote it", "The
+    # worker was rewritten by me". Each scored no ownership.
+    + r"|\b(?:i\s+(?:was|am)|i'm)\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
+    + r"|\bit\s+was\s+me\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
+    + r"|\b(?:was|were|got|been|is)\s+(?:" + _OWNERSHIP_VERBS + r")\s+by\s+me\b"
     r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on|in\s+charge\s+of)\b"
     # Possessive claims, the most natural answer to the engine's own probe. None of nine
     # counted: "My part was the advisory-lock fix" scored ownership as nothing. Narrow on
@@ -350,6 +358,9 @@ _TRADEOFF = re.compile(
     # "We trade latency for durability". Not "trades" on its own: in a payments interview
     # "we reconcile trades nightly" is an ordinary sentence.
     r"|\btrades?\s+\w+(\s+\w+)?\s+for\b"
+    # "The cost was parallel reconciliation", "the catch was", "on the flip side". Not "the
+    # cost of living" or "I accepted the cost": a cost has to be named as the price paid.
+    r"|\bthe\s+(cost|catch|price)\s+(was|is)\b|\bon\s+the\s+flip\s+side\b"
     r"|\baccept(s|ed)?\s+(higher|more|less|lower|some|a bit of|extra|worse)\b"
     r"|\b(choose|chooses|chose|chosen)\s+\w+(\s+\w+)?\s+over\b",
     re.I,
@@ -363,7 +374,13 @@ _HYPOTHESIS = re.compile(
     r"|rul(e|es|ed) out|isolat(e|es|ed)|profil(ed|ing|er)|flame ?graphs?|trac(e|es|ed))\b"
     r"|\b(my|our|first)\s+(guess|theory|suspicion)\b"
     r"|\b(add|adds|added)\s+(some\s+)?(logging|logs|tracing|metrics|instrumentation)\b"
-    r"|\b(check|checks|checked)\s+the\s+(logs|metrics|timestamps|traces|dashboards?|heap)\b",
+    r"|\b(check|checks|checked|look|looks|looked)\s+(at\s+)?the\s+"
+    r"(logs|metrics|timestamps|traces|dashboards?|heap)\b"
+    # "I dug into the logs", "stepped through it in a debugger", "set a breakpoint". Tied to
+    # what was examined, so "dug into the feature backlog" is not debugging.
+    r"|\b(dug|dig|digs|digging)\s+into\s+the\s+(logs|metrics|traces|code|heap|dump|data)\b"
+    r"|\b(stepped|step|steps|stepping)\s+through\s+(it|the\s+code|the\s+\w+\s+path)\b"
+    r"|\b(debugger|breakpoints?)\b",
     re.I,
 )
 #: Content-free words. "you know" and "um" are deliberately absent: they are filler,

@@ -590,6 +590,49 @@ def test_the_same_claim_in_other_words_scores_the_same():
         ownership_of("I personally implemented the advisory lock fix.")
 
 
+# --- more ordinary ways of saying the same thing ---------------------------------------
+
+ORDINARY = [
+    ("ownership", "It was me who rewrote the settlement worker."),
+    ("ownership", "I'm the one who rewrote the settlement worker."),
+    ("ownership", "The settlement worker was rewritten by me."),
+    ("technical_depth", "It happened twice a week."),
+    ("technical_depth", "Half the batches settled twice."),
+    ("technical_depth", "Latency went up tenfold."),
+    ("technical_depth", "It hit dozens of merchants."),
+    ("tradeoffs", "The cost was parallel reconciliation."),
+    ("tradeoffs", "The catch was that batches ran one at a time."),
+    ("tradeoffs", "On the flip side, batches ran one at a time."),
+    ("debugging", "I dug into the logs and found two workers on one batch."),
+    ("debugging", "I stepped through it in a debugger."),
+    ("debugging", "I looked at the logs for that merchant."),
+    ("debugging", "I set a breakpoint in the claim path."),
+]
+NOT_ORDINARY = [
+    ("technical_depth", "In the second half of the call we talked about the team."),
+    ("tradeoffs", "The cost of living here is high."),
+    ("tradeoffs", "I accepted the cost estimate from finance."),
+    ("debugging", "I dug into the feature backlog with the product manager."),
+    ("debugging", "I looked at the design doc before the meeting."),
+    ("ownership", "It was the platform team who rewrote the settlement worker."),
+]
+
+
+@pytest.mark.parametrize("dimension,text", ORDINARY, ids=[t for _, t in ORDINARY])
+def test_an_ordinary_phrasing_counts(dimension, text):
+    """Twelve of sixteen of these were not recognised."""
+    from zeg.scoring import signals
+
+    assert dimension in signals(text), text
+
+
+@pytest.mark.parametrize("dimension,text", NOT_ORDINARY, ids=[t for _, t in NOT_ORDINARY])
+def test_a_lookalike_does_not(dimension, text):
+    from zeg.scoring import signals
+
+    assert dimension not in signals(text), text
+
+
 # --- how a recogniser spelled a compound does not decide the score --------------------
 
 SPELLINGS = [

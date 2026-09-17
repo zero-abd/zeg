@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Clefts, passives, spoken quantities, named costs and hands-on debugging now count.** Twelve of
+sixteen further ordinary phrasings were not recognised: "It was me who rewrote the worker", "I'm
+the one who rewrote it", "The worker was rewritten by me"; "twice a week", "half the batches",
+"tenfold"; "The cost was parallel reconciliation", "the catch was", "on the flip side"; "I dug into
+the logs", "stepped through it in a debugger", "looked at the logs", "set a breakpoint". A few that
+did count did so by accident, through another number in the same sentence.
+
+Each is tied to the thing that makes it evidence, so the lookalikes stay out: "the second half of
+the call" is not a quantity, "the cost of living" and "I accepted the cost estimate" are not a price
+paid, "dug into the feature backlog" and "looked at the design doc" are not debugging, and "it was
+the platform team who rewrote it" is not ownership. On the old scorer all fourteen positive tests
+failed and the six lookalikes passed.
+
 **Lean matched pairs found two more ways the scorer marked down how someone speaks.** The
 matched pairs carry several markers per dimension and a score caps at two, so a variant losing
 one could hide. Delivery variants run over the recognition eval's one-marker transcript instead.
