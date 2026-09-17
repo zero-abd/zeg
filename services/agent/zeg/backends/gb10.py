@@ -36,7 +36,7 @@ from typing import Any, Deque, Dict, Iterator, List, Optional
 
 from ..audio import AudioFrame, rms
 from ..config import AudioConfig, BackendConfig
-from ..hesitation import is_hesitation
+from ..hesitation import is_hesitation, sounds_unfinished
 from ..runtime import protocol as p
 from .base import (
     AgentAudio,
@@ -509,7 +509,11 @@ class GB10Session(VoiceSession):
         turn whose recognition lags, which is most of them.
         """
         heard = self._open_turn_text.strip()
-        if heard and is_hesitation(heard):
+        # Stopping mid-thought is held the same way: "uh, let me think" and "the reason
+        # was, uh" committed at the ordinary pause, and the model answered someone still
+        # thinking. What is heard lags the audio, so a turn that finished on its last word
+        # can still read unfinished here; the cost is the hold, once.
+        if heard and (is_hesitation(heard) or sounds_unfinished(heard)):
             return max(self._cfg.endpoint_silence_ms, self._cfg.hesitation_hold_ms)
         return self._cfg.endpoint_silence_ms
 

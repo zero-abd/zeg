@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A turn that stops mid-thought is held like a hesitation.** Only a turn holding nothing but "um" got
+the longer endpoint, so "uh, let me think", "so the reason was, uh" and "we sharded it because"
+committed at the ordinary 640 ms pause and the model answered someone still thinking. The client
+now also holds a turn whose text so far ends on a filler, a conjunction or an article, or on a
+request for time ("let me think", "good question"). The trailing-word list is short on purpose:
+"I think so", "back then" and "we turned it on" are finished and still commit at the usual pause.
+Six new cases; the three mid-thought ones fail on the previous commit. Not changed: once the hold
+runs out, the interview still treats "uh, let me think" as an answer. Suite: 1297 passed.
+
 **Elided judge quotes stay rejected; the judge is told not to elide.** The open case from the entries
 below, decided rather than loosened: accepting parts joined with "..." would let an elision reverse
 who did the work ("I didn't write ... the fix" from "I didn't write the tests, Sam wrote the fix"),

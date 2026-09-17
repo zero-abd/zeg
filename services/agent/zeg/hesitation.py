@@ -20,3 +20,28 @@ def is_hesitation(text: str) -> bool:
     """True when a reply holds no words beyond hesitation sounds, or no words at all."""
     words = re.findall(r"[a-z']+", fold(text).lower())
     return all(_HESITATION.fullmatch(w) for w in words)
+
+
+#: Words a finished sentence does not end on. Deliberately short: "that", "so", "to",
+#: "then" and "on" all end ordinary sentences ("I think so", "back then", "turned it on").
+_TRAILING = re.compile(r"(u+m+|u+h+|e+r+m*|a+h+|h+m+|and|but|or|because|cause|the|a|an|if|although)")
+
+#: Asking for time, at the end of what has been said so far.
+_THINKING = re.compile(
+    r"\b(let me (think|see)|give me a (sec|second|moment|minute)|hold on|one sec(ond)?"
+    r"|good question|that's a good one)\W*$",
+    re.I,
+)
+
+
+def sounds_unfinished(text: str) -> bool:
+    """True when what has been heard so far stops mid-thought.
+
+    Only the pure hesitation was held, so "uh, let me think" and "so the reason was, uh"
+    committed at the ordinary pause and the model answered someone still thinking.
+    """
+    plain = fold(text).lower()
+    if _THINKING.search(plain):
+        return True
+    words = re.findall(r"[a-z']+", plain)
+    return bool(words) and bool(_TRAILING.fullmatch(words[-1]))

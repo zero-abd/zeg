@@ -267,6 +267,26 @@ def test_a_hesitation_still_commits_once_the_hold_runs_out(audio):
     assert link.of_type(p.TURN_COMMIT)
 
 
+@pytest.mark.parametrize("text", ["uh, let me think", "so the reason was, uh", "we sharded it because"])
+def test_a_turn_that_stops_mid_thought_is_not_committed_at_the_usual_pause(text, audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, text)
+    drive(sess, audio, 20)  # 400 ms, twice the usual endpoint
+    assert not link.of_type(p.TURN_COMMIT)
+    drive(sess, audio, 32)  # past the hold
+    assert link.of_type(p.TURN_COMMIT)
+
+
+@pytest.mark.parametrize("text", ["I think so", "we turned it on", "p99 was 30 ms"])
+def test_a_finished_sentence_is_not_held(text, audio):
+    link = FakeLink()
+    sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
+    open_turn_hearing(link, sess, audio, text)
+    drive(sess, audio, 11)
+    assert link.of_type(p.TURN_COMMIT)
+
+
 def test_a_turn_with_words_in_it_commits_at_the_usual_pause(audio):
     link = FakeLink()
     sess = session(link, audio, endpoint_silence_ms=200, hesitation_hold_ms=1000)
