@@ -72,6 +72,19 @@ class Assessment:
     #: identically, so "9/10 — advance" from a judge that only matches wording looked
     #: exactly like a real assessment.
     judge: str = ""
+    #: What was said, so the report is a standalone artefact. A driver that keeps only the
+    #: report, as the media gateway will, had no way to show a quote in context or to let
+    #: a reviewer check one. Kept off `render`, which is the one page.
+    transcript: Sequence = field(default_factory=tuple)
+
+    def render_transcript(self) -> str:
+        """The whole call, for a reviewer who wants to see a quote in its place."""
+        lines = []
+        for turn in self.transcript:
+            mins, secs = divmod(int(turn.at_s), 60)
+            who = "Interviewer" if turn.speaker == "agent" else "Candidate"
+            lines.append("[%02d:%02d] %-11s %s" % (mins, secs, who, turn.text))
+        return "\n".join(lines)
 
     @property
     def insufficient_dimensions(self) -> List[str]:
@@ -615,6 +628,7 @@ def score_call(
             ],
             duration_s=duration,
             judge=judge.name,
+            transcript=tuple(transcript),
         )
 
     total_w = sum(role.weights.get(s.dimension, 1.0) for s in scored)
@@ -640,6 +654,7 @@ def score_call(
         flags=list(flags or ()),
         duration_s=duration,
         judge=judge.name,
+        transcript=tuple(transcript),
     )
 
 

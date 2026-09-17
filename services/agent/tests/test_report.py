@@ -30,3 +30,37 @@ def test_a_full_length_call_keeps_the_plain_reason():
     )
     notes = [d.note for d in a.dimensions if d.insufficient]
     assert notes and all("before the part of the interview" not in n for n in notes)
+
+
+def test_the_report_carries_the_transcript_so_a_quote_can_be_checked():
+    """A driver that keeps only the report, as the media gateway will, had no way to show
+    a quote in its place or let a reviewer check one."""
+    from zeg.backends.base import AgentText, UserTranscript
+    from zeg.interview import Interview
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("yes that is fine", final=True), 5)
+    iv.on_event(AgentText("What did you personally do?", final=True), 20)
+    iv.on_event(UserTranscript("I wrote the advisory-lock fix myself", final=True), 40)
+    report = iv.report()
+
+    rendered = report.render_transcript()
+    assert "[00:40] Candidate   I wrote the advisory-lock fix myself" in rendered
+    assert "Interviewer" in rendered
+    for scored in report.dimensions:
+        for evidence in scored.evidence:
+            assert evidence.quote in rendered, "a cited quote must be checkable"
+
+
+def test_the_one_page_report_does_not_become_the_transcript():
+    """Collapsed means the reviewer asks for it. One page is the format."""
+    from zeg.conversation import TranscriptEntry as T
+    from zeg.report import assemble_report
+
+    a = assemble_report(
+        [T(0, "agent", "Tell me about it."), T(30, "caller", "I wrote the lock fix myself")],
+        consent=True, interview_started_s=0,
+    )
+    assert "Tell me about it." not in a.render()
+    assert "Tell me about it." in a.render_transcript()

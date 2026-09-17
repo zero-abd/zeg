@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The report carries the transcript, so a cited quote can be checked.** The last structural gap
+against docs/05, which asks for the full transcript collapsed: the report object held scores, quotes
+and flags but not a word of what was said. The demo prints the transcript separately, so this only
+showed up for a driver that keeps the report alone, which is what the media gateway will do: a quote
+in a hiring report with no way to check it. The transcript now travels on the assessment, with
+`render_transcript()` for a reviewer who wants a quote in its place; the one page is unchanged, which
+is what collapsed means. A test asserts every cited quote appears in it. Two new tests, both failing
+on the previous commit. Suite: 1391 passed.
+
 **The summary says what the consent gate did, not just "declined".** The same misreporting fixed
 inside the interview, still in the demo summary: anything that was not a yes printed "declined", so a
 candidate who said nothing and a call that failed before the question was ever settled both read as a
