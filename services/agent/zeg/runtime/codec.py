@@ -20,7 +20,8 @@ frame. This is the whole trick and it is why the decode stage does not need to b
 fast, only bounded.
 
 The pipelining is pure and tested. The decoder it wraps is not: that needs the
-box.
+box. Nor is either of them in the path yet: the model's step seam is unwired, so
+nothing submits to a PipelinedDecoder and nothing pins. See SEAM 3 in model.py.
 """
 
 import os

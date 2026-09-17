@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The decoder pipeline says where it has to be wired in.** The method sweep found `PipelinedDecoder`
+built by the model and never submitted to: the one-frame pipelining the codec module calls the whole
+trick is not in the path, for the same reason pinning is not, which is that the step seam is unwired.
+Both facts now sit where someone wiring the box will read them: the step seam says to route codec
+tokens through the decoder rather than the raw decode, and that the first frame of a response carries
+no audio, which is the one frame of latency the trick costs; the cancel seam says the pipeline has to
+be flushed there or its last frame surfaces inside the next response; the codec module's own header
+says neither is in the path yet. Documentation only, no behaviour change. Suite: 1405 passed.
+
 **Core pinning is honest about not happening yet, and two dead helpers are gone.** Same sweep as the
 settings, over functions: `collect_text` called itself a test helper and no test used it,
 `frames_for_seconds` was used nowhere, and `pin_to_cores` was used only by its own tests. That last

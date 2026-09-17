@@ -237,6 +237,15 @@ class CudaSpeechModel(SpeechModel):
     # --- stepping -------------------------------------------------------------
 
     def step(self, pcm: bytes) -> FrameResult:
+        """One 80 ms frame in, one frame of result out.
+
+        Whoever wires this must put the codec tokens through `self._decoder`, not
+        straight through `_decode_codec`: `submit` returns the *previous* frame's PCM,
+        which is what hides the decode under the next model step. Nothing routes through
+        it today, so the pipelining the codec module exists for is not in the path yet.
+        A frame whose submit returns None is the first of a response and carries no audio,
+        which is the one frame of latency the trick costs.
+        """
         if not self._loaded:
             raise ModelUnavailable("step before load")
         raise ModelUnavailable("model stepping is not wired up yet")
@@ -247,6 +256,11 @@ class CudaSpeechModel(SpeechModel):
         raise ModelUnavailable("turn commit is not wired up yet")
 
     def cancel_response(self, reason: str) -> None:
+        """Stop the response in flight. Also where the decoder pipeline is emptied.
+
+        `self._decoder.flush()` returns the frame still in flight, and a response that
+        ends without it leaves that frame to be decoded as part of the next response.
+        """
         if not self._loaded:
             return
         raise ModelUnavailable("response cancel is not wired up yet")
