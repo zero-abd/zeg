@@ -169,9 +169,12 @@ class CudaSpeechModel(SpeechModel):
 
     def __init__(self, paths: ModelPaths, codec_cores: Optional[list] = None) -> None:
         self.paths = paths
-        if codec_cores is None:
-            codec_cores = codec_mod.default_codec_cores()
-        self.codec_cores = codec_cores
+        # Which cores the codec decode should have, once it has a thread of its own to
+        # pin. Nothing pins today: the decode runs inline on the frame loop's thread, and
+        # pinning that thread to two cores would pin the model step with it. Kept as the
+        # box's setting rather than dropped, because SEAM 3 is where it gets used, and
+        # stored here so the value a deployment chooses is visible in one place.
+        self.codec_cores = codec_cores if codec_cores is not None else codec_mod.default_codec_cores()
         self._torch: Any = None
         self._model: Any = None
         self._decoder = codec_mod.PipelinedDecoder(self._decode_codec)
@@ -208,6 +211,10 @@ class CudaSpeechModel(SpeechModel):
         raise ModelUnavailable("prompt prefill is not wired up yet")
 
     def _decode_codec(self, tokens: Any) -> bytes:
+        # Wire this on its own thread and pin that thread with codec.pin_to_cores, which
+        # takes the thread's own id: pinning the process would take the model step with
+        # it. An unpinned decode on an efficiency core misses the frame budget by itself,
+        # so the box should log loudly when pinning does not take effect.
         # SEAM 3: codec tokens to 80 ms of PCM16 at 22.05 kHz, on the pinned CPU
         # worker. Wrapped by PipelinedDecoder so its cost hides under the next step.
         raise ModelUnavailable("codec decode is not wired up yet")

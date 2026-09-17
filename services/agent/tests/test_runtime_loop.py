@@ -281,3 +281,29 @@ def test_the_stand_in_refuses_to_run_after_close():
     model.close()
     with pytest.raises(RuntimeError):
         model.step(b"")
+
+
+def test_pinning_can_take_a_thread_of_its_own():
+    """The decode wants its own cores; the model step must not be pinned with it. The
+    helper only ever pinned the whole process, so there was no way to ask for that."""
+    import os
+
+    from zeg.runtime.codec import pin_to_cores
+
+    seen = []
+
+    class FakeOs:
+        def __init__(self):
+            self.sched_setaffinity = lambda who, cores: seen.append((who, set(cores)))
+
+    real = getattr(os, "sched_setaffinity", None)
+    os.sched_setaffinity = FakeOs().sched_setaffinity
+    try:
+        assert pin_to_cores([5, 6]) is True
+        assert pin_to_cores([5, 6], thread_id=4242) is True
+    finally:
+        if real is None:
+            del os.sched_setaffinity
+        else:
+            os.sched_setaffinity = real
+    assert seen == [(0, {5, 6}), (4242, {5, 6})]

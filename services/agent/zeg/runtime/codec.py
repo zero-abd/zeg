@@ -28,8 +28,13 @@ import sys
 from typing import Callable, List, Optional, Sequence
 
 
-def pin_to_cores(cores: Sequence[int]) -> bool:
-    """Pin this process to `cores`. Returns whether it took effect.
+def pin_to_cores(cores: Sequence[int], thread_id: int = 0) -> bool:
+    """Pin `thread_id` to `cores`, the current process by default. Returns whether it
+    took effect.
+
+    A thread id rather than only the process, because the decode wants its own cores and
+    the model step must not be pinned with it. On Linux `threading.get_native_id()` is
+    what to pass; 0 means this process, which is what a standalone codec worker wants.
 
     Fails soft. A missing affinity API is a developer laptop, not a broken box,
     and refusing to start there would make the runtime undevelopable. On the box
@@ -41,7 +46,7 @@ def pin_to_cores(cores: Sequence[int]) -> bool:
     if setter is None:  # macOS, Windows
         return False
     try:
-        setter(0, set(cores))
+        setter(thread_id, set(cores))
     except OSError:
         return False
     return True

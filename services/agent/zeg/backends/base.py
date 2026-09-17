@@ -11,7 +11,7 @@ that assumes strict turn-taking belongs above this layer, not inside it.
 
 import abc
 from dataclasses import dataclass
-from typing import Iterator, List, Optional
+from typing import Iterator, Optional
 
 from ..audio import AudioFrame
 
@@ -182,6 +182,3 @@ class VoiceBackend(abc.ABC):
         """Free the model."""
 
 
-def collect_text(events: List[BackendEvent]) -> str:
-    """Join the final agent text out of a batch of events. Test helper."""
-    return "".join(e.text for e in events if isinstance(e, AgentText) and e.final)

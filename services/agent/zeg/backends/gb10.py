@@ -29,7 +29,6 @@ and no WebSocket library works; opening a session does not.
 """
 
 import collections
-import math
 import threading
 from dataclasses import dataclass
 from typing import Any, Deque, Dict, Iterator, List, Optional
@@ -890,6 +889,3 @@ class GB10Backend(VoiceBackend):
             self._live = None
 
 
-def frames_for_seconds(seconds: float, frame_ms: int = p.FRAME_MS) -> int:
-    """Model frames in `seconds`. Used for budgets and for reading logs."""
-    return int(math.ceil(seconds * 1000.0 / frame_ms))

@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Core pinning is honest about not happening yet, and two dead helpers are gone.** Same sweep as the
+settings, over functions: `collect_text` called itself a test helper and no test used it,
+`frames_for_seconds` was used nowhere, and `pin_to_cores` was used only by its own tests. That last
+one matters: the codec module's core pinning, whose whole point is that an unpinned decode misses the
+frame budget by itself, is not wired at all, while `codec_cores` was computed and stored as though it
+were. It cannot be wired as it stands, because the decode runs inline on the frame loop's thread and
+pinning that thread to two cores would pin the model step with it. So `pin_to_cores` now takes a
+thread id, which is what a codec worker will pass, and SEAM 3 says to pin there; the stored setting
+says plainly that nothing pins yet and why. Two dead helpers and two now-unused imports removed. One
+new test, failing on the previous commit. Suite: 1405 passed.
+
 **Three settings that promised behaviour and changed nothing are gone.** Swept every config field for
 readers: `silence_rephrase_s` sat between the nudge and the move-on and was read nowhere, and
 `BackendConfig.device` and `dtype` advertised control over the model's GPU and precision that nothing
