@@ -92,6 +92,10 @@ SILENCE_MOVE_ON = (
     "recently?"
 )
 
+#: Spoken just before the time limit ends a call. The call used to simply drop, mid-sentence
+#: if the agent was answering the candidate's own closing question.
+TIME_UP = "We're out of time. Thank you for talking with me today."
+
 #: Spoken when the wall clock reaches the wrap-up mark, regardless of context.
 WRAP_UP = (
     "That is about all the time I have. Is there anything you wanted to ask before "

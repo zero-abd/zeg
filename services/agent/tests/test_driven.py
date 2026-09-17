@@ -212,13 +212,41 @@ def long_call_on(backend):
 def test_the_interview_ends_at_the_limit_with_nothing_said():
     from zeg.interview import EndCall
 
+    from zeg.interview import GOODBYE_LEAD_S, Speak
+    from zeg.prompts import TIME_UP
+
     iv = consented_interview()
     iv.tick(850)  # the wrap-up, said once
-    assert iv.tick(899.9) == []
-    actions = iv.tick(900)
-    assert [type(a) for a in actions] == [EndCall]
+    assert iv.tick(900 - GOODBYE_LEAD_S - 0.1) == []
+    # The goodbye starts early enough to have played by the limit. The call used to drop
+    # at the limit with nothing said.
+    actions = iv.tick(900 - GOODBYE_LEAD_S)
+    assert [type(a) for a in actions] == [Speak, EndCall]
+    assert actions[0].text == TIME_UP
     assert iv.record.ended == "time limit reached"
     assert iv.tick(901) == []
+
+
+def test_a_call_that_never_became_an_interview_ends_at_the_limit_without_a_goodbye():
+    from zeg.backends.base import AgentAudio
+    from zeg.interview import EndCall as End
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 899.0)  # kept from timing out
+    actions = iv.tick(900)
+    assert [type(a) for a in actions] == [End]
+
+
+def test_the_goodbye_replaces_an_answer_cut_off_by_the_limit():
+    """A candidate asking their own closing question at the limit was hung up on."""
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import Speak
+    from zeg.prompts import TIME_UP
+
+    iv = consented_interview()
+    actions = iv.on_event(UserTranscript("so what is the team like?", final=True), 897)
+    assert [a.text for a in actions if isinstance(a, Speak)] == [TIME_UP]
 
 
 def test_a_silent_candidate_cannot_hold_the_call_past_the_limit():

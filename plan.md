@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The time limit ends an interview with a goodbye, within the limit.** At the limit the interview
+only ended the call: no closing words, mid-sentence if the agent was answering the candidate's own
+closing question. On the old interview, a candidate asking "so what is the team like?" three seconds
+before the limit got the wrap-up line again and then the call dropped.
+
+A consented interview now hears a short goodbye ("We're out of time. Thank you for talking with me
+today."), started six seconds before the limit so it has played by then rather than running past it.
+The limit itself stays a silent backstop. Saying a line cancels a reply in flight in both the client
+and the runtime, so the goodbye replaces a cut-off sentence rather than talking over it. A call that
+never became an interview ends as before, and a test pins that the silent-candidate call still ends
+by the limit. One existing test expected nothing but the end at 899.9 seconds; it now expects the
+goodbye at the new time. On the old interview the goodbye test failed as described.
+
 **The frame loop counts slow control operations, not only slow steps.** The loop exists partly to
 make the frame budget visible: a model step over 80 ms becomes queue debt that delays everything
 after it, so over-budget steps are counted. But control operations run on the same serialized loop

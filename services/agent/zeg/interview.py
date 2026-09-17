@@ -35,6 +35,7 @@ from .prompts import (
     SILENCE_MOVE_ON,
     SILENCE_NUDGE,
     SYSTEM_PROMPT,
+    TIME_UP,
     WRAP_UP,
 )
 
@@ -46,6 +47,10 @@ BRIEFING_INTERVAL_S = 60.0
 #: own. Long enough that it never cuts across the agent's sentence or the candidate's
 #: pause; the model's audio arrives every 80 ms while it speaks.
 QUIET_BEFORE_WRAP_UP_S = 2.0
+
+#: How long before the time limit the goodbye is spoken, so it has played by the limit
+#: rather than running past it. The line takes about four seconds.
+GOODBYE_LEAD_S = 6.0
 
 #: How long the consent question waits in silence before the call ends. Counted from the
 #: last thing either side said, so it starts once the disclosure has finished playing, and
@@ -329,8 +334,8 @@ class Interview:
         """
         if self.record.ended:
             return []
-        if self.engine.is_over(t_s):
-            return self._end("time limit reached")
+        if self._time_is_up(t_s):
+            return self._close_at_time_limit(t_s)
         if (
             self.record.consent is None
             and self._asked_consent
@@ -357,6 +362,27 @@ class Interview:
             self.record.wrapped_up_s = t_s
             return self._say(WRAP_UP, t_s)
         return self._on_silence(t_s)
+
+    def _time_is_up(self, t_s: float) -> bool:
+        """At the limit, or close enough to it that a goodbye has to start now."""
+        if self.engine.is_over(t_s):
+            return True
+        return (self.record.consent is True
+                and t_s >= self.call.max_duration_s - GOODBYE_LEAD_S)
+
+    def _close_at_time_limit(self, t_s: float) -> List[Action]:
+        """End the call, saying goodbye to anyone who was being interviewed.
+
+        The call used to simply drop at the limit, mid-sentence if the agent was answering
+        the candidate's own closing question. Saying a line cancels the reply in flight, so
+        the goodbye replaces a half sentence rather than talking over it. A call that never
+        became an interview ends as it did.
+        """
+        actions: List[Action] = []
+        if self.record.consent is True:
+            actions.extend(self._say(TIME_UP, t_s))
+        actions.extend(self._end("time limit reached"))
+        return actions
 
     def _on_silence(self, t_s: float) -> List[Action]:
         """A candidate who has said nothing since the agent's question.
@@ -403,8 +429,8 @@ class Interview:
 
         # The clock outranks the conversation. Checked before anything else so a
         # runaway model cannot talk past the limit.
-        if self.engine.is_over(t_s):
-            return self._end("time limit reached")
+        if self._time_is_up(t_s):
+            return self._close_at_time_limit(t_s)
 
         if isinstance(event, AgentInterrupted):
             # The candidate started talking and the backend already stopped. Before
