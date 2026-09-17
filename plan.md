@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Seven more plain agreements are consent.** A batch of 47 realistic replies to the recording
+question found eight read as refusals, each ending the call: "no, that's fine", "I don't have a
+problem with that", "all good", "I'm good with that", "you can record", "you may record it", "feel
+free", and "why not". The first seven are now clear yeses. "why not" is left a refusal on purpose: it
+is also a question, and consent needs a clear yes. The gate is still asymmetric, so each addition
+came with its dangerous neighbours added to the refusal corpus and checked: "no, it's fine not to
+record", "you may not record", "feel free to not record me", "you can't record this", "I'm not good
+with that", "I do have a problem with that", "no, that's not fine", "all good, but please don't
+record". A "not (to) record" refusal pattern was added for two of them. Fifteen corpus cases; the
+seven yeses fail on the previous commit, the refusals pass on both. Suite: 1331 passed.
+
 **Asking for time is a hesitation, so it no longer ends the call at the consent question.** Measured:
 "hmm, let me think", "good question, give me a second" and "uh, hold on", said to the recording
 question, were read as not agreeing; the call ended as declined and the candidate was told a person

@@ -65,7 +65,11 @@ CONSENT_ANSWER_TIMEOUT_S = 15.0
 #: problem" and "I don't mind" are agreements, and reading them literally ends the
 #: interview for someone who just said yes.
 _AGREEMENT_IDIOM = re.compile(
-    r"\bno (problem|worries|issue|objection)\b|\b(i )?do(n'?t| not) mind\b", re.I
+    r"\bno (problem|worries|issue|objection)\b|\b(i )?do(n'?t| not) mind\b"
+    # "I don't have a problem with that" and "no, that's fine" each ended the interview.
+    r"|\bdo(n'?t| not) have (a|any) problem\b"
+    r"|\bno,? (that'?s|it'?s|that is|it is) (fine|okay|ok|alright|all right)\b",
+    re.I,
 )
 
 _YES = re.compile(
@@ -76,7 +80,10 @@ _YES = re.compile(
     # had said yes. Every one has its negation in _NO, which is checked first.
     r"|\b(alright|all right|fine|certainly|definitely|agreed)\b"
     r"|\bsounds? good\b|\bi (fully |completely |totally )?(agree|consent)\b"
-    r"|\bplease do\b|\bgo for it\b|\bworks for me\b|\bhappy with that\b",
+    r"|\bplease do\b|\bgo for it\b|\bworks for me\b|\bhappy with that\b"
+    # Measured refusals of plain agreement, each ending the call for someone who said yes.
+    r"|\ball good\b|\bi'?m good with (that|it|this)\b|\bfeel free\b"
+    r"|\byou (can|may) record\b",
     re.I,
 )
 
@@ -84,7 +91,8 @@ _NO = re.compile(
     r"\b(no|nope|nah|refuse)\b|\bnot really\b"
     r"|\bi'?d rather not\b|\bi would rather not\b"
     r"|\brather you did ?n'?t\b|\brather you would not\b"
-    r"|\bplease do(n'?t| not)\b|\bdo(n'?t| not) record\b"
+    r"|\bplease do(n'?t| not)\b|\bdo(n'?t| not) record\b|\bnot (to )?record\b"
+    r"|\b(can|may)(n'?t| not) record\b|\bcannot record\b"
     # A negated agreement is a refusal. "Absolutely not" and "I'm not okay with that"
     # each contain a word from the agreement list, and both were read as consent.
     r"|\b(absolutely|of course|sure|certainly|definitely) not\b"
