@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The speech-length estimate is measured, and a test keeps it honest.** Every timing margin rests on
+it and it was a guess. Synthesising all fifteen fixed lines gives 3.33 words a second at the median
+and 2.90 at the slowest, against the guessed 2.6, so the guess read long everywhere, which is the
+safe direction: reading long costs a wait, reading short means one line spoken over another. Set to
+2.75, under the slowest measured line. test_prompts.py now synthesises the five lines the margins are
+built from and fails if any is estimated shorter than it takes to say, which is the real guard: it
+catches a line reworded until it outruns the estimate as well as the rate being raised. Checked that
+it bites, at 4.0 words a second it fails on the closing line. The voice is this laptop's, not the
+box's; the test is the thing to re-run there. One driven timing test moved by a second. Suite: 1403
+passed.
+
 **The wrap-up mark leaves room for the wrap-up and the goodbye.** Sweeping odd call configurations
 for anything that breaks: nothing raised, but a 900 second call asked to wrap up at 899 reached the
 goodbye at 894 first and never wrapped up at all, and a 30 second call wrapped up at 22 and said

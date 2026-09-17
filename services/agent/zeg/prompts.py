@@ -6,10 +6,16 @@ See docs/06-compliance.md.
 """
 
 #: Words a second of speech carries, for estimating how long one of these lines takes to
-#: say. Rough on purpose, and used only to keep one line from landing on another: a timer
-#: that speaks cancels whatever is in flight, and the wrap-up mark has to leave room for
-#: the wrap-up and the goodbye before the call ends.
-WORDS_PER_SECOND = 2.6
+#: say. Used only to keep one line from landing on another: a timer that speaks cancels
+#: whatever is in flight, and the wrap-up mark has to leave room for the wrap-up and the
+#: goodbye before the call ends. So it must never read short, and reading long only costs
+#: a wait.
+#:
+#: Measured by synthesising every line below: 3.33 words a second at the median, 2.90 at
+#: the slowest, on a laptop voice rather than the box's. Set under the slowest of those,
+#: which leaves every line's estimate above its measured length. Worth re-measuring
+#: against the voice the box actually uses; test_prompts.py is that measurement.
+WORDS_PER_SECOND = 2.75
 
 
 def speech_seconds(text: str) -> float:

@@ -423,10 +423,12 @@ def test_an_unanswered_consent_question_ends_the_call_after_a_quiet_wait():
     iv = Interview()
     iv.start()
     iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 12.0)  # disclosure still playing
-    assert iv.tick(22.0) == [], "the disclosure is still being said"
-    assert [a.text for a in iv.tick(23.0) if isinstance(a, Speak)] == [CONSENT_REASK]
-    assert iv.tick(41.0) == [], "the wait runs again from the repeat"
-    actions = iv.tick(43.0)
+    # These seconds follow the estimated length of the disclosure, which was measured
+    # against real speech and is now 14.9 s rather than 15.8 s.
+    assert iv.tick(21.0) == [], "the disclosure is still being said"
+    assert [a.text for a in iv.tick(22.0) if isinstance(a, Speak)] == [CONSENT_REASK]
+    assert iv.tick(40.0) == [], "the wait runs again from the repeat"
+    actions = iv.tick(42.0)
     assert [a.text for a in actions if isinstance(a, Speak)] == [CONSENT_UNANSWERED]
     assert [type(a) for a in actions if isinstance(a, EndCall)] == [EndCall]
     assert iv.record.consent is False
