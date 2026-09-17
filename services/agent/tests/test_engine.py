@@ -19,6 +19,32 @@ def test_phases_follow_the_wall_clock(eng):
     assert eng.phase_at(880).name == "close"
 
 
+def test_the_greeting_ends_when_the_candidate_agrees(eng):
+    """The briefing sent on consent said the goal was still to disclose and get consent."""
+    eng.note_consent(True)
+    assert eng.phase_at(8).name == "warmup"
+    assert "consent" not in eng.briefing(8)
+
+
+def test_the_greeting_does_not_end_without_consent(eng):
+    eng.note_consent(False)
+    assert eng.phase_at(8).name == "greeting"
+
+
+def test_the_first_briefing_after_consent_does_not_ask_for_consent():
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import Brief, Interview
+
+    iv = Interview()
+    iv.start()
+    actions = iv.on_event(UserTranscript("yes that is fine", final=True), 8)
+    briefs = [a.text for a in actions if isinstance(a, Brief)]
+    assert briefs and "Phase: warmup." in briefs[0]
+    assert "consent" not in briefs[0]
+    later = iv.on_event(UserTranscript("I rebuilt the billing export last quarter", final=True), 20)
+    assert not [a for a in later if isinstance(a, Brief)]
+
+
 def test_phase_past_the_end_stays_at_close(eng):
     assert eng.phase_at(10_000).name == "close"
 

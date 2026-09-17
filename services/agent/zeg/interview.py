@@ -699,6 +699,9 @@ class Interview:
         self.record.consent = True
         self.record.interview_started_s = t_s
         self.engine.note_consent(True)
+        # Agreeing ends the greeting. Left to the next answer, that answer read as a phase
+        # change and sent a second briefing straight after this one.
+        self.engine.advance(t_s)
         self._last_brief_s = t_s
         return [Brief(self.engine.briefing(t_s))]
 

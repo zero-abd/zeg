@@ -42,6 +42,9 @@ class Phase:
     dimensions: Sequence[str] = ()
 
 
+#: The phase that ends when the candidate agrees to be recorded, whatever the clock says.
+CONSENT_PHASE = "greeting"
+
 #: Wall-clock boundaries, not step counts. The clock moves whether or not the
 #: conversation is going well, which is what keeps calls comparable across candidates.
 DEFAULT_PLAN: Sequence[Phase] = (
@@ -158,8 +161,14 @@ class InterviewEngine:
     # --- clock ---------------------------------------------------------------
 
     def phase_at(self, t_s: float) -> Phase:
-        for p in self.plan:
+        for i, p in enumerate(self.plan):
             if t_s < p.until_s:
+                if p.name == CONSENT_PHASE and self.state.consent is True and i + 1 < len(self.plan):
+                    # Its goal is done by fixed lines, and the briefing sent the moment the
+                    # candidate agreed told the model its goal was still to disclose and get
+                    # consent: on every call, the model's first turn was pointed back at the
+                    # gate the candidate had just passed.
+                    return self.plan[i + 1]
                 return p
         return self.plan[-1]
 

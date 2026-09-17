@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The greeting phase ends when the candidate agrees, not at 60 seconds.** Phases were clock-only, so
+the briefing sent the moment consent was given said "Phase: greeting. Goal right now: Disclose AI,
+get recording consent", on every call: the model's first turn was pointed back at a gate fixed lines
+had already handled. Once consent is granted the engine now reports the next phase, and the interview
+syncs its phase at that moment so the first answer does not read as a phase change and send a second
+briefing. Three new tests; the two about consent and the double briefing fail on the previous commit.
+Suite: 1264 passed.
+
 **The answer to "are you an AI?" is not carried as the last question.** Asked mid-answer, the fixed
 reply became the interviewer's last line in the rollover seed, so a fresh session was told "Yes, I
 am an AI interviewer" and never learned which question was still pending. It is now an interjection,
