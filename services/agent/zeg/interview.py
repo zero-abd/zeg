@@ -883,4 +883,5 @@ class Interview:
             ended=r.ended,
             errors=errors,
             judge=judge,
+            call=self.call,
         )

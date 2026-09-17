@@ -9,6 +9,8 @@ the consent exchange and the closing questions and dropped every compliance flag
 
 from typing import Optional, Sequence, Tuple
 
+from .config import CallConfig
+from .engine import phase_covering
 from .scoring import Assessment, Judge, score_call
 
 _OPEN = float("inf")
@@ -35,6 +37,7 @@ def assemble_report(
     ended: Optional[str] = None,
     errors: Sequence[str] = (),
     judge: Optional[Judge] = None,
+    call: Optional[CallConfig] = None,
 ) -> Assessment:
     """Score the interview and carry everything a reviewer needs to weigh it.
 
@@ -51,9 +54,32 @@ def assemble_report(
         )
     for error in errors:
         out.append("Something failed during the call: %s" % error)
-    return score_call(
+    assessment = score_call(
         transcript,
         judge=judge,
         flags=out,
         window=interview_window(interview_started_s, wrapped_up_s),
     )
+    _say_why_uncovered(assessment, call)
+    return assessment
+
+
+def _say_why_uncovered(assessment: Assessment, call: Optional[CallConfig]) -> None:
+    """Name the reason a dimension has none, where the plan gives one.
+
+    The format asks for the topics that went uncovered "and why", and every one of them
+    read the same: nothing in the transcript speaks to this. A call that ended at four
+    minutes never reached the part that asks about debugging, which is a different thing
+    from a candidate who was asked and said nothing usable.
+    """
+    for scored in assessment.dimensions:
+        if not scored.insufficient:
+            continue
+        phase, starts_at = phase_covering(scored.dimension, call)
+        if phase is None or assessment.duration_s >= starts_at:
+            continue
+        mins, secs = divmod(int(assessment.duration_s), 60)
+        scored.note = (
+            "The call ended at %d:%02d, before the part of the interview that asks about "
+            "this. Not a low score." % (mins, secs)
+        )

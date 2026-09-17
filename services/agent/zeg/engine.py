@@ -60,6 +60,22 @@ DEFAULT_PLAN: Sequence[Phase] = (
     Phase("close", 900, "Their questions, next steps, thank you."),
 )
 
+def phase_covering(dimension: str, call: Optional[CallConfig] = None,
+                   plan: Sequence[Phase] = DEFAULT_PLAN) -> Tuple[Optional[Phase], float]:
+    """The first phase that covers `dimension`, and the second it starts at.
+
+    So a report can say why a dimension has no evidence when the call ended before the
+    part of the interview that would have asked about it.
+    """
+    fitted = _fit_to_call(plan, call or CallConfig()) if plan is DEFAULT_PLAN else tuple(plan)
+    start = 0.0
+    for phase in fitted:
+        if dimension in phase.dimensions:
+            return phase, start
+        start = phase.until_s
+    return None, 0.0
+
+
 def _fit_to_call(plan: Sequence[Phase], call: CallConfig) -> Tuple[Phase, ...]:
     """The default plan stretched or shrunk to the call's length.
 

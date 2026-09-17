@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A topic the call never reached says so, instead of reading like an empty answer.** The second gap
+against docs/05, which asks for the topics that went uncovered "and why": every uncovered dimension
+read "nothing in the transcript speaks to this", whether the candidate was asked and said nothing or
+the call stopped before that part of the interview. The plan already names which phase covers which
+dimension, so a dimension whose phase begins after the call ended now reads "The call ended at 1:00,
+before the part of the interview that asks about this." Measured on a call that stopped at a minute:
+tradeoffs and debugging get the new reason, communication keeps the old one because the warm-up that
+covers it had started. Two new tests, one failing on the previous commit, one a guard that a
+full-length call keeps the plain reason. Suite: 1385 passed.
+
 **The report's band carries the sentence that justifies it, and the call length.** Reading a rendered
 report end to end against docs/05: the format asks for "the recommendation band and the single
 sentence that justifies it", and the band stood alone, while the duration the assessment had carried
