@@ -33,19 +33,27 @@ _ALLOWED = [
 ]
 
 _RULES: List[Tuple[str, str, str]] = [
-    ("age", r"\bhow old are you\b|\byour age\b|\bwhat year (were you born|did you (graduate|finish))\b|\bare you (over|under)\s+\d+\b",
+    ("age", r"\bhow old are you\b|\byour age\b|\bwhat year (were you born|did you (graduate|finish))\b|\bare you (over|under)\s+\d+\b"
+     # "When did you graduate?" dates a candidate as precisely as asking their age.
+     r"|\bwhen did you (graduate|finish (school|college|university|your degree))\b",
      "Age and proxies for it."),
     ("family", r"\bare you (married|single|engaged)\b|\bdo you have (any )?(kids|children)\b|\byour (husband|wife|spouse|partner)\b|\bplanning (on )?(a family|to have (kids|children))\b|\bchildcare\b",
      "Marital and family status."),
     ("pregnancy", r"\bpregnan\w*\b|\bmaternity\b|\bpaternity\b|\bparental leave\b",
      "Pregnancy and family-leave plans."),
-    ("origin", r"\bwhere are you (really |originally )?from\b|\bwhat('s| is) your (nationality|ethnicity|race|(native|first|mother) (language|tongue))\b|\bwhere were you born\b|\byour accent\b",
+    ("origin", r"\bwhere are you (really |originally )?from\b|\bwhat('s| is) your (nationality|ethnicity|race|(native|first|mother) (language|tongue))\b|\bwhere were you born\b|\byour accent\b"
+     # Asked the other way round: "Is English your first language?"
+     r"|\bis \w+ your (native|first|mother) (language|tongue)\b",
      "National origin, ethnicity and proxies for them."),
-    ("citizenship", r"\bare you (an? )?(citizen|permanent resident)\b|\b(your|what) citizenship\b|\bcitizenship status\b|\bdo you hold (a )?(citizenship|passport)\b|\bgreen card\b|\bvisa (status|type|category)\b|\bwhat (kind of )?visa\b|\bsponsorship\b",
+    # "Are you a US citizen?" put a word between the article and the noun and got
+    # through, which is how the question is usually asked.
+    ("citizenship", r"\bare you (an? )?(\w+ )?(citizen|national|permanent resident)\b|\b(your|what) citizenship\b|\bcitizenship status\b|\bdo you hold (a )?(citizenship|passport)\b|\bgreen card\b|\bvisa (status|type|category)\b|\bwhat (kind of )?visa\b|\bsponsorship\b",
      "Citizenship and immigration status beyond a single work-authorisation question."),
-    ("religion", r"\bwhat (faith|religion)\b|\bare you religious\b|\bdo you (go to |attend )?(church|mosque|synagogue|temple)\b|\bobserve the sabbath\b|\breligious holidays?\b",
+    ("religion", r"\bwhat (faith|religion)\b|\byour (faith|religion)\b|\bare you religious\b|\bdo you (go to |attend )?(church|mosque|synagogue|temple)\b|\bobserve the sabbath\b|\breligious holidays?\b",
      "Religion and observance."),
-    ("health", r"\bdisabilit\w*\b|\bmedical (conditions?|histor(y|ies)|issues?)\b|\bhealth (conditions?|issues?|problems?)\b|\bare you (on|taking) (any )?medication\b|\bmental health\b|\bhow many (sick )?days (have you|did you) (taken?|miss)\b",
+    # Directed at the candidate. Any mention at all blocked "how did you test the
+    # disability accommodations feature", which is a question about their work.
+    ("health", r"\b(your|any|a) disabilit\w*\b(?!\s+(feature|flow|page|form|api|service|report|product|module|tooling))|\bare you disabled\b|\bmedical (conditions?|histor(y|ies)|issues?)\b|\bhealth (conditions?|issues?|problems?)\b|\bare you (on|taking) (any )?medication\b|\bmental health\b|\bhow many (sick )?days (have you|did you) (taken?|miss)\b",
      "Disability, health and medical history."),
     ("criminal", r"\b(ever been )?arrested\b|\bcriminal (record|history|background)\b|\bconvicted\b|\bfelony\b|\bmisdemeanou?r\b",
      "Arrest and conviction record."),

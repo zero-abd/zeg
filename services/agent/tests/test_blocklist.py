@@ -20,6 +20,13 @@ from zeg.blocklist import ProhibitedQuestion, assert_allowed, check, is_allowed
         ("Have you ever been arrested?", "criminal"),
         ("What's your current salary?", "salary_history"),
         ("How much did you make at your last job?", "salary_history"),
+        # Each of these was missed. Asked in full, each is a compliance failure.
+        ("Are you a US citizen?", "citizenship"),
+        ("Are you an Irish national?", "citizenship"),
+        ("What is your religion?", "religion"),
+        ("When did you graduate from college?", "age"),
+        ("Is English your first language?", "origin"),
+        ("Are you disabled?", "health"),
     ],
 )
 def test_prohibited_questions_are_caught(text, category):
@@ -40,6 +47,9 @@ def test_prohibited_questions_are_caught(text, category):
         "Are you authorized to work in the United States?",
         "How did you debug it?",
         "What broke afterwards that you did not expect?",
+        # A product feature, blocked because the word appeared at all.
+        "How did you test the disability accommodations feature?",
+        "How did you handle the citizenship checks in the KYC flow?",
     ],
 )
 def test_ordinary_interview_questions_pass(text):

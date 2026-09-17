@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Four prohibited questions that got through are blocked; a product feature is not.** A batch through
+the guard found "Are you a US citizen?" (a word between the article and the noun), "What is your
+religion?" (only "what religion" was matched), "When did you graduate from college?" (only "what year
+did you graduate") and "Is English your first language?" (only the "what is your" phrasing) all
+reaching a candidate in full. Each is now caught, along with "Are you an Irish national?" and "Are
+you disabled?". The health rule matched any mention of disability, so "how did you test the
+disability accommodations feature" was cut off with a redirect; it now has to be directed at the
+candidate. Accepted over-blocks, since a false block costs one rephrased question: "When did you
+graduate the rollout to all users?" and "Is Go your first language at work?". Eight new cases; seven
+fail on the previous commit. Suite: 1358 passed.
+
 **Stop and person requests: nine false endings removed, three missed requests heard.** A batch of
 technical answers and real requests through the mid-interview checks found both directions wrong.
 Ending the interview on an ordinary answer: "I'd like to stop and think about that", "please stop me
