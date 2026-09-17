@@ -195,6 +195,13 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A halfway overall score always rounds up.** The 1-4 mean was mapped onto 1-10 with round(), which
+rounds halves to even, so exactly-halfway profiles went both ways: 4,4,3,3 showed 8 from 8.5 and
+2,2,1,1 showed 2 from 2.5, while 3,3,2,2 showed 6 from 5.5. No band boundary is crossed in these
+cases with equal weights, but the number a reviewer compares across candidates was inconsistent.
+Halves now round up. Three new cases; the two that rounded down fail on the previous commit. Suite:
+1269 passed.
+
 **Agreeing over the answer to a consent question is consent.** Before consent, every interruption
 was taken as the candidate talking over the disclosure. A candidate who heard it through, asked
 "what happens to the recording?", and said "oh okay, that's fine" over the answer had that consent

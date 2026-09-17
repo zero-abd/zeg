@@ -15,6 +15,7 @@ insufficient evidence, never as a low score. That distinction is what makes a re
 hiring manager can act on, and it is what makes an adverse decision defensible.
 """
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
@@ -575,7 +576,11 @@ def score_call(
     mean = weighted / total_w  # 1..4
 
     # 1..4 onto 1..10. The scale is presentation; the judgement is the rubric.
-    overall = int(round((mean - MIN_SCORE) / (MAX_SCORE - MIN_SCORE) * 9 + 1))
+    # Halves round up. round() rounds them to even, so exactly-halfway profiles went both
+    # ways: 3,3,2,2 showed 6 from 5.5 while 4,4,3,3 showed 8 from 8.5. The epsilon keeps a
+    # half that float arithmetic lands a hair under from rounding down.
+    raw = (mean - MIN_SCORE) / (MAX_SCORE - MIN_SCORE) * 9 + 1
+    overall = int(math.floor(raw + 0.5 + 1e-9))
 
     return Assessment(
         overall=overall,

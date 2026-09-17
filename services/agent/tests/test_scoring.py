@@ -133,6 +133,22 @@ def test_dimensions_are_judged_one_at_a_time():
     assert seen == list(DIMENSIONS)
 
 
+@pytest.mark.parametrize("given, expected", [
+    ((4, 4, 3, 3, None), 9),   # 8.5
+    ((3, 3, 2, 2, None), 6),   # 5.5
+    ((2, 2, 1, 1, None), 3),   # 2.5
+])
+def test_a_halfway_overall_always_rounds_the_same_way(given, expected):
+    """Rounded to even, 8.5 showed 8 and 2.5 showed 2 while 5.5 showed 6."""
+    by_dimension = dict(zip(DIMENSIONS, given))
+
+    class Fixed(Judge):
+        def score_dimension(self, dimension, units):
+            return DimensionScore(dimension, by_dimension[dimension], [])
+
+    assert score_call(strong(), judge=Fixed()).overall == expected
+
+
 def test_role_weighting_moves_the_headline():
     class Split(Judge):
         def score_dimension(self, dimension, units):
