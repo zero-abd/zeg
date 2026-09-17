@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The consent question is asked once more before silence ends the call.** Measured: the disclosure
+finished at 13 s and the call ended at 27 s, never repeating the question. Silence there is often a
+candidate who did not hear it or is still deciding, and they lost the interview for it. It is now
+repeated after 7 s of quiet, once, and the full 15 s wait runs again from the repeat, so the call
+ends at 34 s instead. The wait is measured from the repeat as well as from what was last heard, so it
+does not depend on a backend reporting our own line's audio back to us. Three new tests; all fail on
+the previous commit. Two existing tests changed with the reason recorded: the timeout test now ends
+at 34 s, and a silent call's duration bound moved from 60 s to 75 s. One more was changed because it
+drove the clock to 14 minutes with consent unsettled, a state a real call cannot reach; it now
+asserts no wrap-up rather than no actions at all. Suite: 1372 passed.
+
 **A lone "1" is a figure only when it measures something.** A new recognition degradation, spoken
 numbers written as digits, found the score moving up: the lean transcript went 7/10 to 8/10 because
 "we isolated it to one merchant" became "1 merchant" and counted as a figure. The word was

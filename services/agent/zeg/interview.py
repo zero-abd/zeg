@@ -58,6 +58,11 @@ GOODBYE_LEAD_S = 6.0
 #: a hesitation restarts it.
 CONSENT_ANSWER_TIMEOUT_S = 15.0
 
+#: How long it waits before asking the consent question once more. Silence here is often a
+#: candidate who did not hear the question, or is still deciding; ending the call on the
+#: first silence cost them the interview without ever repeating the question.
+CONSENT_REASK_AFTER_S = 7.0
+
 #: Consent detection. The two failure directions are not equally bad, so the rules are
 #: not symmetrical. See `reads_as_consent`.
 
@@ -310,6 +315,11 @@ class Interview:
         #: The candidate has replied to the disclosure after hearing it without cutting in.
         #: Cleared whenever it is spoken again.
         self._disclosure_heard = False
+        #: The consent question has been repeated once into silence, and when. The wait
+        #: runs from the repeat, not only from what was last heard, so it does not depend
+        #: on a backend reporting the line's own audio back to us.
+        self._reasked_consent = False
+        self._reasked_at_s = 0.0
         #: The last probe instruction issued, for a seed taken before it is answered.
         self._last_probe: Optional[str] = None
         #: Hesitations waited through before consent was settled.
@@ -353,7 +363,18 @@ class Interview:
         if (
             self.record.consent is None
             and self._asked_consent
-            and t_s - self._last_heard_s >= CONSENT_ANSWER_TIMEOUT_S
+            and not self._reasked_consent
+            and t_s - self._last_heard_s >= CONSENT_REASK_AFTER_S
+        ):
+            # Ask once more before giving up. The timeout then starts again from this line,
+            # so a candidate who missed the question has a full wait to answer it.
+            self._reasked_consent = True
+            self._reasked_at_s = t_s
+            return self._say(CONSENT_REASK, t_s)
+        if (
+            self.record.consent is None
+            and self._asked_consent
+            and t_s - max(self._last_heard_s, self._reasked_at_s) >= CONSENT_ANSWER_TIMEOUT_S
         ):
             # Consent was only ever settled by an answer. A candidate who never gave one
             # kept a recorded call open for the full fifteen minutes with no consent.

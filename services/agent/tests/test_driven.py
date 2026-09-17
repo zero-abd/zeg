@@ -382,8 +382,14 @@ def test_the_clock_does_not_wrap_up_before_consent_or_before_time():
 
     iv = Interview()
     iv.start()
+    from zeg.prompts import WRAP_UP
+
     iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 840.0)
-    assert iv.tick(850) == [], "no interview was ever started"
+    # Asserted as "no wrap-up" rather than "nothing at all": the consent question is now
+    # repeated once into silence, and this state, consent still unsettled at 14 minutes,
+    # only exists because the test drives the clock straight there.
+    assert WRAP_UP not in [getattr(a, "text", "") for a in iv.tick(850)]
+    assert iv.record.wrapped_up_s is None
     assert consented_interview().tick(700) == []
 
 
@@ -406,28 +412,55 @@ def test_a_silent_candidate_hears_the_wrap_up_before_the_call_ends():
 
 
 def test_an_unanswered_consent_question_ends_the_call_after_a_quiet_wait():
+    """Updated when the question began being repeated once: the wait now runs from the
+    repeat, so the call ends later than it used to."""
     from zeg.backends.base import AgentAudio
     from zeg.interview import EndCall, Speak
-    from zeg.prompts import CONSENT_UNANSWERED
+    from zeg.prompts import CONSENT_REASK, CONSENT_UNANSWERED
 
     iv = Interview()
     iv.start()
     iv.on_event(AgentAudio(AudioFrame.silence(22050, 1764)), 12.0)  # disclosure still playing
-    assert iv.tick(26.0) == [], "only 14 s since the agent stopped"
-    actions = iv.tick(27.0)
+    assert iv.tick(18.0) == [], "only 6 s since the agent stopped"
+    assert [a.text for a in iv.tick(19.0) if isinstance(a, Speak)] == [CONSENT_REASK]
+    assert iv.tick(33.0) == [], "the wait runs again from the repeat"
+    actions = iv.tick(34.0)
     assert [a.text for a in actions if isinstance(a, Speak)] == [CONSENT_UNANSWERED]
     assert [type(a) for a in actions if isinstance(a, EndCall)] == [EndCall]
     assert iv.record.consent is False
     assert iv.record.ended == "no answer to the consent question"
 
 
-def test_a_hesitation_restarts_the_wait_for_a_consent_answer():
+def test_the_consent_question_is_repeated_once_not_twice():
+    from zeg.interview import Speak
+    from zeg.prompts import CONSENT_REASK
+
+    iv = Interview()
+    iv.start()
+    said = [a.text for t in range(1, 34) for a in iv.tick(float(t)) if isinstance(a, Speak)]
+    assert said.count(CONSENT_REASK) == 1
+
+
+def test_an_answer_to_the_repeated_consent_question_is_taken():
     from zeg.backends.base import UserTranscript
 
     iv = Interview()
     iv.start()
+    for t in range(1, 20):
+        iv.tick(float(t))
+    iv.on_event(UserTranscript("oh sorry, yes that is fine", final=True), 22.0)
+    assert iv.record.consent is True
+    assert iv.record.ended is None
+
+
+def test_a_hesitation_restarts_the_wait_for_a_consent_answer():
+    from zeg.backends.base import UserTranscript
+    from zeg.interview import EndCall
+
+    iv = Interview()
+    iv.start()
     iv.on_event(UserTranscript("um", final=True), 10.0)
-    assert iv.tick(24.0) == []
+    assert not [a for a in iv.tick(24.0) if isinstance(a, EndCall)]
     assert iv.record.consent is None
 
 
@@ -438,7 +471,9 @@ def test_a_silent_candidate_is_not_kept_on_a_recorded_call_without_consent():
     r = InterviewRunner(MockBackend()).run([CallerTurn("", speak_s=0.0, pause_after_s=1000.0)])
     assert r.consent is False
     assert r.ended == "no answer to the consent question"
-    assert r.duration_s < 60
+    # Was 60. The consent question is now repeated once into silence, which is worth
+    # about fifteen seconds of a call that would otherwise have ended on the first wait.
+    assert r.duration_s < 75
     assert any(t.speaker == "agent" and t.text == CONSENT_UNANSWERED for t in r.transcript)
     assert r.agent_audio_frames > 0
 
