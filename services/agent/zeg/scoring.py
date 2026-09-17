@@ -321,7 +321,7 @@ _FIRST_PERSON = re.compile(
 #: ordinary answers to the engine's own tradeoff probe three were recognised. Anchored,
 #: so "I accepted the offer" and "we chose Postgres" stay what they are.
 _TRADEOFF = re.compile(
-    r"\b((give|gives|gave|given|giving) up|traded|trade-?offs?|costs? us"
+    r"\b((give|gives|gave|given|giving) up|traded|trade[- ]?offs?|costs? us"
     r"|at the (expense|cost) of|downside|slower|doubles|doubled|sacrific\w+|in exchange"
     r"|compromise)\b"
     # "We trade latency for durability". Not "trades" on its own: in a payments interview
@@ -388,13 +388,28 @@ def strip_repairs(text: str) -> str:
     return " ".join(out.split())
 
 
-def normalise(text: str) -> str:
-    """What the candidate said, with delivery artefacts removed.
+#: A hyphen joining two words. Recognisers write the same compound three ways: "trade
+#: off", "tradeoff", "trade-off". Eight of sixteen such spellings lost their evidence,
+#: "I rolled-out the fix" and "the root-cause was" among them, so which spelling a
+#: recogniser picked decided the score.
+_JOINED = re.compile(r"(?<=[A-Za-z])-(?=[A-Za-z])")
+#: "re wrote", split where the recogniser heard a pause in the prefix.
+_RE_SPLIT = re.compile(
+    r"\bre\s+(?=(?:write|writes|wrote|written|build|builds|built|design|designs|designed)\b)",
+    re.I,
+)
 
-    Filler and repairs are how people talk, not how well they did the work. Everything
-    that judges content runs on this; everything quoted back keeps their own words.
+
+def normalise(text: str) -> str:
+    """What the candidate said, with delivery and transcription artefacts removed.
+
+    Filler and repairs are how people talk, not how well they did the work, and how a
+    recogniser spelled a compound word is neither. Everything that judges content runs on
+    this; everything quoted back keeps their own words.
     """
-    return strip_repairs(strip_filler(text))
+    out = strip_repairs(strip_filler(text))
+    out = _JOINED.sub(" ", out)
+    return _RE_SPLIT.sub("re", out)
 
 
 _SIGNALS: Dict[str, Sequence] = {

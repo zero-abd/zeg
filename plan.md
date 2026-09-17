@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**How a recogniser spelled a compound word no longer decides the score.** Recognisers write the
+same compound three ways: "trade off", "tradeoff", "trade-off". The scorer's patterns matched one
+spelling of each, and eight of sixteen spelling variants lost their evidence: "the trade off was",
+"the root-cause was", "I re-wrote the reconciler", "I set-up the harness", "I rolled-out the fix",
+"I ruled-out the network", "the flame-graph". A candidate has no say in which spelling the
+machine picks.
+
+Spelling is now normalised once, where every signal is read: a hyphen joining two words becomes a
+space, and a split "re wrote" or "re built" is rejoined. The tradeoff pattern also takes "trade
+off" with a space. Quotes in the report keep the candidate's own words. On the old scorer nine
+spelling tests failed.
+
+The recognition eval gains a hyphenated-compounds degradation, since its docstring promised
+variations it never tested. Honestly, that degradation held on the old scorer too: the clean
+transcript's cost answer also says "roughly doubled", so losing "gave-up" did not move the score.
+It exercises the path; the unit tests are the proof.
+
 **The recognition eval compares every dimension and cannot pass on nothing.** The recognition
 eval scores the same answers clean and degraded the way a recogniser degrades them. It had both
 blind spots the matched-pair eval had. A degradation "held" if the overall score and band

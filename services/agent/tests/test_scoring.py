@@ -574,6 +574,42 @@ def test_the_same_claim_in_other_words_scores_the_same():
         ownership_of("I personally implemented the advisory lock fix.")
 
 
+# --- how a recogniser spelled a compound does not decide the score --------------------
+
+SPELLINGS = [
+    ("tradeoffs", "the tradeoff was extra operational complexity"),
+    ("tradeoffs", "the trade-off was extra operational complexity"),
+    ("tradeoffs", "the trade off was extra operational complexity"),
+    ("tradeoffs", "we gave-up parallel reconciliation"),
+    ("technical_depth", "the root cause was a double read"),
+    ("technical_depth", "the root-cause was a double read"),
+    ("ownership", "I rewrote the reconciler"),
+    ("ownership", "I re-wrote the reconciler"),
+    ("ownership", "I re wrote the reconciler"),
+    ("ownership", "I set-up the reproduction harness"),
+    ("ownership", "I rolled-out the fix"),
+    ("debugging", "I ruled-out the network"),
+    ("debugging", "I looked at the flame-graph"),
+]
+
+
+@pytest.mark.parametrize("dimension,text", SPELLINGS, ids=[t for _, t in SPELLINGS])
+def test_a_compound_counts_however_it_was_spelled(dimension, text):
+    """Eight of sixteen spellings lost their evidence: the scorer matched one spelling
+    of each compound, and which one a recogniser picked decided the score."""
+    from zeg.scoring import signals
+
+    assert dimension in signals(text), text
+
+
+def test_a_quote_keeps_the_candidates_own_spelling():
+    """Matching is normalised; what is quoted back is not."""
+    call = [T(0, "agent", "What did it cost?"),
+            T(5, "caller", "The trade-off was that batch time roughly doubled.")]
+    tradeoffs = next(d for d in score_call(call).dimensions if d.dimension == "tradeoffs")
+    assert tradeoffs.evidence[0].quote == "The trade-off was that batch time roughly doubled."
+
+
 # --- tradeoffs and debugging in the words people actually use ------------------------
 
 TRADEOFFS = [

@@ -68,7 +68,21 @@ def stutter(text: str) -> str:
     return " ".join(words[:1] + words[:1] + words[1:]) if words else text
 
 
+def hyphenated_compounds(text: str) -> str:
+    """Compound words joined with a hyphen, which recognisers do inconsistently.
+
+    "gave up" arriving as "gave-up" lost the tradeoff: the scorer matched one spelling.
+    """
+    return re.sub(
+        r"\b(gave|narrowed|set|rolled|ruled|root|flame|trade|advisory)\s+"
+        r"(up|down|out|cause|graph|off|lock)\b",
+        r"\1-\2",
+        text,
+    )
+
+
 DEGRADATIONS = (
+    ("hyphenated_compounds", hyphenated_compounds),
     ("unpunctuated", unpunctuated),
     ("run_on", run_on),
     ("dropped_articles", dropped_articles),
