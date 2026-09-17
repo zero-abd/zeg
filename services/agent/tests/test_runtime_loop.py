@@ -131,6 +131,34 @@ def test_over_budget_frames_are_counted():
     assert frames[-1].over_budget is True
 
 
+def test_a_slow_control_operation_is_counted():
+    """A briefing or a rollover seed is a prefill on the same serialized loop, and builds
+    the same queue debt as a slow step. Only steps were timed, so the largest stall of a
+    call went uncounted."""
+    clock = FakeClock()
+    frames, sink = collector()
+    loop = FrameLoop(SilenceModel(), sink, budget_ms=80.0, clock=clock)
+    clock.step_s = 0.4  # a 400 ms prefill
+    loop.steer("Where we are: a seed hundreds of tokens long")
+    loop.run_pending()
+
+    assert loop.metrics.control_over_budget == 1
+    assert loop.metrics.slowest_control == "steer"
+    assert loop.metrics.frames == 0, "a control operation is not a frame"
+    assert "control_over_budget=1" in loop.metrics.summary()
+    assert "(steer)" in loop.metrics.summary()
+
+
+def test_a_quick_control_operation_is_not_counted_as_late():
+    clock = FakeClock()
+    frames, sink = collector()
+    loop = FrameLoop(SilenceModel(), sink, budget_ms=80.0, clock=clock)
+    clock.step_s = 0.001
+    loop.commit_turn()
+    loop.run_pending()
+    assert loop.metrics.control_over_budget == 0
+
+
 def test_the_metrics_summary_says_what_happened():
     clock = FakeClock()
     clock.step_s = 0.09

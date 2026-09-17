@@ -42,6 +42,13 @@ class FrameMetrics:
     total_ms: float = 0.0
     max_ms: float = 0.0
     dropped: int = 0
+    #: Control operations: accepting a turn, speaking a fixed line, injecting context.
+    #: They run on the same serialized loop as the steps, and a briefing or a rollover seed
+    #: is a prefill of hundreds of tokens, so they build the same queue debt. Only steps
+    #: were timed, and the largest stall of a call went uncounted.
+    control_over_budget: int = 0
+    control_max_ms: float = 0.0
+    slowest_control: str = ""
 
     @property
     def mean_ms(self) -> float:
@@ -56,13 +63,27 @@ class FrameMetrics:
             self.over_budget += 1
         return late
 
+    def observe_control(self, kind: str, elapsed_ms: float, budget_ms: float) -> None:
+        if elapsed_ms > budget_ms:
+            self.control_over_budget += 1
+        if elapsed_ms > self.control_max_ms:
+            self.control_max_ms = elapsed_ms
+            self.slowest_control = kind
+
     def summary(self) -> str:
-        return "frames=%d mean=%.1fms max=%.1fms over_budget=%d dropped=%d" % (
-            self.frames,
-            self.mean_ms,
-            self.max_ms,
-            self.over_budget,
-            self.dropped,
+        return (
+            "frames=%d mean=%.1fms max=%.1fms over_budget=%d dropped=%d "
+            "control_over_budget=%d control_max=%.1fms(%s)"
+            % (
+                self.frames,
+                self.mean_ms,
+                self.max_ms,
+                self.over_budget,
+                self.dropped,
+                self.control_over_budget,
+                self.control_max_ms,
+                self.slowest_control or "-",
+            )
         )
 
 
@@ -185,17 +206,17 @@ class FrameLoop:
             handled += 1
 
     def _handle(self, kind: str, payload: Any) -> None:
-        if kind == "cancel":
-            self.model.cancel_response(payload)
-            return
-        if kind == "commit":
-            self.model.commit_turn()
-            return
-        if kind == "say":
-            self.model.speak_text(payload)
-            return
-        if kind == "steer":
-            self.model.inject_context(payload)
+        if kind != "audio":
+            started = self.clock()
+            if kind == "cancel":
+                self.model.cancel_response(payload)
+            elif kind == "commit":
+                self.model.commit_turn()
+            elif kind == "say":
+                self.model.speak_text(payload)
+            elif kind == "steer":
+                self.model.inject_context(payload)
+            self.metrics.observe_control(kind, (self.clock() - started) * 1000.0, self.budget_ms)
             return
 
         started = self.clock()

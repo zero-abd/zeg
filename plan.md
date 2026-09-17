@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The frame loop counts slow control operations, not only slow steps.** The loop exists partly to
+make the frame budget visible: a model step over 80 ms becomes queue debt that delays everything
+after it, so over-budget steps are counted. But control operations run on the same serialized loop
+untimed: accepting a turn, speaking a fixed line, and injecting context, which is every briefing and
+every rollover seed of hundreds of tokens. On the real model those are prefills, and the seed is
+likely the largest single stall of a call. Shown on the old loop: after a 400 ms steer, five frames'
+worth of debt, the summary read "over_budget=0".
+
+Control operations are now timed. Those over a frame's budget are counted separately, and the slowest
+kind is named in the session summary the runtime logs at the end ("control_over_budget=1
+control_max=400.0ms(steer)"). Steps and their counters are unchanged. The new tests failed on the old
+loop only because the counter did not exist, so the evidence is the old summary above.
+
 **A connect that times out fails on time and leaves nothing behind.** A regression from the previous
 entry. When the runtime accepted the connection but never completed the handshake, the link timed out
 and closed itself. The graceful close introduced there has nothing to close when the connection never
