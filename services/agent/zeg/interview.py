@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from .backends.base import AgentAudio, AgentInterrupted, AgentText, UserTranscript
-from .asks import asks_about_consent
+from .asks import asks_about_consent, is_question
 from .blocklist import ProhibitedQuestion, check
 from .hesitation import is_hesitation
 from .textnorm import fold
@@ -435,7 +435,15 @@ class Interview:
         # an answer it used up the outstanding probe, so every later answer was credited
         # to the wrong question, and it could revive a stalled ladder or trigger a rollover.
         hesitation = is_hesitation(text)
-        if not hesitation:
+        # A question from the candidate is not an answer either. Taken as one, "what does
+        # this team actually work on?" became a claim and the model was told to ask what
+        # they personally did about it. A question that carries evidence ("we cut p99 to
+        # 30, right?") is still an answer.
+        from .scoring import signals  # local: scoring imports the engine
+
+        asking = not hesitation and is_question(text) and not signals(text)
+        holding = hesitation or asking
+        if not holding:
             self.engine.note_caller(text, t_s)
 
         actions: List[Action] = []
@@ -460,8 +468,9 @@ class Interview:
             # session and pay for a pause in the last minute and a half.
             return actions
 
-        if hesitation:
-            # Leave the outstanding question outstanding and the session as it is.
+        if holding:
+            # Leave the outstanding question outstanding and the session as it is. The
+            # model answers a candidate's question on its own; the ladder waits for them.
             return actions
         probe = self.engine.next_probe()
         if probe is not None:

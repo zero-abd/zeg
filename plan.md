@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A candidate's question is not probed as if it were a claim.** Mid-interview, a question from the
+candidate reached the engine as an ordinary answer. Measured: "Sorry, what does this team actually
+work on day to day?", "How does the team split on-call" and "Can you tell me more about the role
+first?" each became a claim, and the engine told the model to "Ask for what they personally did, as
+opposed to the team" about the candidate's own question.
+
+A question now holds the ladder the way a hesitation does: it is recorded, it starts no claim and
+issues no probe, and the model answers it. Detection is conservative. A turn is a question if it
+ends with a question mark or opens with a question form, allowing a leading "sorry," or "so", and
+only if it carries none of the scorer's evidence markers, so "we cut p99 from 400ms to 30ms, right?"
+stays an answer. "What I did was rewrite the reconciler" is not a question form and stays a claim.
+On the old interview the three question tests failed and both guards passed.
+
 **"My part was the fix" counts as ownership.** Asked what they personally did, people answer as
 often with a possessive as with "I did". None of nine possessive phrasings counted: "My part was
 the advisory-lock fix", "The advisory lock was my change", "That fix was mine", "I was in charge

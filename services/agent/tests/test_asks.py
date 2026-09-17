@@ -51,5 +51,28 @@ def test_an_answer_is_left_to_the_gate(text):
     assert asks_about_consent(text) is None
 
 
+@pytest.mark.parametrize("text", [
+    "Sorry, what does this team actually work on day to day?",
+    "How does the team split on-call between people",
+    "Can you tell me more about the role first?",
+    "so what is the stack like",
+])
+def test_a_candidates_question_is_recognised(text):
+    from zeg.asks import is_question
+
+    assert is_question(text), text
+
+
+@pytest.mark.parametrize("text", [
+    "What I did was rewrite the reconciler after the outage",
+    "How we fixed it was an advisory lock",
+    "We rewrote the reconciler after the outage",
+])
+def test_an_answer_that_starts_like_a_question_is_not_one(text):
+    from zeg.asks import is_question
+
+    assert not is_question(text), text
+
+
 def test_typography_does_not_decide_it():
     assert asks_about_consent("I didn’t catch that") == "repeat"

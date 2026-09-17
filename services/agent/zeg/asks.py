@@ -64,6 +64,30 @@ _KINDS = (
 )
 
 
+#: A question form at the start of a turn, after an optional "sorry," or "so". "What I did
+#: was rewrite it" is not one: the word after "what" has to be a verb for it to ask.
+_QUESTION_OPENER = re.compile(
+    r"^\s*(?:(?:sorry|so|and|but|okay|ok|actually|um|uh|quick question)[,\s]+)*"
+    r"(?:(?:what|how|why|when|where|who|which)\s+"
+    r"(?:is|are|was|were|does|do|did|will|would|should|can|could)\b"
+    r"|(?:can|could|would|will|do|does|did|is|are)\s+"
+    r"(?:you|we|i|the|this|that|it|there|your)\b)",
+    re.I,
+)
+
+
+def is_question(text: str) -> bool:
+    """True when a turn is asking rather than telling.
+
+    Mid-interview, a question from the candidate was taken as an answer: "what does this
+    team actually work on?" became a claim, and the engine told the model to ask what they
+    personally did about it. Whether it also carries evidence is for the caller to check,
+    because "we cut p99 to 30, right?" is an answer with a question mark on it.
+    """
+    plain = fold(text).strip()
+    return plain.endswith("?") or bool(_QUESTION_OPENER.search(plain))
+
+
 def asks_about_consent(text: str):
     """Which kind of question this is, or None if it is not one we answer."""
     plain = fold(text)

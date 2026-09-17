@@ -457,6 +457,38 @@ def test_questions_do_not_go_on_forever(iv):
     assert iv.record.ended == "consent declined"
 
 
+# --- a question from the candidate, mid-interview -------------------------------------
+
+
+@pytest.mark.parametrize("question", [
+    "Sorry, what does this team actually work on day to day?",
+    "How does the team split on-call between people",
+    "Can you tell me more about the role first?",
+])
+def test_a_candidates_question_is_not_taken_as_a_claim(iv, question):
+    """"What does this team work on?" became a claim, and the model was told to ask what
+    the candidate personally did about their own question."""
+    consented(iv)
+    actions = iv.on_event(UserTranscript(question, final=True), 200)
+    assert iv.engine.state.claims == []
+    assert not [a for a in actions if isinstance(a, Probe)]
+
+
+def test_an_answer_starting_with_what_is_still_a_claim(iv):
+    consented(iv)
+    actions = iv.on_event(
+        UserTranscript("What I did was rewrite the reconciler after the outage", final=True), 200
+    )
+    assert len(iv.engine.state.claims) == 1
+    assert [a for a in actions if isinstance(a, Probe)]
+
+
+def test_an_answer_with_a_question_mark_on_it_is_still_an_answer(iv):
+    consented(iv)
+    iv.on_event(UserTranscript("we cut p99 from 400ms to 30ms, right?", final=True), 200)
+    assert len(iv.engine.state.claims) == 1
+
+
 # --- asking to stop, once the interview is under way ---------------------------------
 
 
