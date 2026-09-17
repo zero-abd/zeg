@@ -217,11 +217,29 @@ HISTORICAL_PRESENT = Pair(
     ),
 )
 
+POSSESSIVE = Pair(
+    name="possessive_ownership",
+    what_differs="The same ownership claimed as 'my part was' rather than 'I did'.",
+    baseline=VOCABULARY.baseline,
+    variant=_qa(
+        ("What did you do?",
+         "My part was the advisory-lock fix, because two workers could read the same "
+         "batch."),
+        ("How did you find it?",
+         "Reproducing it was my job: two workers against one merchant."),
+        ("What was the impact?",
+         "Double settlements went from eleven in six weeks to zero."),
+        ("What did it cost?",
+         "We gave up parallel reconciliation. Batch time roughly doubled."),
+    ),
+)
+
 #: The judge scored vocabulary for a while: "I personally implemented" was not ownership,
 #: "the reason was" was not an explanation, "the tradeoff was" was not a tradeoff. Each
 #: was fixed on its own, and this pair is what keeps them fixed.
 PAIRS: Sequence[Pair] = (
     DISFLUENCY, NON_NATIVE, HEDGING, TERSE, VOCABULARY, PRESENT_PERFECT, HISTORICAL_PRESENT,
+    POSSESSIVE,
 )
 
 

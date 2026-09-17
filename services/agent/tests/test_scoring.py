@@ -498,6 +498,15 @@ OWNED = [
     "I have reproduced it locally",
     "I write the fix myself",
     "I had built the harness before the outage",
+    # Possessive claims answer the engine's own probe as naturally as "I did" does.
+    "My part was the advisory-lock fix",
+    "The advisory lock was my change",
+    "That fix was mine",
+    "I was in charge of the rollout",
+    "The rollout was my responsibility",
+    "I took on the migration",
+    "I took ownership of the reconciler",
+    "My role was the reproduction harness",
 ]
 
 NOT_OWNED = [
@@ -509,6 +518,10 @@ NOT_OWNED = [
     "I find that hard to say",
     "I run into this kind of thing a lot",
     "I'd rewrite it differently now",
+    "Our team's part was the migration",
+    "My job is at a payments company",
+    "That was my manager's call",
+    "It was my first job out of college",
 ]
 
 

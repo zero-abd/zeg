@@ -195,6 +195,18 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**"My part was the fix" counts as ownership.** Asked what they personally did, people answer as
+often with a possessive as with "I did". None of nine possessive phrasings counted: "My part was
+the advisory-lock fix", "The advisory lock was my change", "That fix was mine", "I was in charge
+of the rollout", "I took ownership of the reconciler". A new matched pair, the same facts with
+ownership claimed that way, scored ownership as nothing against 4.
+
+The ownership pattern now recognises a claimed part or role, something being "my change", "my
+responsibility" or "mine", being in charge, and taking something on or over. Narrow on purpose,
+because "my" is everywhere: "My job is at a payments company", "That was my manager's call", "It
+was my first job" and "Our team's part was the migration" are not claims and stay out. On the old
+scorer ten tests failed, including the new pair; the negatives passed on both.
+
 **Tense no longer decides a score.** The judge's word lists were past tense. Two new matched
 pairs say the same past work in other tenses. Present perfect ("I've written the fix", "I've
 reproduced it") scored ownership as nothing, against 4 in the past tense. The historical present

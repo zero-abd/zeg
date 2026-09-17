@@ -302,7 +302,14 @@ _AUXILIARY = r"(?:'ve|\s+have|\s+had)?"
 _FIRST_PERSON = re.compile(
     r"\bi" + _AUXILIARY + r"\s+(?:(?:" + _BETWEEN + r")\s+){0,2}(?:" + _OWNERSHIP_VERBS + r")\b"
     r"|\bi\s+was\s+the\s+one\s+who\s+(?:" + _OWNERSHIP_VERBS + r")\b"
-    r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on)\b",
+    r"|\bi\s+was\s+(?:responsible\s+for|the\s+owner\s+of|the\s+lead\s+on|in\s+charge\s+of)\b"
+    # Possessive claims, the most natural answer to the engine's own probe. None of nine
+    # counted: "My part was the advisory-lock fix" scored ownership as nothing. Narrow on
+    # purpose: "my job is at a bank" and "that was my manager's call" are not claims.
+    r"|\bmy\s+(?:part|role|contribution|piece)\s+(?:was|is|were)\b"
+    r"|\b(?:was|is)\s+my\s+(?:change|fix|responsibility|job|design|idea|decision|call)\b"
+    r"|\b(?:was|is|were)\s+mine\b"
+    r"|\bi\s+(?:take|takes|took|taken|have\s+taken)\s+(?:on|over|ownership\s+of|charge\s+of)\b",
     re.I,
 )
 #: A cost named alongside what was gained. The list did not contain the word "tradeoff",
