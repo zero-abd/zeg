@@ -266,10 +266,9 @@ class DrivenResult:
 
         Consent never settled means there was no interview, so nothing is inside it.
         """
-        if self.interview_started_s is None:
-            return (float("inf"), float("inf"))
-        end = self.wrapped_up_s if self.wrapped_up_s is not None else float("inf")
-        return (self.interview_started_s, end)
+        from .report import interview_window  # one definition, shared with the Interview
+
+        return interview_window(self.interview_started_s, self.wrapped_up_s)
 
     def render(self) -> str:
         lines = []

@@ -6,7 +6,6 @@ import sys
 from .backends import build_backend
 from .config import AudioConfig, BackendConfig, CallConfig
 from .conversation import ConversationRunner, InterviewRunner
-from .scoring import score_call
 from .prompts import GREETING, SYSTEM_PROMPT
 
 
@@ -84,15 +83,17 @@ def report_for(result):
     interview reads exactly like a score from the whole thing unless the report says
     otherwise.
     """
-    flags = list(result.flags)
-    if result.consent and result.wrapped_up_s is None:
-        flags.append(
-            "The call ended before the wrap-up, so the interview is incomplete: %s."
-            % (result.ended or "it stopped early")
-        )
-    for error in result.errors:
-        flags.append("Something failed during the call: %s" % error)
-    return score_call(result.transcript, flags=flags, window=result.interview_window)
+    from .report import assemble_report
+
+    return assemble_report(
+        result.transcript,
+        flags=result.flags,
+        consent=result.consent,
+        interview_started_s=result.interview_started_s,
+        wrapped_up_s=result.wrapped_up_s,
+        ended=result.ended,
+        errors=result.errors,
+    )
 
 
 def _raw(backend, args) -> int:

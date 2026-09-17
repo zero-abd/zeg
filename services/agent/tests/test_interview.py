@@ -391,6 +391,50 @@ def test_a_hesitation_after_the_wrap_up_time_still_wraps_up(iv):
     assert any("time I have" in s for s in spoken(actions))
 
 
+# --- the report, for a driver holding the Interview directly ----------------------------
+
+
+def a_call_with_a_flag_and_a_reasoned_consent(iv):
+    iv.start()
+    iv.on_event(AgentInterrupted("barge_in"), 3.0)          # talked over the disclosure
+    iv.on_event(UserTranscript("yes", final=True), 5.0)      # the disclosure is repeated
+    iv.on_event(UserTranscript("yes that is fine because I want the feedback", final=True), 20.0)
+    iv.on_event(AgentText("What did you personally do?", final=True), 30.0)
+    iv.on_event(UserTranscript("I wrote the advisory lock fix myself", final=True), 40.0)
+    return iv
+
+
+def test_the_interviews_report_scores_only_the_interview_and_keeps_its_flags(iv):
+    """A driver holding the Interview had only transcript_for_scoring(). Scoring that
+    directly, the obvious thing to do, dropped every compliance flag and scored the
+    consent answer as if it answered an interview question."""
+    a_call_with_a_flag_and_a_reasoned_consent(iv)
+
+    direct = score_call(iv.transcript_for_scoring())
+    assert not any("talked over" in f for f in direct.flags), "what the old path lost"
+
+    report = iv.report()
+    assert any("talked over the recording disclosure" in f for f in report.flags)
+    assert any("interview is incomplete" in f for f in report.flags)
+    quotes = [e.quote for d in report.dimensions for e in d.evidence]
+    assert not any("feedback" in q for q in quotes), "the consent answer is not evidence"
+
+
+def test_the_runner_and_the_interview_produce_the_same_report():
+    """One assembly, so the demo and a driver using the Interview cannot disagree."""
+    from zeg.backends import MockBackend
+    from zeg.cli import report_for
+    from zeg.conversation import CallerTurn, InterviewRunner
+
+    iv = Interview()
+    caller = [CallerTurn("yes that is fine", speak_s=1.5),
+              CallerTurn("I wrote the advisory lock fix myself because two workers read "
+                         "one batch", speak_s=5.0)]
+    result = InterviewRunner(MockBackend(), interview=iv).run(caller)
+    ours, theirs = report_for(result), iv.report(errors=result.errors)
+    assert (ours.overall, ours.band, ours.flags) == (theirs.overall, theirs.band, theirs.flags)
+
+
 # --- a candidate who goes quiet after a question -----------------------------------------
 
 

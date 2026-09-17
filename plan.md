@@ -195,6 +195,23 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**Every way of driving a call produces the same report.** The scoring window and the report's flags
+were assembled beside the runner and the demo only. The media gateway will drive an `Interview`
+directly, and all it had was `transcript_for_scoring()`, which returns everything. Scoring that, the
+obvious thing to do, scored the consent answer as interview evidence and dropped every compliance
+flag: a candidate who talked over the disclosure, the incomplete-call flag, backend errors.
+
+Report assembly now lives in one module, `zeg/report.py`. The demo's `report_for` and the runner's
+window delegate to it, and `Interview.report()` builds the same report from the interview's own
+record, taking any errors the driver saw. A test runs one mock call and checks the runner's report
+and the interview's are identical. `transcript_for_scoring()` keeps its behaviour, and its docstring
+now says not to score it directly.
+
+One existing test checked the demo's source for the literal text `window=result.interview_window`,
+which fails on how code is written rather than what it does. It now checks behaviour: through the
+demo's report, a consent answer containing evidence is not scored. Scored without a window, the same
+call does count it, so the test can tell the difference.
+
 **A nudge is not mistaken for the question being answered.** The silence nudge added in the previous
 entry is an agent line, and two places took the last agent line as the question. After "What did you
 personally do on that project?", then "Take your time...", then "I wrote the advisory lock fix

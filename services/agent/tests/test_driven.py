@@ -657,9 +657,22 @@ def test_a_declined_call_has_an_empty_interview_window():
 
 
 def test_the_demo_report_scores_only_the_interview():
-    """The command line scored the whole transcript, consent exchange included."""
-    import inspect
+    """The command line scored the whole transcript, consent exchange included.
 
-    from zeg import cli
+    This used to check the command line's source for a literal argument, which passed or
+    failed on how the code was written rather than on what it did.
+    """
+    from zeg.cli import report_for
+    from zeg.conversation import DrivenResult, TranscriptEntry as T
 
-    assert "window=result.interview_window" in inspect.getsource(cli)
+    result = DrivenResult()
+    result.transcript = [
+        T(0, "agent", "Is it okay if this call is recorded?"),
+        T(5, "caller", "Yes, I wrote the advisory lock fix myself because two workers read one batch."),
+        T(10, "agent", "Tell me about a recent project."),
+        T(20, "caller", "We moved the ledger to its own database."),
+    ]
+    result.consent = True
+    result.interview_started_s = 5
+    quotes = [e.quote for d in report_for(result).dimensions for e in d.evidence]
+    assert not any("advisory lock" in q for q in quotes), "the consent answer was scored"

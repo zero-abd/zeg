@@ -660,4 +660,32 @@ class Interview:
     # --- afterwards -----------------------------------------------------------
 
     def transcript_for_scoring(self) -> Sequence[Turn]:
+        """Everything that was said, unfiltered.
+
+        Not what to score. Scoring this directly scores the consent exchange and the
+        closing questions, and drops every compliance flag. Use `report()`.
+        """
         return list(self.record.transcript)
+
+    def report(self, judge=None, errors: Sequence[str] = ()):
+        """The report for this call, the same one the runner and the demo produce.
+
+        For a driver that holds the Interview directly, as the media gateway will. It had
+        only `transcript_for_scoring()`, and the obvious `score_call` on that scored the
+        consent answer as interview evidence and lost the flags a reviewer needs.
+        `errors` are failures the driver saw that the interview could not, such as a
+        backend dropping mid-call.
+        """
+        from .report import assemble_report  # local: report imports scoring
+
+        r = self.record
+        return assemble_report(
+            r.transcript,
+            flags=r.flags,
+            consent=r.consent,
+            interview_started_s=r.interview_started_s,
+            wrapped_up_s=r.wrapped_up_s,
+            ended=r.ended,
+            errors=errors,
+            judge=judge,
+        )
