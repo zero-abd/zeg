@@ -316,3 +316,48 @@ def test_a_candidate_who_goes_vague_mid_ladder_does_not_switch_off_rollover():
         if t > 60 and any(isinstance(a, Rollover) for a in actions):
             rolled_after_the_stall.append(t)
     assert rolled_after_the_stall, "rollover never fired again once the ladder stalled"
+
+
+def _descending_to_the_hard_horizon():
+    from zeg.backends.base import AgentText, UserTranscript
+    from zeg.interview import Interview
+
+    iv = Interview()
+    iv.start()
+    iv.on_event(UserTranscript("yes that is fine", final=True), 5)
+    answers = [
+        "I rewrote the payment reconciler last year",
+        "I personally wrote the sharding layer myself",
+        "p99 went from 900 ms to 40 ms",
+        "we accepted slower batch jobs, they doubled to 2 hours",
+    ]
+    t, actions = 10, []
+    for i, answer in enumerate(answers):
+        iv.on_event(AgentText("Question %d?" % i, final=True), t)
+        t += 26
+        actions = iv.on_event(UserTranscript(answer, final=True), t)
+        t += 2
+    return iv, actions, t
+
+
+def test_a_probe_issued_with_a_rollover_is_carried_by_the_seed():
+    """The probe went into the session being closed, and the seed never mentioned it."""
+    from zeg.interview import Probe, Rollover
+
+    iv, actions, t = _descending_to_the_hard_horizon()
+    probes = [a.instruction for a in actions if isinstance(a, Probe)]
+    rolls = [a for a in actions if isinstance(a, Rollover)]
+    assert probes and rolls, "the scenario no longer produces both at once"
+    assert probes[0] in rolls[0].seed.context()
+    assert probes[0] in iv.seed(t).context()
+
+
+def test_an_answered_probe_is_not_carried_by_the_seed():
+    from zeg.backends.base import AgentText, UserTranscript
+    from zeg.interview import Probe
+
+    iv, actions, t = _descending_to_the_hard_horizon()
+    probe = [a.instruction for a in actions if isinstance(a, Probe)][0]
+    iv.on_event(AgentText("What broke afterwards?", final=True), t)
+    iv.on_event(UserTranscript("a lock timeout broke at 3 am", final=True), t + 10)
+    assert probe not in iv.seed(t + 11).context()

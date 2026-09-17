@@ -301,6 +301,8 @@ class Interview:
         #: The candidate has replied to the disclosure after hearing it without cutting in.
         #: Cleared whenever it is spoken again.
         self._disclosure_heard = False
+        #: The last probe instruction issued, for a seed taken before it is answered.
+        self._last_probe: Optional[str] = None
         #: Hesitations waited through before consent was settled.
         self._hesitations = 0
         #: Questions answered before consent was settled.
@@ -617,7 +619,8 @@ class Interview:
             return actions
         probe = self.engine.next_probe()
         if probe is not None:
-            actions.append(Probe("Ask for %s." % probe))
+            self._last_probe = "Ask for %s." % probe
+            actions.append(Probe(self._last_probe))
 
         # Turn boundaries are the only safe moment to replace a session, and a probe
         # still descending is a thread a fresh session would drop.
@@ -749,9 +752,19 @@ class Interview:
         return self._seed(t_s)
 
     def _seed(self, t_s: float) -> SessionSeed:
+        briefing = self.engine.briefing(t_s)
+        if self.engine.state.probe_outstanding and self._last_probe:
+            # At the hard horizon a probe and a rollover come out of the same answer. The
+            # probe was steered into the session about to be closed and the seed did not
+            # carry it, while the engine went on filing the next answer under a question
+            # the fresh session had never been told to ask.
+            briefing += (
+                "\nFollow-up not yet answered: %s If it is not the last question below, "
+                "ask it next." % self._last_probe
+            )
         return SessionSeed(
             system_prompt=self.system_prompt,
-            briefing=self.engine.briefing(t_s),
+            briefing=briefing,
             last_exchange=last_exchange(self.record.transcript),
         )
 

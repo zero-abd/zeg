@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A probe issued alongside a rollover survives it.** At the hard horizon one answer produces both a
+probe and a rollover (measured at 2:02 of a call whose ladder kept descending). The probe was
+steered into the session about to be closed, the seed never mentioned it, and the engine still
+treated it as outstanding, so the next answer was filed under a question the fresh session had not
+been told to ask. The seed now carries an unanswered probe, worded so a session that can see it was
+already asked does not ask it twice. Two new tests: the carried probe fails on the previous commit;
+a guard shows an answered probe is not carried. Suite: 1273 passed.
+
 **A gap in a dimension the role ignores does not hold back the band.** "Advance" requires no
 dimension without evidence, and that check ignored role weights: under a role weighting
 communication zero, a candidate at 10/10 on everything the role counts was held at "advance with
