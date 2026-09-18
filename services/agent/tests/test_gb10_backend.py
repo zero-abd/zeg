@@ -842,20 +842,25 @@ def test_a_line_between_turns_still_goes_out_at_once(audio):
     assert [m["text"] for m in link.of_type(p.SAY)] == ["now"]
 
 
-def test_a_runtime_serving_another_call_says_so(audio):
-    """The runtime refuses a second connection with its own close code, and every close
-    read as a dropped connection: the likeliest reason a second call fails looked like a
-    network fault."""
+@pytest.mark.parametrize("reason", [
+    "a conversation is already in progress",
+    "the model is not available",   # the same close code, a different problem entirely
+])
+def test_a_refused_connection_says_what_the_runtime_said(audio, reason):
+    """Every close read as a dropped connection, so the likeliest reason a second call
+    fails looked like a network fault. Both refusals share one close code, so the reason
+    is quoted rather than named: a missing model reported as a busy box sends an operator
+    looking for a caller who is not there."""
     link = FakeLink()
     sess = session(link, audio)
     link.close_code = p.CLOSE_BUSY
-    link.close_reason = "a conversation is already in progress"
+    link.close_reason = reason
     link.closed = True
 
     errors = [e for e in drive(sess, audio, 2) if isinstance(e, BackendError)]
     assert errors and errors[0].fatal
-    assert "serving another call" in errors[0].message
-    assert "already in progress" in errors[0].message
+    assert "refused the connection" in errors[0].message
+    assert reason in errors[0].message
 
 
 def test_a_close_with_no_reason_still_reads_as_a_dropped_connection(audio):

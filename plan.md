@@ -195,6 +195,14 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A refused connection quotes the runtime rather than guessing why.** A regression from the entry
+below, found by checking the other paths that use the same close code: the runtime refuses a
+connection under it for two different reasons, a call already in progress and no usable model, and
+naming the first produced "the speech runtime is serving another call: the model is not available".
+That is self-contradictory, and it points an operator at a caller who does not exist when the real
+problem is that the weights are not loaded. The reason is now quoted under a neutral frame, which is
+right for both. Two cases, both failing on the previous commit. Suite: 1422 passed.
+
 **A runtime already serving a call says so, instead of reading as a dropped connection.** The box
 runs one conversation at a time and the runtime refuses a second connection with its own close code
 and reason, which the client threw away: a server-initiated close does not raise, because the

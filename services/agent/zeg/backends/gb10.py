@@ -776,8 +776,12 @@ class GB10Session(VoiceSession):
         code = getattr(self._link, "close_code", None)
         reason = (getattr(self._link, "close_reason", "") or "").strip()
         if code == p.CLOSE_BUSY:
-            return ("the speech runtime is serving another call: %s"
-                    % (reason or "one conversation at a time"))
+            # The runtime refuses a connection for two reasons under this one code: a call
+            # already in progress, and no usable model. Quoted rather than named, because
+            # naming the first meant a missing model was reported as a busy box, which is
+            # an operator's problem reported as somebody else's.
+            return ("the speech runtime refused the connection: %s"
+                    % (reason or "it is busy or has no usable model"))
         if reason:
             return "the speech runtime closed the connection: %s" % reason
         return "the connection to the speech runtime closed"
