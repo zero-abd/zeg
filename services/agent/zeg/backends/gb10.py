@@ -323,6 +323,11 @@ class GB10Session(VoiceSession):
 
         # Handshake. No audio may be sent before the runtime answers.
         self._configured = False
+        #: The session's frame cap. The runtime takes the lower of its own limit and the
+        #: one we ask for, and advertises the result; we ignored that and kept counting to
+        #: our own number, so a runtime with a smaller cap closed the session mid-sentence
+        #: with nothing on our side having seen it coming. Never raised above our own.
+        self._frame_cap = self._cfg.max_session_frames
         self._discarded_frames = 0
 
         # Caller-side turn state.
@@ -574,7 +579,7 @@ class GB10Session(VoiceSession):
         self._transport_buffer = b""
 
     def _send_model_frame(self, pcm: bytes) -> None:
-        if self._model_frames >= self._cfg.max_session_frames:
+        if self._model_frames >= self._frame_cap:
             self._exhausted()
             return
         self._model_frames += 1
@@ -666,10 +671,13 @@ class GB10Session(VoiceSession):
                 p.check_version(msg)
             except p.ProtocolError as exc:
                 self._fail(str(exc))
+                return
+            self._adopt_limits(msg)
             return
 
         if kind == p.CONFIGURED:
             self._configured = True
+            self._adopt_limits(msg)
             return
 
         if kind == p.TURN_STARTED:
@@ -743,7 +751,7 @@ class GB10Session(VoiceSession):
             # feed it. Taking the larger of the two keeps the cap honest if a
             # frame was ever dropped on the way in.
             self._model_frames = max(self._model_frames, int(msg.get("frames") or 0))
-            if self._model_frames >= self._cfg.max_session_frames:
+            if self._model_frames >= self._frame_cap:
                 self._exhausted()
             return
 
@@ -785,6 +793,13 @@ class GB10Session(VoiceSession):
         if reason:
             return "the speech runtime closed the connection: %s" % reason
         return "the connection to the speech runtime closed"
+
+    def _adopt_limits(self, msg: Dict[str, Any]) -> None:
+        """Take the runtime's cap when it is tighter than ours. Never the other way."""
+        limits = msg.get("limits") or {}
+        cap = limits.get("max_session_frames")
+        if isinstance(cap, int) and 0 < cap < self._frame_cap:
+            self._frame_cap = cap
 
     def _take_audio(self, msg: Dict[str, Any]) -> None:
         if self._interrupted:

@@ -869,3 +869,29 @@ def test_a_close_with_no_reason_still_reads_as_a_dropped_connection(audio):
     link.closed = True
     errors = [e for e in drive(sess, audio, 2) if isinstance(e, BackendError)]
     assert "connection to the speech runtime closed" in errors[0].message
+
+
+def test_the_session_takes_the_runtime_s_cap_when_it_is_tighter(audio):
+    """The runtime takes the lower of its limit and ours and advertises the result. We
+    kept counting to our own number, so a runtime with a smaller cap closed the session
+    mid-sentence with nothing on our side having seen it coming."""
+    link = FakeLink(auto_ready=False)
+    sess = session(link, audio, max_session_frames=100)
+    link.deliver(link.wire.ready("s1", {"max_session_frames": 8}))
+    link.deliver(link.wire.configured("s1", {"max_session_frames": 8}))
+
+    events = drive(sess, audio, 40)   # 40 transport frames is 10 model frames
+    errors = [e for e in events if isinstance(e, BackendError)]
+    assert errors and "exhausted" in errors[0].message
+    assert sess.model_frames <= 8, "kept sending past the runtime's own cap"
+
+
+def test_a_runtime_cap_above_ours_does_not_raise_our_own(audio):
+    link = FakeLink(auto_ready=False)
+    sess = session(link, audio, max_session_frames=4)
+    link.deliver(link.wire.ready("s1", {"max_session_frames": 12_000}))
+    link.deliver(link.wire.configured("s1", {"max_session_frames": 12_000}))
+
+    events = drive(sess, audio, 40)
+    assert [e for e in events if isinstance(e, BackendError)], "our own cap still applies"
+    assert sess.model_frames <= 4

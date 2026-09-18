@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The client takes the runtime's session cap when it is tighter than its own.** Same sweep as the
+settings and the functions, over the wire: the runtime takes the lower of its own frame cap and the
+one the client asks for, and advertises the result in the handshake, which the client read nowhere.
+It kept counting to its own number, so a runtime started with a smaller cap closed the session
+mid-sentence with nothing on the client side having seen it coming, and the rollover that exists to
+stay under that cap would never have been asked for. The cap is adopted when it is tighter, never
+raised above ours, and kept on the session rather than written into the shared config. Two new
+tests, one failing on the previous commit. Suite: 1434 passed.
+
 **The pre-roll the client sends is now used, so a turn keeps the syllable before the gate opened.**
 The client has always told the runtime how many already-sent frames belong to a new turn, and the
 runtime read the field nowhere while the protocol promised it stopped the model losing the first
