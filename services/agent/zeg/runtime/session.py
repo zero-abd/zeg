@@ -165,6 +165,14 @@ class ServerSession:
 
         #: A committed turn whose recogniser has not settled yet. Its final transcript
         #: waits until the model opens its reply.
+        #: Recogniser text heard with no turn open, and the frame it last changed on. The
+        #: voice gate is always late, so the first syllable of a turn is recognised before
+        #: the turn exists; dropped, it was missing from the transcript the scoring pass
+        #: reads. Claimed by the next turn, but only if that turn says how many frames of
+        #: pre-roll it is claiming and the text is no older than that.
+        self._floating_text = ""
+        self._floating_at = 0
+
         self._settling_turn_id: Optional[str] = None
         self._settling_text = ""
         self._settling_sent = 0
@@ -326,7 +334,23 @@ class ServerSession:
         self._turn_text = ""
         self._turn_text_sent = 0
         out.append(self.wire.turn_started(turn, self._turn_id))
+        out.extend(self._claim_preroll(msg.get("preroll_frames")))
         return out
+
+    def _claim_preroll(self, frames: Any) -> List[Dict[str, Any]]:
+        """Give the turn the words heard just before the gate opened it.
+
+        The client says how many frames it already sent belong to this turn. Only text
+        that arrived inside that window is claimed: an older fragment is a cough, or the
+        tail of something the previous turn already carried, and attributing that to a
+        candidate's answer is worse than losing a syllable.
+        """
+        claimed, self._floating_text = self._floating_text, ""
+        if not isinstance(frames, int) or frames <= 0 or not claimed:
+            return []
+        if self.frames - self._floating_at > frames:
+            return []
+        return self._transcript(claimed)
 
     def _turn_commit(self, msg: Dict[str, Any]) -> List[Dict[str, Any]]:
         turn = msg.get("turn")
@@ -417,6 +441,11 @@ class ServerSession:
                     out.extend(self._transcript(result.user_text))
             elif self._settling_turn_id is not None and result.user_text != self._settling_text:
                 out.extend(self._settling_transcript(result.user_text))
+            elif self._settling_turn_id is None and result.user_text != self._floating_text:
+                # Nothing to attribute it to yet. Held rather than dropped, for the turn
+                # the gate is about to open.
+                self._floating_text = result.user_text
+                self._floating_at = self.frames
         if self._settling_turn_id is not None:
             self._settling_frames += 1
             # The model opening its reply means it has settled. The final goes out ahead

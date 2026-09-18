@@ -139,9 +139,12 @@ class Wire:
     def turn_start(self, turn: int, preroll_frames: int = 0) -> Dict[str, Any]:
         """Open turn `turn`.
 
-        `preroll_frames` tells the server how many of the frames that follow were
-        captured before the voice gate tripped. The gate is always late; without
-        the pre-roll the model loses the first syllable and confabulates it back.
+        `preroll_frames` tells the server how many already-sent frames belong to this
+        turn. The gate is always late, so the first syllable is recognised before the
+        turn exists. The model heard it either way, the audio never stops; what the
+        pre-roll saves is the transcript, which the scoring pass reads. The server
+        claims text no older than this many frames and ignores anything older, because
+        a fragment from further back is a cough or the tail of the previous turn.
         """
         if turn < 1:
             raise ProtocolError("turn numbers start at 1")

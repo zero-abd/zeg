@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The pre-roll the client sends is now used, so a turn keeps the syllable before the gate opened.**
+The client has always told the runtime how many already-sent frames belong to a new turn, and the
+runtime read the field nowhere while the protocol promised it stopped the model losing the first
+syllable. Two things were wrong: the model never lost it, because the audio never stops, and the
+transcript did lose it, because recogniser text with no turn open was dropped and the transcript is
+what the scoring pass reads. The server now holds that text and gives it to a turn that opens inside
+the window the client claims. Older text is not claimed, since a fragment from further back is a
+cough, and the tail of a settling turn still belongs to that turn. The protocol docstring now says
+what the field saves and what it does not. Four new tests, one failing on the previous commit and
+three guarding the cases that must not be claimed. Suite: 1432 passed.
+
 **The audio rates come from the wire contract instead of being written out twice.** Continuing the
 sweep for constants restated in two places, after the frame budget: 16 kHz in and 22.05 kHz out were
 written in config.py and again in protocol.py. The client validates the caller's frames against the

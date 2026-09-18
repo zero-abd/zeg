@@ -474,3 +474,52 @@ def test_recognizer_output_after_the_final_is_still_not_recorded():
     committed(session, heard="yes")
     session.on_frame(FrameResult(control="response_open"))
     assert p.TRANSCRIPT_DELTA not in types(session.on_frame(FrameResult(user_text="yes and more")))
+
+
+# --- the syllable before the gate opened ----------------------------------------
+
+
+def test_a_turn_claims_the_words_heard_just_before_it_opened():
+    """The voice gate is always late, so the first syllable is recognised before the turn
+    exists. Dropped, it was missing from the transcript the scoring pass reads."""
+    session = configured_session()
+    session.on_frame(FrameResult(user_text="be"))
+    out = session.on_client(p.Wire().turn_start(1, preroll_frames=4))
+
+    deltas = [m for m in out if m["type"] == p.TRANSCRIPT_DELTA]
+    assert deltas and deltas[0]["delta"] == "be"
+    out = session.on_frame(FrameResult(user_text="because the lock came after"))
+    assert [m["text"] for m in out if m["type"] == p.TRANSCRIPT_DELTA] == \
+        ["because the lock came after"]
+
+
+def test_a_turn_that_claims_no_preroll_gets_none():
+    session = configured_session()
+    session.on_frame(FrameResult(user_text="be"))
+    out = session.on_client(p.Wire().turn_start(1))
+    assert not [m for m in out if m["type"] == p.TRANSCRIPT_DELTA]
+
+
+def test_older_text_is_not_claimed_by_a_later_turn():
+    """A cough recognised ten seconds ago is not the first word of this answer."""
+    session = configured_session()
+    session.on_frame(FrameResult(user_text="hmm"))
+    speak(session, 20, audible=False)
+    out = session.on_client(p.Wire().turn_start(1, preroll_frames=4))
+    assert not [m for m in out if m["type"] == p.TRANSCRIPT_DELTA]
+
+
+def test_the_tail_of_a_settling_turn_is_not_claimed_by_the_next_one():
+    """While the previous turn settles its text belongs to that turn, and claiming it
+    would put the end of one answer at the start of the next."""
+    session = configured_session()
+    session.on_client(p.Wire().turn_start(1, preroll_frames=4))
+    session.on_frame(FrameResult(user_text="we sharded it"))
+    session.on_client(p.Wire().turn_commit(1))
+    session.on_frame(FrameResult(user_text="we sharded it by merchant"))
+
+    out = session.on_client(p.Wire().turn_start(2, preroll_frames=4))
+    deltas = [m for m in out if m["type"] == p.TRANSCRIPT_DELTA]
+    assert not [d for d in deltas if d.get("turn_id", "").endswith("_2")]
+    finals = [m for m in out if m["type"] == p.TRANSCRIPT_FINAL]
+    assert finals and finals[0]["text"] == "we sharded it by merchant"
