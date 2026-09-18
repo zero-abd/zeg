@@ -156,6 +156,11 @@ class WebSocketLink(Link):
         self._outbox: Any = None
         self._ws: Any = None
         self._main_task: Any = None
+        #: Why the runtime closed, when it says so. A refusal because another call is in
+        #: progress reached the caller as "the connection closed", which sends whoever
+        #: reads it to look at the network instead of at the box.
+        self.close_code: Optional[int] = None
+        self.close_reason: str = ""
         self._thread = threading.Thread(target=self._run, name="zeg-link", daemon=True)
         self._thread.start()
         if not self._ready.wait(connect_timeout_s):
@@ -206,6 +211,10 @@ class WebSocketLink(Link):
                             )
                 finally:
                     sender.cancel()
+                    # Read once the iteration ends, which is where a server-initiated
+                    # close lands: the handshake succeeded, so nothing raised.
+                    self.close_code = getattr(ws, "close_code", None)
+                    self.close_reason = getattr(ws, "close_reason", "") or ""
 
         try:
             asyncio.run(main())
@@ -647,7 +656,7 @@ class GB10Session(VoiceSession):
             # the watchdog meant four seconds of a candidate talking to nothing, and
             # the call was then reported as the runtime going silent, which sends
             # whoever reads it looking at the model rather than the connection.
-            self._fail("the connection to the speech runtime closed")
+            self._fail(self._why_the_link_closed())
 
     def _translate(self, msg: Dict[str, Any]) -> None:
         kind = msg.get("type")
@@ -756,6 +765,22 @@ class GB10Session(VoiceSession):
             if not self._stopping:
                 self._fail("the speech runtime closed the session: %s" % msg.get("reason"))
             return
+
+    def _why_the_link_closed(self) -> str:
+        """What to tell the layer above, using the runtime's own reason when it gave one.
+
+        Every close read as a dropped connection, including the one the runtime sends when
+        it is already serving another call. That is an operational fact about the box, not
+        a network fault, and it is the likeliest reason a second call fails.
+        """
+        code = getattr(self._link, "close_code", None)
+        reason = (getattr(self._link, "close_reason", "") or "").strip()
+        if code == p.CLOSE_BUSY:
+            return ("the speech runtime is serving another call: %s"
+                    % (reason or "one conversation at a time"))
+        if reason:
+            return "the speech runtime closed the connection: %s" % reason
+        return "the connection to the speech runtime closed"
 
     def _take_audio(self, msg: Dict[str, Any]) -> None:
         if self._interrupted:

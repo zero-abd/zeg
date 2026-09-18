@@ -179,3 +179,20 @@ def test_a_connection_the_runtime_ends_marks_the_link_closed(server):
     asyncio.run_coroutine_threadsafe(server.close(), loop).result(timeout=1)
     link._thread.join(timeout=1)
     assert link.closed
+
+
+def test_the_link_keeps_the_code_the_runtime_closed_with(server):
+    """A server-initiated close does not raise: the handshake succeeded, so the code is
+    the only thing that says why, and it was thrown away."""
+    server.close_code = p.CLOSE_BUSY
+    server.close_reason = "a conversation is already in progress"
+
+    link = WebSocketLink("ws://127.0.0.1:1")
+    asyncio.run_coroutine_threadsafe(server.close(), link._loop).result(timeout=2)
+    deadline = time.time() + 2
+    while not link.closed and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert link.closed
+    assert link.close_code == p.CLOSE_BUSY
+    assert link.close_reason == "a conversation is already in progress"

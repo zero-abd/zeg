@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A runtime already serving a call says so, instead of reading as a dropped connection.** The box
+runs one conversation at a time and the runtime refuses a second connection with its own close code
+and reason, which the client threw away: a server-initiated close does not raise, because the
+handshake succeeded, so every ending reached the caller as "the connection to the speech runtime
+closed". The likeliest reason a second call fails looked like a network fault, and sent whoever read
+it to the network rather than to the box. The link now keeps the close code and reason, and the
+session reports a busy runtime as one, quoting the runtime's words; a close with no reason still
+reads as before. Three new tests, two failing on the previous commit. Suite: 1421 passed.
+
 **A cost denied is not a tradeoff accepted.** First finding chased from the gaming eval, and one the
 scorer can act on without a model: "nothing really, I optimised the tradeoff away", "no real
 downside", "we gave up nothing" and "there wasn't any downside" all carried a word from the tradeoff

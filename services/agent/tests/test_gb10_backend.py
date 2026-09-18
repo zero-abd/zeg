@@ -840,3 +840,27 @@ def test_a_line_between_turns_still_goes_out_at_once(audio):
     sess = session(link, audio)
     sess.say("now")
     assert [m["text"] for m in link.of_type(p.SAY)] == ["now"]
+
+
+def test_a_runtime_serving_another_call_says_so(audio):
+    """The runtime refuses a second connection with its own close code, and every close
+    read as a dropped connection: the likeliest reason a second call fails looked like a
+    network fault."""
+    link = FakeLink()
+    sess = session(link, audio)
+    link.close_code = p.CLOSE_BUSY
+    link.close_reason = "a conversation is already in progress"
+    link.closed = True
+
+    errors = [e for e in drive(sess, audio, 2) if isinstance(e, BackendError)]
+    assert errors and errors[0].fatal
+    assert "serving another call" in errors[0].message
+    assert "already in progress" in errors[0].message
+
+
+def test_a_close_with_no_reason_still_reads_as_a_dropped_connection(audio):
+    link = FakeLink()
+    sess = session(link, audio)
+    link.closed = True
+    errors = [e for e in drive(sess, audio, 2) if isinstance(e, BackendError)]
+    assert "connection to the speech runtime closed" in errors[0].message
