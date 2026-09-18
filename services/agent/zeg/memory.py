@@ -18,14 +18,16 @@ probe is still descending, because dropping a session mid-ladder loses the threa
 interview was following.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from .hesitation import is_hesitation
 from .prompts import INTERJECTIONS
+from .runtime import protocol as wire
 
+#: Derived from the frame the runtime actually steps on, rather than written out again:
 #: 80 ms frames, so 12.5 per second of conversation.
-FRAMES_PER_SECOND = 12.5
+FRAMES_PER_SECOND = 1000.0 / wire.FRAME_MS
 
 
 @dataclass
@@ -56,8 +58,10 @@ class RolloverPolicy:
     hard_horizon_s: float = 110.0
 
     #: Hard cap on one session, imposed by the runtime. Rolling well before it is
-    #: reached keeps the cap from ever arriving mid-sentence.
-    frame_budget: int = 12_000
+    #: reached keeps the cap from ever arriving mid-sentence. Taken from the runtime's own
+    #: limit rather than copied: the two were separate constants that happened to agree,
+    #: and lowering the runtime's would have left this policy rolling too late to help.
+    frame_budget: int = field(default_factory=lambda: wire.MAX_SESSION_FRAMES)
 
     #: Roll once the session has used this share of its frames, whatever the clock says.
     frame_headroom: float = 0.8

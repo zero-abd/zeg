@@ -361,3 +361,26 @@ def test_an_answered_probe_is_not_carried_by_the_seed():
     iv.on_event(AgentText("What broke afterwards?", final=True), t)
     iv.on_event(UserTranscript("a lock timeout broke at 3 am", final=True), t + 10)
     assert probe not in iv.seed(t + 11).context()
+
+
+def test_the_frame_budget_follows_the_runtime_cap(monkeypatch):
+    """They were separate constants that happened to agree. Lowering the runtime's would
+    have left the policy rolling after the cap it exists to stay under."""
+    from zeg.memory import FRAMES_PER_SECOND, RolloverPolicy
+    from zeg.runtime import protocol as wire
+
+    assert RolloverPolicy().frame_budget == wire.MAX_SESSION_FRAMES
+    assert FRAMES_PER_SECOND == 1000.0 / wire.FRAME_MS
+
+    monkeypatch.setattr(wire, "MAX_SESSION_FRAMES", 4_000)
+    assert RolloverPolicy().frame_budget == 4_000, "the policy did not follow the runtime"
+
+
+def test_a_session_rolls_before_the_runtime_cap_arrives():
+    from zeg.memory import RolloverPolicy
+    from zeg.runtime import protocol as wire
+
+    policy = RolloverPolicy()
+    assert policy.should_roll(
+        session_age_s=60, at_turn_boundary=True, frames_used=wire.MAX_SESSION_FRAMES - 1
+    ), "the cap must never arrive without a rollover having been asked for first"

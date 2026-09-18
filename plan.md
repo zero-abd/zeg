@@ -195,6 +195,15 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The rollover policy follows the runtime's session cap instead of copying it.** The memory layer's
+frame budget was 12,000 written out in memory.py, and the runtime's hard session cap was 12,000
+written out in protocol.py: two constants that happened to agree, with nothing holding them together.
+Lowering the runtime's would have left the policy rolling after the cap it exists to stay under, and
+a session dying mid-sentence is exactly what it is for. The budget and the frames-per-second are both
+derived from the wire constants now. The test lowers the runtime cap and checks the policy follows,
+which fails on the previous commit, plus a guard that a session one frame short of the cap rolls.
+Suite: 1426 passed.
+
 **A report for a call that died says so where a reviewer reads it.** Rendering the report a failed
 call leaves behind: the per-dimension notes said the call ended early, but the one line under the
 band, which is what gets read first, said "Evidence for technical depth and ownership; nothing on
