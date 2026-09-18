@@ -195,6 +195,21 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A cost denied is not a tradeoff accepted.** First finding chased from the gaming eval, and one the
+scorer can act on without a model: "nothing really, I optimised the tradeoff away", "no real
+downside", "we gave up nothing" and "there wasn't any downside" all carried a word from the tradeoff
+list and scored as evidence of one, while saying nobody paid anything. The denial is cut out before
+the tradeoff markers are looked for, rather than the answer being dropped, so "no downside for reads,
+but writes doubled" still counts the cost it does name. Nine new cases, five failing on the previous
+commit.
+
+This surfaced a second thing, left alone on purpose and put to the user: with the hollow call's
+tradeoffs no longer counted, its headline went **up**, 9/10 to 10/10, because the overall is the mean
+of whatever was scored. Measured directly: a call scored 4,4,4,4,3 across five dimensions gets 9/10
+and "advance", and a call scored 4,4,4 across three gets 10/10 and "advance with reservations". The
+number and the band disagree, and the number is what a recruiter reads first. Changing it is a
+calibration decision, not a bug fix. Suite: 1418 passed.
+
 **How gameable the scoring is, measured.** The mirror of the bias eval: there two answers say the
 same thing and must score the same, here two calls sound the same and must not. Measured first: a
 call of confident, first-person, rubric-shaped answers that name nothing ("I single-handedly designed,

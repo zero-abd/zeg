@@ -952,3 +952,22 @@ def test_a_call_with_nothing_scorable_still_reads_as_a_sentence():
     a = Assessment(None, "insufficient signal",
                    [DimensionScore("ownership", None, [])], duration_s=65)
     assert a.justification() == "Nothing on ownership. Call length 1:05."
+
+
+@pytest.mark.parametrize("text, counts", [
+    ("Nothing really, because I optimised the tradeoff away completely", False),
+    ("Honestly there was no real downside, it was strictly better", False),
+    ("There was no tradeoff at all", False),
+    ("We gave up nothing", False),
+    ("There wasn't any downside", False),
+    ("We gave up parallel reconciliation, so batch time roughly doubled", True),
+    ("The cost was a slower batch, about two hours", True),
+    ("We accepted higher write latency in exchange for ordering", True),
+    ("No downside for reads, but writes doubled", True),   # a real cost beside a denied one
+])
+def test_a_cost_denied_is_not_a_tradeoff_accepted(text, counts):
+    """The rubric asks for a tradeoff the candidate accepted. "I optimised the tradeoff
+    away" carries every word of one and says nobody paid anything."""
+    from zeg.scoring import signals
+
+    assert ("tradeoffs" in signals(text)) is counts

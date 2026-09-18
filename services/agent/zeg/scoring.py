@@ -579,6 +579,21 @@ _SIGNALS: Dict[str, Sequence] = {
 }
 
 
+#: A cost denied rather than paid. Every one of these carries a word from the tradeoff
+#: list and says the opposite of what the list is for: "nothing really, I optimised the
+#: tradeoff away", "no real downside", "we gave up nothing". The rubric asks for a tradeoff
+#: the candidate accepted, and a tradeoff nobody paid for is not one.
+_COST_DENIED = re.compile(
+    r"\bno (real |significant |major )?(downside|trade[- ]?offs?|costs?|catch|price)s?\b"
+    r"|\b(was|were|is|are|did|do|does)n'?t (any|a) (real )?(downside|trade[- ]?off|cost)s?\b"
+    r"|\b(gave|give|given|giving) up (nothing|none|no \w+)\b"
+    r"|\boptimi[sz]\w* (it|them|the trade[- ]?off) away\b"
+    r"|\bstrictly better\b|\bnothing (really|at all)\b"
+    r"|\bwithout (giving up|sacrificing|any )\w*\b",
+    re.I,
+)
+
+
 def signals(text: str) -> List[str]:
     """Dimensions whose surface markers appear in what the candidate said.
 
@@ -586,7 +601,16 @@ def signals(text: str) -> List[str]:
     the heuristic judge scores cannot drift apart.
     """
     spoken = normalise(text)
-    return [d for d, patterns in _SIGNALS.items() if any(p.search(spoken) for p in patterns)]
+    # A denial is cut out before the tradeoff markers are looked for, rather than the whole
+    # answer being dropped: "no downside for reads, but writes doubled" names a real cost
+    # beside a denied one, and only the denial should stop counting.
+    without_denials = _COST_DENIED.sub(" ", spoken)
+    found = []
+    for dimension, patterns in _SIGNALS.items():
+        against = without_denials if dimension == "tradeoffs" else spoken
+        if any(p.search(against) for p in patterns):
+            found.append(dimension)
+    return found
 
 
 class HeuristicJudge(Judge):
