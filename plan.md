@@ -195,6 +195,17 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**"No, no, that's fine" is consent.** The recognition eval's method turned on the consent gate: the
+96 corpus answers put through six things a recogniser does to speech, 576 readings, looking for a
+flip in either direction. Three flips, all losing a yes and so ending an interview for someone who
+agreed. Two were the same English pattern, a doubled word: "no, no, that's fine" and "no no worries,
+go ahead" both mean yes, and the first "no" was matched before the agreement that follows it. The
+third was a dropped article in "I don't have a problem with that". A doubled word is now flattened
+before the gate judges, and the article is optional. "No, no, I'd rather not" and "no no no" are
+still refusals. The corpus keeps the five new cases, and the sweep itself is now a test, so a rule
+added later cannot quietly flip one. Six of the corpus readings fail on the previous commit. Suite:
+1448 passed.
+
 **The rollover policy learns the cap the session is really under.** Following the entry below through:
 the client now adopts a tighter cap from the runtime, but the policy that exists to roll before that
 cap arrives was still measuring against the compiled-in figure, so against a runtime capped at 8,000

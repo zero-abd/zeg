@@ -163,3 +163,37 @@ def test_a_backchannel_is_still_not_consent():
                    "invisible to a rule keyed on the word")
 def test_a_retention_condition_that_never_says_record_is_not_consent():
     assert not reads_as_consent("Sure, as long as nothing is saved.")
+
+
+def test_a_stutter_does_not_turn_an_agreement_into_a_refusal():
+    """"No, no, that's fine" means yes, and a recogniser writes exactly that. The first
+    "no" was matched before the agreement that follows it, so the call ended."""
+    assert reads_as_consent("no, no, that's fine")
+    assert reads_as_consent("no no worries, go ahead")
+    assert not reads_as_consent("no, no, I'd rather not"), "the stutter is not the answer"
+
+
+def test_recogniser_wear_does_not_flip_a_consent_answer():
+    """The corpus put through what a recogniser does to speech. A flip in either
+    direction is a defect: one records someone who refused, the other ends an interview
+    for someone who agreed."""
+    import re
+
+    degradations = {
+        "unpunctuated": lambda t: re.sub(r"[.,;:!?]", "", t).lower(),
+        "no_apostrophes": lambda t: t.replace("'", "").replace("’", ""),
+        "dropped_articles": lambda t: " ".join(
+            w for w in t.split() if w.lower() not in ("a", "an", "the")
+        ),
+        "stutter": lambda t: " ".join(t.split()[:1] + t.split()),
+        "filler": lambda t: "um, " + t,
+    }
+    flips = []
+    for name, degrade in degradations.items():
+        for answer in AFFIRMATIVE:
+            if not reads_as_consent(degrade(answer.text)):
+                flips.append("%s lost a yes: %r" % (name, degrade(answer.text)))
+        for answer in REFUSAL:
+            if reads_as_consent(degrade(answer.text)):
+                flips.append("%s made a no into a yes: %r" % (name, degrade(answer.text)))
+    assert not flips, flips

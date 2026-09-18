@@ -74,7 +74,8 @@ CONSENT_REASK_AFTER_S = 7.0
 _AGREEMENT_IDIOM = re.compile(
     r"\bno (problem|worries|issue|objection)\b|\b(i )?do(n'?t| not) mind\b"
     # "I don't have a problem with that" and "no, that's fine" each ended the interview.
-    r"|\bdo(n'?t| not) have (a|any) problem\b"
+    # The article is optional because a recogniser drops unstressed words first.
+    r"|\bdo(n'?t| not) have (a |any )?problem\b"
     r"|\bno,? (that'?s|it'?s|that is|it is) (fine|okay|ok|alright|all right)\b",
     re.I,
 )
@@ -155,6 +156,13 @@ CANDIDATE_INTERRUPTIONS = ("barge_in", "superseded")
 MAX_CONSENT_QUESTIONS = 2
 
 
+#: A word said twice in a row, with nothing but punctuation between. "No, no, that's fine"
+#: and "no no worries, go ahead" both mean yes, and both were read as refusals because the
+#: first "no" was matched before the idiom that follows it. A stutter is what a recogniser
+#: produces from an ordinary spoken repetition, so it is flattened before the gate judges.
+_STUTTER = re.compile(r"\b(\w+)\b(?:[\s,]+\1\b)+", re.I)
+
+
 def reads_as_consent(text: str) -> bool:
     """True only for a clear yes.
 
@@ -170,7 +178,7 @@ def reads_as_consent(text: str) -> bool:
     """
     # A typographic apostrophe in "didn't" slipped past every refusal pattern while
     # "yes" still matched, so a refusal was recorded as consent. Fold first.
-    text = fold(text)
+    text = _STUTTER.sub(r"\1", fold(text))
     if _UNSURE.search(text):
         return False
     if _CONTRAST.search(text) and _RECORDING.search(text):
