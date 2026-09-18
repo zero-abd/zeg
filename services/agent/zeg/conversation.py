@@ -319,6 +319,7 @@ class InterviewRunner:
         # mid-call. Passing it down as an argument meant the loops kept pushing audio
         # into the session that had just been closed.
         self._session = self.backend.start_session(self.interview.system_prompt)
+        self._note_frame_cap()
         # What the simulated caller is currently saying. It has to outlive the speech
         # itself, because the endpoint fires during the silence that follows.
         self._saying: Optional[str] = None
@@ -413,6 +414,17 @@ class InterviewRunner:
             return
         result.rollovers += 1
 
+    def _note_frame_cap(self) -> None:
+        """Pass on the session's real frame cap, where the backend knows one.
+
+        A backend that does not is left alone: the mock and the speaking backend have no
+        cap to report, and a missing one must not be read as zero.
+        """
+        cap = getattr(self._session, "frame_cap", None)
+        note = getattr(self.interview, "note_frame_cap", None)
+        if cap is not None and note is not None:
+            note(cap)
+
     def _roll(self, seed) -> None:
         """Swap in a fresh session primed with `seed`.
 
@@ -422,6 +434,7 @@ class InterviewRunner:
         """
         self._session.close()
         self._session = self.backend.start_session(seed.system_prompt)
+        self._note_frame_cap()
         # The whole seed, not just the briefing. The last exchange is what lets the new
         # session pick up mid-thought rather than start the topic over.
         self._session.steer(seed.context())

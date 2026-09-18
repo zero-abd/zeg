@@ -266,10 +266,13 @@ class InterviewRecord:
 class Interview:
     """Drive one call. The interview decides; the driver moves audio and performs actions.
 
-    A driver, the runner here or the media gateway, does five things. Each was a bug while
-    it was missing. `InterviewRunner` is the reference for the first four, and the demo's
-    `report_for` for the fifth.
+    A driver, the runner here or the media gateway, does six things. Each was a bug while
+    it was missing. `InterviewRunner` is the reference for all but the last, and the demo's
+    `report_for` for that one.
 
+    0. Whenever a backend session opens, including after a rollover, pass its frame cap
+       to `note_frame_cap` if it reports one. The rollover policy has to stay under the
+       cap the runtime is actually enforcing, which can be lower than the compiled-in one.
     1. At the start, perform what `start()` returns: the disclosure and consent request.
     2. For every backend event, call `on_event(event, t_s)` and perform what comes back, in
        order.
@@ -817,6 +820,17 @@ class Interview:
                 return turn.text == text
             return False
         return False
+
+    def note_frame_cap(self, frames: int) -> None:
+        """Tell the interview the frame cap the backend session is really under.
+
+        The rollover policy's budget is the runtime's compiled-in limit. A runtime started
+        with a smaller one closes the session at its own number, and a policy rolling
+        against the larger figure would ask too late to help. Lowered only: a backend that
+        says it has more room does not get to loosen the policy.
+        """
+        if isinstance(frames, int) and 0 < frames < self.rollover.frame_budget:
+            self.rollover.frame_budget = frames
 
     def seed(self, t_s: float) -> SessionSeed:
         """What a fresh session should be primed with, as of now.

@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The rollover policy learns the cap the session is really under.** Following the entry below through:
+the client now adopts a tighter cap from the runtime, but the policy that exists to roll before that
+cap arrives was still measuring against the compiled-in figure, so against a runtime capped at 8,000
+it would have asked for a rollover at 9,600, which is after the session is already dead. The session
+reports its settled cap, the runner passes it on at every session open including a rollover, and the
+interview lowers the policy's budget, never raises it. Backends with no cap to report, the mock and
+the speaking one, are left alone: a missing cap must not read as zero. It is step 0 of the driving
+contract now, because the media gateway has to do it too. Two new tests, both failing on the previous
+commit. Suite: 1436 passed.
+
 **The client takes the runtime's session cap when it is tighter than its own.** Same sweep as the
 settings and the functions, over the wire: the runtime takes the lower of its own frame cap and the
 one the client asks for, and advertises the result in the handshake, which the client read nowhere.

@@ -855,6 +855,12 @@ class GB10Session(VoiceSession):
         return self._closed
 
     @property
+    def frame_cap(self) -> int:
+        """Frames this session may use, as the runtime settled it. For the driver, so the
+        rollover policy stays under the cap the runtime is actually enforcing."""
+        return self._frame_cap
+
+    @property
     def model_frames(self) -> int:
         return self._model_frames
 

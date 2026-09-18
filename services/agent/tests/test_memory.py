@@ -384,3 +384,35 @@ def test_a_session_rolls_before_the_runtime_cap_arrives():
     assert policy.should_roll(
         session_age_s=60, at_turn_boundary=True, frames_used=wire.MAX_SESSION_FRAMES - 1
     ), "the cap must never arrive without a rollover having been asked for first"
+
+
+def test_the_policy_takes_a_tighter_cap_from_the_session():
+    """The budget is the runtime's compiled-in limit. A runtime started with a smaller one
+    closes the session at its own number, and a policy rolling against the larger figure
+    asks too late to help."""
+    from zeg.interview import Interview
+
+    iv = Interview()
+    before = iv.rollover.frame_budget
+    iv.note_frame_cap(4_000)
+    assert iv.rollover.frame_budget == 4_000
+    iv.note_frame_cap(before * 2)
+    assert iv.rollover.frame_budget == 4_000, "a roomier backend must not loosen the policy"
+
+
+def test_the_runner_passes_the_session_cap_to_the_interview():
+    """The session knows the cap the runtime settled on; the policy is what has to stay
+    under it, and nothing carried the number from one to the other."""
+    from zeg.backends import MockBackend
+    from zeg.conversation import InterviewRunner
+    from zeg.interview import Interview
+
+    class CappedBackend(MockBackend):
+        def start_session(self, system_prompt, greeting=None):
+            session = super().start_session(system_prompt, greeting=greeting)
+            session.frame_cap = 5_000
+            return session
+
+    iv = Interview()
+    InterviewRunner(CappedBackend(), interview=iv).run([])
+    assert iv.rollover.frame_budget == 5_000
