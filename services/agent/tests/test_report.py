@@ -106,3 +106,40 @@ def test_a_call_with_nothing_notable_says_nothing():
     plain = [T(0, "agent", "Tell me about it."), T(30, "caller", "I wrote the lock fix")]
     assert "Notable moments:" not in assemble_report(
         plain, consent=True, interview_started_s=0).render()
+
+
+def test_the_summary_line_says_a_call_did_not_finish():
+    """"Nothing on tradeoffs" about a call that died after forty seconds reads as
+    something the candidate did. The one line under the band is what is read first."""
+    from zeg.conversation import TranscriptEntry as T
+    from zeg.report import assemble_report
+
+    cut_short = assemble_report(
+        [T(0, "agent", "What did you personally do?"),
+         T(40, "caller", "I wrote the advisory-lock fix myself and cut p99 to 40 ms")],
+        consent=True, interview_started_s=0,
+        errors=["the speech runtime refused the connection"],
+    )
+    assert "ended before the wrap-up" in cut_short.justification()
+
+    whole = assemble_report(
+        [T(0, "agent", "Tell me about it."), T(30, "caller", "I wrote the lock fix myself")],
+        consent=True, interview_started_s=0, wrapped_up_s=810,
+    )
+    assert "Call length" in whole.justification()
+    assert "ended before" not in whole.justification()
+
+
+def test_a_failure_is_the_first_flag_a_reviewer_sees():
+    """It sat between the compliance flags and the scorer's own, so the one fact that was
+    nobody's fault was in the middle of a list about the candidate."""
+    from zeg.conversation import TranscriptEntry as T
+    from zeg.report import assemble_report
+
+    report = assemble_report(
+        [T(0, "agent", "Tell me about it."), T(30, "caller", "we did various things")],
+        flags=["The candidate asked to stop at 0:25."],
+        consent=True, interview_started_s=0,
+        errors=["the runtime went silent for 4.0 s"],
+    )
+    assert report.flags[0].startswith("Something failed during the call")

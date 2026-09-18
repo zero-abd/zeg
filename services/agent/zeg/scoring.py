@@ -78,6 +78,10 @@ class Assessment:
     transcript: Sequence = field(default_factory=tuple)
     #: The question-and-answer pairs the score was drawn from, for the notable moments.
     moments_from: Sequence = field(default_factory=tuple)
+    #: Why this call is not a whole interview, if it is not. The one line under the band is
+    #: what a reviewer reads first, and "nothing on tradeoffs" about a call that died after
+    #: forty seconds reads as something the candidate did.
+    incomplete: str = ""
 
     def render_transcript(self) -> str:
         """The whole call, for a reviewer who wants to see a quote in its place."""
@@ -111,7 +115,10 @@ class Assessment:
             parts.append("nothing on %s" % _names(thin))
         mins, secs = divmod(int(self.duration_s), 60)
         sentence = "; ".join(parts) if parts else "nothing scorable was said"
-        return "%s%s. Call length %d:%02d." % (sentence[0].upper(), sentence[1:], mins, secs)
+        tail = ", %s" % self.incomplete if self.incomplete else ""
+        return "%s%s. Call length %d:%02d%s." % (
+            sentence[0].upper(), sentence[1:], mins, secs, tail
+        )
 
     def render(self) -> str:
         """One page. A recruiter reads it in ninety seconds."""

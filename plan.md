@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A report for a call that died says so where a reviewer reads it.** Rendering the report a failed
+call leaves behind: the per-dimension notes said the call ended early, but the one line under the
+band, which is what gets read first, said "Evidence for technical depth and ownership; nothing on
+tradeoffs, debugging and communication" about a call that stopped after forty seconds. That reads as
+something the candidate did. The line now ends "Call length 0:40, the call ended before the wrap-up",
+and a whole call is unchanged. The failure itself was the third flag, between the compliance flags
+and the scorer's own, so the one fact that was nobody's fault sat in the middle of a list about the
+candidate; failures come first now. Two new tests, both failing on the previous commit. Suite: 1424
+passed.
+
 **A refused connection quotes the runtime rather than guessing why.** A regression from the entry
 below, found by checking the other paths that use the same close code: the runtime refuses a
 connection under it for two different reasons, a call already in progress and no usable model, and

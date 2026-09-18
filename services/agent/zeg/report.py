@@ -46,20 +46,28 @@ def assemble_report(
     minutes of a fifteen-minute interview otherwise reads like a whole one. Anything that
     failed during the call is listed.
     """
-    out = list(flags)
+    # Failures first: a call that died is the thing a reviewer has to weigh before
+    # anything the score says about the candidate. They were listed after the compliance
+    # flags and before the scorer's own, so the one fact that was nobody's fault sat in
+    # the middle of a list about the candidate.
+    out = ["Something failed during the call: %s" % error for error in errors]
+    out.extend(flags)
+    incomplete = ""
     if consent and wrapped_up_s is None:
+        incomplete = "the call ended before the wrap-up"
         out.append(
             "The call ended before the wrap-up, so the interview is incomplete: %s."
             % (ended or "it stopped early")
         )
-    for error in errors:
-        out.append("Something failed during the call: %s" % error)
+    if errors and not incomplete:
+        incomplete = "something failed during the call"
     assessment = score_call(
         transcript,
         judge=judge,
         flags=out,
         window=interview_window(interview_started_s, wrapped_up_s),
     )
+    assessment.incomplete = incomplete
     _say_why_uncovered(assessment, call)
     return assessment
 
