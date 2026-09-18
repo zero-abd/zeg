@@ -8,13 +8,19 @@ synthesis stage emits 22.05 kHz, while telephony and most conferencing paths del
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .runtime import protocol as wire
+
 # --- Audio -------------------------------------------------------------------
 
+#: Taken from the wire contract rather than written out again. The rates are the model's,
+#: the runtime validates every frame against them, and the client validates the caller's
+#: frames against these: two copies that drifted would reject every frame of a call.
+
 #: The model consumes 16 kHz. Telephone audio arrives at 8 kHz and must be upsampled.
-INPUT_SAMPLE_RATE = 16_000
+INPUT_SAMPLE_RATE = wire.INPUT_SAMPLE_RATE
 
 #: The model's TTS decoder emits 22.05 kHz.
-OUTPUT_SAMPLE_RATE = 22_050
+OUTPUT_SAMPLE_RATE = wire.OUTPUT_SAMPLE_RATE
 
 #: Telephony carries 8 kHz G.711 much of the time.
 TELEPHONY_SAMPLE_RATE = 8_000

@@ -43,3 +43,26 @@ def test_no_setting_promises_behaviour_nothing_reads():
         for name in config.__dataclass_fields__:
             used = re.findall(r"\.%s\b" % name, source) + re.findall(r"\b%s=" % name, source)
             assert used, "%s.%s is read nowhere" % (config.__name__, name)
+
+
+def test_the_audio_rates_are_the_wire_contract_s():
+    """Written out twice, they would reject every frame of a call if they drifted: the
+    client checks the caller's frames against these and encodes to the runtime's."""
+    from zeg.config import INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
+    from zeg.runtime import protocol as wire
+
+    assert INPUT_SAMPLE_RATE == wire.INPUT_SAMPLE_RATE
+    assert OUTPUT_SAMPLE_RATE == wire.OUTPUT_SAMPLE_RATE
+
+
+def test_a_model_frame_is_a_whole_number_of_transport_frames():
+    """The client aggregates 20 ms transport frames into the model's 80 ms frames, and
+    paces the agent's audio one transport frame per caller frame. Both counts assume the
+    division comes out whole."""
+    from zeg.config import AudioConfig
+    from zeg.runtime import protocol as wire
+
+    audio = AudioConfig()
+    assert wire.INPUT_FRAME_SAMPLES % audio.input_frame_samples == 0
+    assert wire.OUTPUT_FRAME_SAMPLES % audio.output_frame_samples == 0
+    assert wire.FRAME_MS % audio.frame_ms == 0

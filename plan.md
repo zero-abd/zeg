@@ -195,6 +195,16 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**The audio rates come from the wire contract instead of being written out twice.** Continuing the
+sweep for constants restated in two places, after the frame budget: 16 kHz in and 22.05 kHz out were
+written in config.py and again in protocol.py. The client validates the caller's frames against the
+first and encodes to the second, so a drift between them would reject every frame of a call. No
+behaviour change today, since the numbers agree; the duplication is what is removed. A test also pins
+the invariant the client's aggregation and pacing rest on, that the model's 80 ms frame is a whole
+number of 20 ms transport frames at both rates, which nothing stated anywhere. Both tests pass on the
+previous commit, as a guard should. The runtime package stays import-light on a laptop: only the
+pure-stdlib protocol module is pulled in. Suite: 1428 passed.
+
 **The rollover policy follows the runtime's session cap instead of copying it.** The memory layer's
 frame budget was 12,000 written out in memory.py, and the runtime's hard session cap was 12,000
 written out in protocol.py: two constants that happened to agree, with nothing holding them together.
