@@ -30,7 +30,16 @@ _RECORDING = re.compile(
     r"|\bdo ?n'?t record\s+(me|this|us)\b"
     r"|\b(not|no longer) (want to be|wish to be|comfortable being|happy being) recorded\b"
     r"|\bi'?d rather (you )?(did ?n'?t|not) record\b"
-    r"|\btake me off the recording\b",
+    r"|\btake me off (the )?recording\b"
+    # Without the article, which is the first thing a recogniser drops: "can you stop
+    # recording?" was missed while "can you stop the recording?" was heard. The article
+    # cannot simply be optional, because "the consumer stops recording metrics" is an
+    # ordinary answer, so these require the frame of a request instead.
+    r"|\b(can|could|would|will)\s+(you|we)\b[^.?!]{0,20}"
+    r"\b(stop|end|cancel|delete|erase|turn off|switch off|shut off)\s+recording\b(?!\s+of\b)"
+    r"|\b(please|let'?s|let us)\s+"
+    r"(stop|end|cancel|delete|erase|turn off|switch off|shut off)\s+recording\b(?!\s+of\b)"
+    r"|\bi'?d like (you )?to\s+(stop|end|cancel|delete)\s+recording\b(?!\s+of\b)",
     re.I,
 )
 
@@ -52,6 +61,11 @@ _CALL = re.compile(
     # "cancel the call to the payments API" is a sentence about work. The interview is
     # not something you cancel *to* anything.
     + r"|\b(stop|end|cancel)\s+(this\s+(interview|call)|the\s+interview)\b(?!\s+to\b)"
+    # The same without the article, and only when it is asked for: "let's end interview
+    # here" and "stop interview, please" were missed.
+    r"|\b(can|could)\s+(we|you)\s+(stop|end|cancel)\s+(interview|call)\b(?!\s+to\b)"
+    r"|\b(please|let'?s|let us)\s+(stop|end|cancel)\s+(interview|call)\b(?!\s+to\b)"
+    r"|\b(stop|end|cancel)\s+(interview|call)\s*,?\s*please\b"
     # "The call" is often a call in the system: "we end the call when the websocket
     # drops" ended the interview. Only asked for, it is this one.
     r"|\b(can|could) (we|you)\s+(stop|end|cancel)\s+the\s+call\b(?!\s+to\b)"
@@ -78,7 +92,7 @@ _HUMAN = re.compile(
     # request to end the call. Someone on, from or at somewhere is a colleague.
     r"|\bi want to (speak|talk) to (a|an|some)\w*\b[^.?!]{0,20}"
     r"\b(person|human|recruiter|(someone|somebody)(?!\s+(on|from|at|in|about)\b))\b"
-    r"|\bis there (a|an) (real )?(person|human|recruiter)\b"
+    r"|\bis there (a|an)?\s*(real )?(person|human|recruiter)\b"
     r"|\bis there (someone|somebody|anyone|anybody)\b[^.?!]{0,20}\b(talk|speak)\b"
     # Only to someone, or at the end: "put me through the question again" is not this.
     r"|\b(put me through|transfer me|hand me over)(\s+to\b|\s*(please)?\W*$)",

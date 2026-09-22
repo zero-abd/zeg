@@ -195,6 +195,19 @@ problem.
 
 Newest first. Each entry is one commit or a short run of them.
 
+**A request to stop survives the recogniser dropping "the".** The consent gate's sweep, turned on the
+checks that end a call for the other reason: 354 readings, eight flips, every one of them a request
+missed rather than a false one. All from the same degradation, a dropped article, and the article is
+the first word a recogniser loses: "can you stop recording?", "could you delete recording?", "please
+turn off recording", "stop interview, please", "can we end call?", "take me off recording", "let's
+end interview here", "is there person I can talk to?". Missing these is the worse direction, because
+it keeps recording somebody who asked us to stop. The article could not simply be made optional,
+since "the consumer stops recording metrics" is an ordinary answer, so the new forms require the
+frame of a request instead: asked of us, or with please, or let's. The first attempt did end an
+interview on "let's stop recording of logs at debug level", which the existing rules had excluded and
+mine had not; the guard is on both now. Sweep is a test, five corpus readings fail on the previous
+commit. Suite: 1454 passed.
+
 **"No, no, that's fine" is consent.** The recognition eval's method turned on the consent gate: the
 96 corpus answers put through six things a recogniser does to speech, 576 readings, looking for a
 flip in either direction. Three flips, all losing a yes and so ending an interview for someone who
