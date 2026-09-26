@@ -119,6 +119,8 @@ polish than its position in this list suggests.
 **Stage 5 — eye tracking, if time allows.** MediaPipe, flag gaze beyond 30-45 degrees
 for over 5 seconds, save the clip for recruiter review. Genuinely impressive in a demo.
 Also the first thing to cut. It needs the video channel, which the audio path does not.
+*Built (docs/12-video-review.md):* OpenCV Haar cascades in C++ rather than MediaPipe,
+flagging more than 5 s away, no face, or more than one face, for a human to review.
 
 ## 4. Work division
 

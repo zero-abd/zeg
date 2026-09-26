@@ -23,7 +23,18 @@ def main(argv=None) -> int:
     p.add_argument("--no-score", action="store_true", help="skip the post-call report")
     p.add_argument("--raw", action="store_true",
                    help="bypass the interview engine and measure the backend alone")
+    p.add_argument("--video-flags", metavar="FLAGS_JSON",
+                   help="zeg-gaze output for this call's video, shown in the report as "
+                        "moments for a human to watch (see docs/12-video-review.md)")
+    p.add_argument("--video-offset", type=float, default=0.0, metavar="SECONDS",
+                   help="where the video starts on the call clock (default 0)")
     args = p.parse_args(argv)
+
+    video_review = None
+    if args.video_flags:
+        from .video_review import load_flags
+
+        video_review = load_flags(args.video_flags, offset_s=args.video_offset)
 
     backend = build_backend(
         BackendConfig(
@@ -62,7 +73,7 @@ def main(argv=None) -> int:
         print()
         # Only the interview itself. The consent answer and anything said after the
         # wrap-up used to be scored as if they answered interview questions.
-        print(report_for(result).render())
+        print(report_for(result, video_review=video_review).render())
 
     return 0
 
@@ -82,7 +93,7 @@ def consent_line(consent, ended) -> str:
     return "declined"
 
 
-def report_for(result):
+def report_for(result, video_review=None):
     """The report for a finished call.
 
     The interview's flags travel with it: a candidate who talked over the recording
@@ -108,6 +119,7 @@ def report_for(result):
         wrapped_up_s=result.wrapped_up_s,
         ended=result.ended,
         errors=result.errors,
+        video_review=video_review,
     )
 
 

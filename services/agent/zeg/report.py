@@ -12,6 +12,7 @@ from typing import Optional, Sequence, Tuple
 from .config import CallConfig
 from .engine import phase_covering
 from .scoring import Assessment, Judge, score_call
+from .video_review import VideoFlag
 
 _OPEN = float("inf")
 
@@ -38,6 +39,7 @@ def assemble_report(
     errors: Sequence[str] = (),
     judge: Optional[Judge] = None,
     call: Optional[CallConfig] = None,
+    video_review: Optional[Sequence] = None,
 ) -> Assessment:
     """Score the interview and carry everything a reviewer needs to weigh it.
 
@@ -45,6 +47,11 @@ def assemble_report(
     reached its wrap-up says it is incomplete and how it ended, because a score from four
     minutes of a fifteen-minute interview otherwise reads like a whole one. Anything that
     failed during the call is listed.
+    
+    `video_review` is what the vision service flagged in the candidate's video, as
+    zeg.video_review.VideoFlag (or its dicts). It travels to the reviewer as moments to
+    watch and is kept apart from the score: nothing in it reaches the judge. None means
+    no video was analysed.
     """
     # Failures first: a call that died is the thing a reviewer has to weigh before
     # anything the score says about the candidate. They were listed after the compliance
@@ -68,6 +75,10 @@ def assemble_report(
         window=interview_window(interview_started_s, wrapped_up_s),
     )
     assessment.incomplete = incomplete
+    if video_review is not None:
+        assessment.video_review = [
+            f if isinstance(f, VideoFlag) else VideoFlag.from_dict(f) for f in video_review
+        ]
     _say_why_uncovered(assessment, call)
     return assessment
 

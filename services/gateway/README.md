@@ -37,11 +37,15 @@ The one behaviour that must be right is **playback cancellation**. When
 immediately, or the candidate hears the agent talking over them. This is the single
 most visible quality signal in a voice agent.
 
-## Stretch: eye tracking
+## Video review (was: stretch, eye tracking)
 
-MediaPipe, flag gaze beyond 30 to 45 degrees for more than 5 seconds, save the clip
-for recruiter review. Needs the video channel, which the audio path does not. First
-thing to cut if time runs short.
+Built, with OpenCV Haar cascades in C++ instead of MediaPipe: `services/vision`, and
+`gateway/video_review.py` here. When the candidate sends their camera and the module is
+built (`make vision`), `server.py` passes `GazeReview.sink` as `consume_video`'s
+`video_sink`; frames go to the detector on a worker thread, at most 15 per second, and
+are dropped rather than queued when it falls behind. At hangup the flags are logged as
+the report's "Video review" section, and saved with `--review-dir DIR`. Without the
+module the gateway runs exactly as before. See docs/12-video-review.md.
 
 ## Implementation
 
@@ -55,6 +59,7 @@ gateway/
   bridge.py     transport-agnostic core: caller frame in -> VoiceSession -> events out
   webrtc.py     aiortc adapter: resample 48k<->16k/22.05k, the outbound audio track
   server.py     aiohttp signaling, one call at a time, prints the transcript on hangup
+  video_review.py  the video_sink: frames to the C++ gaze detector, flags at hangup
 web/interview.html   candidate page: getUserMedia -> RTCPeerConnection -> /offer
 tools/meet_provision.py   stretch-only Google Meet link (see its header)
 ```
@@ -83,5 +88,5 @@ cloudflared tunnel --url http://localhost:8080     # or: ngrok http 8080
 
 **Not yet done / handoffs:** the WebRTC media path is validated by unit tests and a
 clean server boot, but the browser SDP handshake needs a real browser to exercise
-end to end (couldn't be done headless here). The gaze `video_sink` in `webrtc.py` is
-a stub for Track 4. Scoring picks up `bridge.transcript` after hangup.
+end to end (couldn't be done headless here). The gaze `video_sink` is filled by
+`video_review.py`; it is tested with fake and real frames, not yet on a live browser call. Scoring picks up `bridge.transcript` after hangup.

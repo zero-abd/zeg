@@ -26,6 +26,7 @@ from .hesitation import is_hesitation
 from .memory import shorten
 from .prompts import INTERJECTIONS
 from .textnorm import fold
+from .video_review import render_video_review
 from .withdrawal import reads_as_withdrawal, wants_a_human
 
 #: Rubric scores run 1 to 4. The headline number the recruiter sees is 1 to 10, which
@@ -82,6 +83,10 @@ class Assessment:
     #: what a reviewer reads first, and "nothing on tradeoffs" about a call that died after
     #: forty seconds reads as something the candidate did.
     incomplete: str = ""
+    #: Moments of the call video for a human to watch (zeg.video_review.VideoFlag), from
+    #: the vision service. None when no video was analysed, which is the usual case: the
+    #: camera is optional. Rendered after the flags and never read by the scorer.
+    video_review: Optional[List] = None
 
     def render_transcript(self) -> str:
         """The whole call, for a reviewer who wants to see a quote in its place."""
@@ -162,6 +167,10 @@ class Assessment:
             out.append("Flags, for a human to weigh:")
             for f in self.flags:
                 out.append("  - %s" % f)
+        video = render_video_review(self.video_review)
+        if video:
+            out.append("")
+            out.extend(video)
         out.append("")
         out.append("A human reviews this before any decision. zeg does not decide.")
         return "\n".join(out)

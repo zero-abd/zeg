@@ -880,14 +880,15 @@ class Interview:
         """
         return list(self.record.transcript)
 
-    def report(self, judge=None, errors: Sequence[str] = ()):
+    def report(self, judge=None, errors: Sequence[str] = (), video_review=None):
         """The report for this call, the same one the runner and the demo produce.
 
         For a driver that holds the Interview directly, as the media gateway will. It had
         only `transcript_for_scoring()`, and the obvious `score_call` on that scored the
         consent answer as interview evidence and lost the flags a reviewer needs.
         `errors` are failures the driver saw that the interview could not, such as a
-        backend dropping mid-call.
+        backend dropping mid-call. `video_review` is what the vision service flagged in
+        the candidate's video, if they sent it; it is shown to the reviewer, not scored.
         """
         from .report import assemble_report  # local: report imports scoring
 
@@ -902,4 +903,5 @@ class Interview:
             errors=errors,
             judge=judge,
             call=self.call,
+            video_review=video_review,
         )

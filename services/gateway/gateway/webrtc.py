@@ -91,10 +91,11 @@ async def consume_audio(track, bridge) -> None:
 async def consume_video(track, video_sink=None) -> None:
     """Drain the optional video track.
 
-    Video is a stretch (README: first thing to cut) and off the audio critical
-    path, but we must keep draining the track or it stalls. `video_sink` is the
-    Track 4 seam: hand each frame to MediaPipe gaze estimation here. For now we
-    only count frames.
+    Video is off the audio critical path, but we must keep draining the track or it
+    stalls. `video_sink(frame, count)` is the Track 4 seam: the server passes
+    `GazeReview.sink` (video_review.py), which hands frames to the Haar-cascade gaze
+    detector in services/vision on a worker thread and returns at once. With no sink
+    the frames are only counted.
     """
     count = 0
     while True:
