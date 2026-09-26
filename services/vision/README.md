@@ -34,7 +34,7 @@ is skipped.
 | Machine | OpenCV |
 | --- | --- |
 | macOS | `brew install opencv` |
-| Ubuntu, and the GB10 box (DGX OS is Ubuntu on arm64) | `sudo apt install libopencv-dev libgtest-dev pybind11-dev cmake` |
+| Ubuntu, and the GB10 box (DGX OS is Ubuntu on arm64) | `sudo apt install libopencv-dev opencv-data libgtest-dev pybind11-dev cmake` (`opencv-data` holds the cascade XML files) |
 | Anything else | `services/vision/scripts/build_opencv.sh` (core, imgproc, objdetect, imgcodecs, videoio into `~/.local/opencv`, about 5 minutes) |
 
 Then, from the repo root:

@@ -27,7 +27,7 @@ find_path(ZEG_GAZE_CASCADE_DIR haarcascade_frontalface_default.xml
     /opt/homebrew/share/opencv4/haarcascades
   NO_DEFAULT_PATH)
 if(NOT ZEG_GAZE_CASCADE_DIR)
-  message(WARNING "haarcascade_frontalface_default.xml not found; set ZEG_GAZE_CASCADES at run time")
+  message(WARNING "haarcascade_frontalface_default.xml not found (on Ubuntu: apt install opencv-data); set ZEG_GAZE_CASCADES at run time")
   set(ZEG_GAZE_CASCADE_DIR "")
 endif()
 message(STATUS "zeg-gaze cascades: ${ZEG_GAZE_CASCADE_DIR}")

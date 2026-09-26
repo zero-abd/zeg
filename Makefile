@@ -97,7 +97,7 @@ gateway-test:
 
 # ---- video review (services/vision, docs/12-video-review.md) ----------------------
 # C++17 + OpenCV Haar cascades. OpenCV itself comes from the system: `brew install
-# opencv` on a Mac, `sudo apt install libopencv-dev` on Linux and the GB10 box, or
+# opencv` on a Mac, `sudo apt install libopencv-dev opencv-data` on Linux and the GB10 box, or
 # services/vision/scripts/build_opencv.sh where neither is available.
 vision-setup:
 	$(PIP) install -q cmake ninja pybind11 av
