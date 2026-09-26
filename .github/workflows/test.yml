@@ -1,0 +1,28 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    # The agent and gateway suites, as `make test` runs them on a laptop.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: make setup
+      - run: make test
+
+  vision:
+    # Ubuntu on arm64, the same OS and architecture as the GB10 box (DGX OS), with
+    # OpenCV from apt exactly as services/vision/README.md tells a person to install it.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libopencv-dev libgtest-dev pybind11-dev python3-dev python3-venv cmake ninja-build
+      - run: make setup
+      - run: make test-vision

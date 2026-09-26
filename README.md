@@ -44,13 +44,15 @@ data-processing review and no per-interview fee. The reasoning is written up in
 
 ```mermaid
 flowchart LR
-    C["Candidate browser<br/>mic + speaker"] -- WebRTC --> G["Gateway<br/>aiohttp signaling, aiortc media,<br/>resample, playback + barge-in"]
+    C["Candidate browser<br/>mic + speaker,<br/>camera optional"] -- WebRTC --> G["Gateway<br/>aiohttp signaling, aiortc media,<br/>resample, playback + barge-in"]
     subgraph box["One Dell box, nothing leaves it"]
         G --> A["Agent<br/>conversation, interview engine,<br/>voice gate, memory, wall clock"]
         A -- "loopback WebSocket<br/>80 ms frames" --> M["Model process<br/>full-duplex speech model"]
         A --> S["Post-call scorer<br/>rubric, quotes, flags"]
+        G -- "video frames,<br/>worker thread" --> V["Video review (C++)<br/>OpenCV Haar cascades:<br/>face, eyes, gaze direction"]
     end
     S --> R["Recruiter report"]
+    V -- "spans for a human<br/>to watch, not scored" --> R
 ```
 
 Everything meets at one contract, [`services/agent/zeg/backends/base.py`](services/agent/zeg/backends/base.py).
@@ -61,6 +63,14 @@ whole stack above the model can be built and tested on a laptop.
 process split, the wire protocol and the frame clock are in
 [docs/11-runtime.md](docs/11-runtime.md).
 
+When the candidate sends their camera, the gateway hands each frame to
+[`services/vision`](services/vision), a C++ detector built on OpenCV's Haar cascades. It
+finds the face and the eyes, estimates where the candidate is looking from the pupil's
+offset and the head's turn, and marks spans for review: looking away from the screen for
+more than 5 s, no face, more than one face. They appear in the report under "Video
+review" with timestamps, as moments for a human to watch. They never reach the score.
+How it works and how well: [docs/12-video-review.md](docs/12-video-review.md).
+
 ## Tech stack
 
 | Part | Stack |
@@ -68,6 +78,7 @@ process split, the wire protocol and the frame clock are in
 | Agent (`services/agent`) | Python 3.9+, standard library only; pytest |
 | Model runtime (on the box) | PyTorch, torchaudio, Hugging Face Transformers, lhotse; Dell Pro Max with NVIDIA GB10 |
 | Gateway (`services/gateway`) | aiortc (WebRTC), aiohttp, PyAV resampling |
+| Video review (`services/vision`) | C++17, OpenCV Haar cascades (face, profile, eyes), CMake, GoogleTest, pybind11 |
 | Landing page (`web`) | Next.js 16, React 19, Tailwind CSS 4, Framer Motion |
 
 ## Barebone test, on your laptop, right now
@@ -104,6 +115,7 @@ make test      # agent and gateway test suites, no GPU needed
 make evals     # scorer against labelled transcripts
 make bias      # also: make redteam, make consent, make asr, make gate
 make web       # landing page dev server
+make vision    # build the C++ video review (needs OpenCV); make test-vision, make vision-eval
 ```
 
 ### What the mock is and is not
@@ -144,7 +156,9 @@ Built for a hackathon; see [plan.md](plan.md). The agent, the mock backend, the 
 the evals and the gateway's bridge, framing and playback are tested on a laptop. The
 model process (`runtime/model.py`) needs CUDA and is not covered by the laptop test
 suite; [docs/11-runtime.md](docs/11-runtime.md) keeps an honest tested-versus-untested
-table. Google Meet joining and gaze tracking are stretch goals.
+table. The video review is tested on a laptop against labelled clips
+([docs/12-video-review.md](docs/12-video-review.md)); its live path through a real
+browser call has not been run. Google Meet joining is a stretch goal.
 
 ## Layout
 
@@ -164,7 +178,8 @@ services/
     zeg/prompts.py          greeting, consent, interview prompt
     tests/
   speech/               model serving on the box
-  gateway/              WebRTC call joining, audio in and out
+  gateway/              WebRTC call joining, audio in and out, video to the review
+  vision/               C++ face and gaze review: Haar cascades, CLI, pybind11 module, eval
 web/                    landing page
 ```
 

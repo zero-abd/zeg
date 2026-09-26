@@ -5,7 +5,15 @@ PY      := $(CURDIR)/.venv/bin/python
 PIP     := $(CURDIR)/.venv/bin/pip
 BACKEND ?= mock
 
-.PHONY: help setup test demo web deck gateway-setup gateway gateway-test
+VISION  := services/vision
+VISION_BUILD := $(VISION)/build
+# Where OpenCV's CMake config lives, if CMake cannot find it on its own (a source build
+# from services/vision/scripts/build_opencv.sh goes to ~/.local/opencv).
+OPENCV_DIR ?= $(if $(wildcard $(HOME)/.local/opencv/lib/cmake/opencv4),$(HOME)/.local/opencv/lib/cmake/opencv4,)
+CMAKE   := $(if $(wildcard $(CURDIR)/.venv/bin/cmake),$(CURDIR)/.venv/bin/cmake,cmake)
+
+.PHONY: help setup test demo web deck gateway-setup gateway gateway-test \
+	vision-setup vision test-vision vision-eval-data vision-eval
 
 help:
 	@echo "make setup          create .venv and install dev deps"
@@ -18,6 +26,11 @@ help:
 	@echo "make gateway-setup  install the gateway's transport deps (aiortc, aiohttp)"
 	@echo "make gateway        run the WebRTC gateway (BACKEND=mock|gb10)"
 	@echo "make gateway-test   run the gateway test suite (no transport deps needed)"
+	@echo "make vision-setup   install the vision build tools (cmake, ninja, pybind11) into .venv"
+	@echo "make vision         build zeg-gaze: C++ core, CLI, Python module (needs OpenCV)"
+	@echo "make test-vision    GoogleTest suite plus the Python integration tests"
+	@echo "make vision-eval-data  download the labelled clips, generate the synthetic ones"
+	@echo "make vision-eval    precision/recall of flagged spans on the labelled clips"
 
 setup:
 	python3 -m venv .venv
@@ -81,3 +94,33 @@ gateway:
 # Runs without gateway-setup: the bridge/framing/playback tests do not import aiortc.
 gateway-test:
 	cd $(GATEWAY) && PYTHONPATH=.:$(CURDIR)/$(AGENT) $(PY) -m pytest -q
+
+# ---- video review (services/vision, docs/12-video-review.md) ----------------------
+# C++17 + OpenCV Haar cascades. OpenCV itself comes from the system: `brew install
+# opencv` on a Mac, `sudo apt install libopencv-dev` on Linux and the GB10 box, or
+# services/vision/scripts/build_opencv.sh where neither is available.
+vision-setup:
+	$(PIP) install -q cmake ninja pybind11 av
+
+vision:
+	$(CMAKE) -S $(VISION) -B $(VISION_BUILD) -DCMAKE_BUILD_TYPE=Release \
+		-DPython_EXECUTABLE=$(PY) $(if $(OPENCV_DIR),-DOpenCV_DIR=$(OPENCV_DIR),)
+	$(CMAKE) --build $(VISION_BUILD) --parallel
+
+test-vision: vision
+	$(VISION_BUILD)/zeg_gaze_tests
+	cd $(GATEWAY) && PYTHONPATH=.:$(CURDIR)/$(AGENT):$(CURDIR)/$(VISION_BUILD) $(PY) -m pytest -q tests/test_video_review.py
+	cd $(AGENT) && $(PY) -m pytest -q tests/test_video_review.py
+
+# The labelled clips are downloaded and generated, not committed. Real clips need PyAV
+# (make vision-setup); the synthetic ones are built from the face stills in the tests.
+STILLS := $(VISION)/tests/fixtures/stills
+vision-eval-data: vision
+	$(PY) $(VISION)/eval/fetch_clips.py
+	mkdir -p $(VISION)/eval/synth
+	$(VISION_BUILD)/zeg-gaze-synth --out $(VISION)/eval/synth \
+		--frontal $$(ls $(STILLS)/frontal_*.jpg | paste -sd, -) \
+		--profile $$(ls $(STILLS)/profile_*.jpg | paste -sd, -)
+
+vision-eval:
+	$(PY) $(VISION)/eval/eval.py --split test
