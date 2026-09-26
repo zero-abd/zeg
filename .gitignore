@@ -50,3 +50,4 @@ weights/
 
 # Session scratch
 .claude/scheduled_tasks.lock
+.vercel
