@@ -1,0 +1,8 @@
+.venv
+**/node_modules
+web/.next
+web/public/zeg-demo.mp4
+web/public/demo-poster.png
+web/public/demo.html
+zeg-pitch.pptx
+.env*

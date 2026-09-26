@@ -5,10 +5,11 @@ import { motion } from "framer-motion";
 import { GitHubIcon, Logo, REPO_URL } from "./ui";
 
 const links = [
+    { href: "#demo", label: "Demo" },
+    { href: "#architecture", label: "Architecture" },
     { href: "#on-device", label: "On-device" },
-    { href: "#how-it-works", label: "How it works" },
-    { href: "#cost", label: "Cost" },
     { href: "#limits", label: "Limits" },
+    { href: "#run-it", label: "Run it" },
 ];
 
 export default function Navbar() {
