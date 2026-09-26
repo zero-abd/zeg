@@ -6,3 +6,8 @@ build/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Copied from ../docs and ../services/gateway/web by scripts/copy-assets.mjs
+/public/zeg-demo.mp4
+/public/demo-poster.png
+/public/demo.html

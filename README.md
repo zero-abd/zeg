@@ -1,5 +1,7 @@
 # zeg
 
+**Live demo: https://zeg-app.vercel.app** (the landing page, the demo video and a read-only prepared demo of the candidate page; the model itself runs on the box).
+
 **An on-device AI interviewer for software engineering screening calls.** It joins a
 call, runs a technical screen, and hands a recruiter a 1-10 assessment with the quotes
 that justify it. Candidate audio never leaves the machine.

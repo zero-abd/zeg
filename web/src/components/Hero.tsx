@@ -126,7 +126,7 @@ export default function Hero() {
                     className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[13px] font-medium text-[rgba(255,255,255,0.6)] mb-8"
                 >
                     <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.6)] pulse-dot" />
-                    Runs on one box, on your premises
+                    Runs on one NVIDIA GB10 box, on your premises
                 </motion.div>
 
                 <h1 className="text-[clamp(2.4rem,6vw,4rem)] font-[800] leading-[1.08] tracking-[-0.03em] mb-6 text-balance">
@@ -166,12 +166,11 @@ export default function Hero() {
                     transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
                     className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
                 >
-                    <PrimaryButton href="#on-device">
+                    <PrimaryButton href="#demo">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <rect x="2" y="4" width="20" height="12" rx="2" />
-                            <path d="M7 20h10M12 16v4M6 10h.01M9.5 10h5" />
+                            <path d="M8 5v14l11-7z" />
                         </svg>
-                        Why on-device
+                        Watch the demo
                     </PrimaryButton>
                     <SecondaryButton href={REPO_URL} external>
                         <GitHubIcon />
