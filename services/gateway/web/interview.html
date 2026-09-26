@@ -3,70 +3,812 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>zeg Interview</title>
+<title>zeg — technical screen</title>
+<!--
+  The candidate page.
+
+  Two rules for anything added here.
+
+  1. Nothing on screen may claim something that is not true. Everything visible is
+     either a real signal (AnalyserNode energy, RTCPeerConnection state, the wall
+     clock) or copy explicitly marked as a prepared demo. The browser has no
+     transcript — turns go to the gateway's log, not down a data channel — so this
+     page does not pretend to show one.
+  2. The remote font is the only thing fetched from the network, and it is
+     cosmetic. If it fails, the system stack behind it takes over and every
+     control still works. Never put behaviour behind a remote asset: the box is
+     meant to survive on its own.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap" />
 <style>
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    padding: 24px; background: #0d1117; color: #e6edf3;
-    font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  /* ---- tokens --------------------------------------------------------- */
+  :root {
+    color-scheme: dark;
+
+    --ink-0: #08090a;      /* the room */
+    --ink-1: #0c0e0f;      /* panel */
+    --ink-2: #121516;      /* raised */
+    --line:  rgba(255,255,255,.07);
+    --line-2:rgba(255,255,255,.14);
+
+    --fg:    #ededed;
+    --fg-2:  #a1a1a1;
+    --fg-3:  #868a8c;
+
+    --teal:      #2dd4bf;
+    --teal-deep: #14b8a6;
+
+    --live: #f5a524;        /* one warm note, only ever the on-air state */
+    --bad:  #f87171;
+
+    --r-sm: 8px; --r-md: 10px; --r-lg: 14px;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 26px -18px rgba(0,0,0,.9);
+
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* A real scale, not three greys: 11 · 13 · 15 · 19 · 40. The jump between
+       body and display is what makes the stage read as the important thing. */
+    --step-1: 11px;   /* labels */
+    --step0:  13px;   /* supporting */
+    --step1:  15px;   /* body */
+    --step2:  19px;   /* section */
+    --step3:  40px;   /* stage display */
   }
-  .card { width: 100%; max-width: 560px; background: #161b22; border: 1px solid #30363d; border-radius: 16px; overflow: hidden; }
-  header { padding: 18px 22px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; }
-  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: #6e7681; }
-  .dot.live { background: #3fb950; box-shadow: 0 0 0 4px rgba(63,185,80,.18); }
-  .interviewer { aspect-ratio: 16/9; background: radial-gradient(120% 120% at 50% 30%, #1f6feb22, #161b22);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-  .avatar { width: 88px; height: 88px; border-radius: 50%; background: #1f6feb; display: grid; place-items: center; font-size: 38px; }
-  .interviewer p { margin: 0; color: #8b949e; font-size: 13px; text-align: center; padding: 0 24px; }
-  .listening { margin: 0 22px; display: flex; align-items: center; gap: 8px; color: #8b949e; font-size: 13px; }
-  .listening .pulse { width: 9px; height: 9px; border-radius: 50%; background: #3fb950; animation: lpulse 1.4s ease-in-out infinite; }
-  @keyframes lpulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
-  .listening .dots::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: ldots 1.6s steps(1, end) infinite; }
-  @keyframes ldots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
-  footer { padding: 16px 22px; border-top: 1px solid #30363d; display: flex; gap: 10px; align-items: center; }
-  button { font: inherit; font-weight: 600; border: 0; border-radius: 9px; padding: 10px 18px; cursor: pointer; color: #fff; }
-  #join { background: #238636; } #leave { background: #da3633; }
-  button:disabled { opacity: .45; cursor: default; }
-  #status { color: #8b949e; font-size: 13px; margin-left: auto; }
-  label.vid { color: #8b949e; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink-0);
+    color: var(--fg);
+    font: 400 var(--step1)/1.55 var(--sans);
+    font-optical-sizing: auto;
+    letter-spacing: -.005em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: flex; flex-direction: column;
+  }
+
+  /* one shared focus ring, everywhere */
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; border-radius: 4px; }
+
+  .label {
+    font-size: 11px; font-weight: 550; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--fg-3);
+  }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  /* ---- shell ---------------------------------------------------------- */
+  .room {
+    width: 100%; max-width: 1080px; margin: 0 auto; padding: 18px 20px 20px;
+    flex: 1; display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .topbar { display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand .name { font-size: var(--step1); font-weight: 650; letter-spacing: -.01em; }
+  .brand .sep { color: var(--fg-3); }
+  .brand .role { color: var(--fg-2); font-size: var(--step0); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+
+  .conn {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 11px 6px 9px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--ink-1); font-size: var(--step-1); font-weight: 600;
+    letter-spacing: .02em; color: var(--fg-2); white-space: nowrap;
+  }
+  .conn .bulb { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-3); flex: none; }
+  body[data-state="connecting"] .conn .bulb,
+  body[data-state="permission"] .conn .bulb { background: var(--teal); animation: breathe 1.6s ease-in-out infinite; }
+  body[data-state="live"] .conn { color: #f7d9a0; border-color: rgba(245,158,11,.34); background: rgba(245,158,11,.08); }
+  body[data-state="live"] .conn .bulb { background: var(--live); box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+  body[data-state="error"] .conn { color: #f9b4b4; border-color: rgba(248,113,113,.34); background: rgba(248,113,113,.07); }
+  body[data-state="error"] .conn .bulb { background: var(--bad); }
+  @keyframes breathe { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+
+  /* ---- layout --------------------------------------------------------- */
+  .grid { flex: 1; display: grid; gap: 14px; grid-template-columns: minmax(0,1fr) 292px; align-items: stretch; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0,1fr); } }
+
+  .panel {
+    background: var(--ink-1); border: 1px solid var(--line);
+    border-radius: var(--r-lg); box-shadow: var(--shadow);
+  }
+
+  /* ---- stage ---------------------------------------------------------- */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+  .stage {
+    position: relative; flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 30px; padding: 44px 34px 46px; min-height: 420px;
+    overflow: hidden;
+  }
+  /* faint sampled field, drawn not fetched */
+  .stage::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,.14) 1px, transparent 1px);
+    background-size: 30px 30px;
+    -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 12%, transparent 76%);
+    mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 12%, transparent 76%);
+    opacity: .5;
+  }
+
+  .orb { position: relative; width: min(440px, 82vw, 50vh); aspect-ratio: 1; flex: none; }
+  /* an error has nothing to visualise; let the alert be the whole message */
+  body[data-state="error"] .orb { display: none; }
+  .orb canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .orb .core {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 7px; text-align: center;
+    pointer-events: none;
+  }
+  .orb .clock { font-size: 34px; font-weight: 400; letter-spacing: -.03em; color: #fff;
+    opacity: 0; transition: opacity .35s; }
+  .orb .budget { font-size: var(--step-1); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--fg-3); opacity: 0; transition: opacity .35s; }
+  body[data-state="live"] .orb .clock, body[data-state="live"] .orb .budget,
+  body[data-state="ended"] .orb .clock, body[data-state="ended"] .orb .budget { opacity: 1; }
+  .orb .glyph { color: var(--fg-3); opacity: 1; transition: opacity .35s; }
+  body[data-state="live"] .orb .glyph, body[data-state="ended"] .orb .glyph { opacity: 0; }
+
+  .say { max-width: 44ch; text-align: center; position: relative; }
+  .say h2 {
+    margin: 0 0 12px; font-size: var(--step3); line-height: 1.08;
+    font-weight: 600; letter-spacing: -.035em; color: #fff;
+  }
+  .say p { margin: 0; color: var(--fg-2); font-size: var(--step1); line-height: 1.6; }
+  .say .who {
+    display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px;
+    font-size: 11px; font-weight: 550; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--fg-3);
+  }
+  .say .who .bulb { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* which stage block is visible is a pure function of body[data-state] */
+  .stage [data-when] { display: none; }
+  body[data-state="idle"]       .stage [data-when~="idle"],
+  body[data-state="permission"] .stage [data-when~="permission"],
+  body[data-state="connecting"] .stage [data-when~="connecting"],
+  body[data-state="live"]       .stage [data-when~="live"],
+  body[data-state="ended"]      .stage [data-when~="ended"],
+  body[data-state="error"]      .stage [data-when~="error"] { display: block; }
+  .stage .say[data-when] { display: none; }
+  body[data-state="idle"]       .stage .say[data-when~="idle"],
+  body[data-state="permission"] .stage .say[data-when~="permission"],
+  body[data-state="connecting"] .stage .say[data-when~="connecting"],
+  body[data-state="live"]       .stage .say[data-when~="live"],
+  body[data-state="ended"]      .stage .say[data-when~="ended"],
+  body[data-state="error"]      .stage .say[data-when~="error"] { display: block; }
+
+  /* the interviewer / you line, swapped by real analyser energy */
+  #turn { min-height: 21px; }
+  #turn .opt { display: none; align-items: center; gap: 8px; justify-content: center; }
+  #turn[data-turn="agent"] .opt-agent,
+  #turn[data-turn="you"]   .opt-you,
+  #turn[data-turn="idle"]  .opt-idle,
+  #turn[data-turn="both"]  .opt-both { display: inline-flex; }
+  #turn .opt-agent { color: var(--teal); }
+  #turn .opt-you   { color: var(--fg); }
+  #turn .opt-both  { color: var(--live); }
+
+  /* connecting steps — the three things the client actually knows it did */
+  .steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 7px;
+    justify-items: start; width: max-content; margin-inline: auto; }
+  .steps li { display: flex; align-items: center; gap: 9px; font-size: var(--step0); color: var(--fg-3); }
+  .steps li .tick { width: 14px; height: 14px; flex: none; }
+  .steps li .tick circle { fill: none; stroke: currentColor; stroke-width: 1.6; opacity: .45; }
+  .steps li .tick path { display: none; }
+  .steps li[data-done="1"] { color: var(--fg-2); }
+  .steps li[data-done="1"] .tick { color: var(--teal); }
+  .steps li[data-done="1"] .tick circle { opacity: .85; }
+  .steps li[data-done="1"] .tick path { display: block; }
+
+  /* ---- error ---------------------------------------------------------- */
+  .alert {
+    width: 100%; max-width: 480px; text-align: left; border-radius: var(--r-md);
+    border: 1px solid rgba(248,113,113,.3); background: rgba(248,113,113,.06);
+    padding: 16px 18px; display: flex; gap: 13px; position: relative;
+  }
+  .alert svg { flex: none; color: var(--bad); margin-top: 2px; }
+  .alert h2 { margin: 0 0 5px; font-size: var(--step2); font-weight: 600; letter-spacing: -.01em; }
+  .alert p { margin: 0; color: var(--fg-2); font-size: var(--step0); }
+  .alert .detail {
+    margin-top: 9px; font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+    word-break: break-word;
+  }
+  .alert .detail:empty { display: none; }
+
+  /* ---- rail ----------------------------------------------------------- */
+  .rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .rail section { padding: 16px 17px 17px; }
+  .rail h3 { margin: 0 0 15px; }
+
+  .meter { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: baseline; }
+  .meter + .meter { margin-top: 17px; }
+  .meter .who { font-size: 14px; font-weight: 500; color: var(--fg); letter-spacing: -.01em; }
+  .meter .val { font-size: 15px; color: var(--fg-3); transition: color .15s; }
+  .meter.hot .val { color: var(--fg); }
+  .meter.agent.hot .val { color: var(--teal); }
+  .meter .track {
+    grid-column: 1 / -1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.06);
+    overflow: hidden; margin-top: 9px;
+  }
+  .meter .fill {
+    height: 100%; width: 0%; border-radius: 2px; background: #8a8d8f;
+    transition: width .07s linear;
+  }
+  .meter.you .fill { background: #d4d4d4; }
+  .meter.agent .fill { background: linear-gradient(90deg, var(--teal-deep), var(--teal)); }
+  .meter .hint {
+    grid-column: 1 / -1; font-size: 12px; line-height: 1.5; color: var(--fg-3);
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+
+  .facts { list-style: none; margin: 0; padding: 0; display: grid; }
+  .facts li {
+    display: flex; gap: 11px; font-size: 12.5px; color: var(--fg-3); line-height: 1.5;
+    padding: 13px 0; border-top: 1px solid var(--line);
+  }
+  .facts li:first-child { padding-top: 0; border-top: 0; }
+  .facts li:last-child { padding-bottom: 0; }
+  .facts li svg { flex: none; color: var(--teal); margin-top: 1px; }
+  .facts b {
+    display: block; color: var(--fg); font-weight: 550; font-size: 13.5px;
+    letter-spacing: -.01em; margin-bottom: 3px;
+  }
+  .facts .host { font-family: var(--mono); font-size: 11.5px; color: var(--fg-2); }
+
+  /* ---- controls ------------------------------------------------------- */
+  .controls {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 16px; border-top: 1px solid var(--line);
+    background: rgba(255,255,255,.012);
+  }
+  button {
+    font: 550 13.5px/1 var(--sans); border: 1px solid transparent;
+    border-radius: var(--r-sm); padding: 0 18px; height: 38px; cursor: pointer;
+    color: #04100e; letter-spacing: -.008em; display: inline-flex; align-items: center;
+    background: linear-gradient(180deg, #4ce0ce, var(--teal));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 2px rgba(0,0,0,.5);
+    transition: background .12s ease, border-color .12s ease, color .12s ease,
+                box-shadow .12s ease, opacity .12s ease;
+  }
+  button:hover:not(:disabled) { background: linear-gradient(180deg, #6fe8d9, #3bd9c5); }
+  button:active:not(:disabled) {
+    background: var(--teal-deep);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.28);
+  }
+  button.ghost, button.stop {
+    background: var(--ink-2); box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  button.ghost { border-color: var(--line-2); color: var(--fg); }
+  button.ghost:hover:not(:disabled) { background: #1a1e1f; border-color: rgba(255,255,255,.26); }
+  button.stop { border-color: rgba(248,113,113,.32); color: #fca5a5; }
+  button.stop:hover:not(:disabled) { background: rgba(248,113,113,.11); border-color: rgba(248,113,113,.55); }
+  button:disabled { background: var(--ink-2); color: var(--fg-3);
+    border-color: var(--line-2); cursor: not-allowed; box-shadow: none; }
+  button[hidden] { display: none; }
+
+  .toggle {
+    display: inline-flex; align-items: center; gap: 9px; font-size: var(--step0);
+    color: var(--fg-2); cursor: pointer; user-select: none;
+  }
+  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle .box {
+    width: 17px; height: 17px; border-radius: 5px; border: 1px solid var(--line-2);
+    background: var(--ink-2); display: grid; place-items: center; flex: none;
+    transition: background .15s, border-color .15s;
+  }
+  .toggle .box svg { opacity: 0; color: var(--ink-0); transition: opacity .12s; }
+  .toggle input:checked + .box { background: var(--teal); border-color: var(--teal); }
+  .toggle input:checked + .box svg { opacity: 1; }
+  .toggle input:focus-visible + .box { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .toggle input:disabled ~ * { opacity: .45; }
+  .toggle .sub { color: var(--fg-3); font-size: 12px; }
+
+  .controls .spacer { margin-left: auto; }
+  .controls .hold { font-size: 12px; color: var(--fg-3); }
+  @media (max-width: 720px) { .controls .hold { display: none; } }
+
+  /* local self-view, only when the camera is actually on */
+  .selfview {
+    position: absolute; right: 16px; bottom: 16px; width: 132px; aspect-ratio: 4/3;
+    border-radius: var(--r-md); border: 1px solid var(--line-2); background: #000;
+    object-fit: cover; transform: scaleX(-1); display: none;
+  }
+  .selfview.on { display: block; }
+
+  /* ---- assessment ----------------------------------------------------- */
+  .assessment { padding: 20px 22px 22px; }
+  .assessment[hidden] { display: none; }
+  .assessment .head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .assessment .head h3 { margin: 0; font-size: var(--step2); font-weight: 600; letter-spacing: -.015em;
+    text-transform: none; color: var(--fg); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase;
+    border: 1px dashed rgba(245,158,11,.5); color: #f3c583; background: rgba(245,158,11,.07);
+  }
+  .assessment .body { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 24px; align-items: start; }
+  @media (max-width: 640px) { .assessment .body { grid-template-columns: minmax(0,1fr); gap: 14px; } }
+  .assessment .score { text-align: center; padding-right: 24px; border-right: 1px solid var(--line); }
+  @media (max-width: 640px) { .assessment .score { text-align: left; padding: 0 0 14px; border-right: 0; border-bottom: 1px solid var(--line); } }
+  .assessment .score .n { font-size: 46px; font-weight: 300; letter-spacing: -.03em; line-height: 1; color: var(--fg); }
+  .assessment .score .n span { font-size: 19px; color: var(--fg-3); font-weight: 400; }
+  .assessment .score .band { margin-top: 7px; }
+  .assessment ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+  .assessment li { font-size: var(--step0); color: var(--fg-2); line-height: 1.5; }
+  .assessment li b { color: var(--fg); font-weight: 600; }
+  .assessment .fine {
+    margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--fg-3);
+  }
+
+  .colophon { text-align: center; font-size: 12px; color: var(--fg-3); padding-bottom: 4px; }
+
+  @media (max-width: 560px) {
+    :root { --step3: 22px; }
+    .room { padding: 16px 14px 20px; }
+    .stage { padding: 30px 18px 26px; min-height: 0; gap: 20px; }
+    .controls { padding: 13px 14px; }
+    .controls button { flex: 1 1 auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important; }
+  }
 </style>
 </head>
-<body>
-  <div class="card">
-    <header><span class="dot" id="dot"></span><h1>zeg Interview</h1></header>
-    <div class="interviewer">
-      <div class="avatar">🤖</div>
-      <p id="prompt">Click join. Your interviewer will greet you, disclose that it is an AI, and ask for recording consent.</p>
+<body data-state="idle">
+  <div class="room">
+
+    <div class="topbar">
+      <div class="brand">
+        <!-- the mark: four level bars, two voices at once -->
+        <svg width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="24" height="24" rx="7" stroke="#2dd4bf" stroke-width="2"/>
+          <path d="M8.5 11.5v5M12.2 8.5v11M15.8 10.5v7M19.5 13v2" stroke="#2dd4bf"
+                stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="name">zeg</span>
+        <span class="sep" aria-hidden="true">/</span>
+        <span class="role">Technical screen</span>
+      </div>
+      <div class="conn" role="status" aria-live="polite">
+        <span class="bulb" aria-hidden="true"></span><span id="conn-text">Not connected</span>
+      </div>
     </div>
-    <div id="listening" class="listening" hidden><span class="pulse"></span> Listening<span class="dots"></span></div>
-    <footer>
-      <button id="join">Join</button>
-      <button id="leave" disabled>Leave</button>
-      <label class="vid"><input type="checkbox" id="video" /> send video</label>
-      <span id="status">Ready.</span>
-    </footer>
-    <div id="assessment" hidden style="padding:18px 22px;border-top:1px solid #30363d;">
-      <div style="font-weight:600;margin-bottom:8px;">Screening assessment</div>
-      <div style="font-size:34px;font-weight:700;color:#3fb950;">7<span style="font-size:16px;color:#8b949e;font-weight:500;"> / 10</span></div>
-      <ul style="color:#c9d1d9;font-size:13px;margin:10px 0 0;padding-left:18px;line-height:1.7;">
-        <li>Debugging: walked through a real race-condition fix with concrete before/after throughput.</li>
-        <li>Ownership: clear on what they personally did versus the rest of the team.</li>
-        <li>Tradeoffs: named what was given up (strict cross-shard ordering) and the fallout.</li>
-        <li>Recommendation: advance to a system-design round.</li>
-      </ul>
-      <div style="color:#6e7681;font-size:11px;margin-top:10px;">Prepared demo assessment. A human recruiter makes the decision.</div>
+
+    <div class="grid">
+      <!-- ================= stage + controls, one object ================= -->
+      <div class="panel main">
+      <div class="stage">
+        <div class="orb">
+          <canvas id="viz" aria-hidden="true"></canvas>
+          <div class="core">
+            <div class="glyph">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 3.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3Z"/>
+                <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>
+              </svg>
+            </div>
+            <div class="clock num" id="clock">00:00</div>
+            <div class="budget">of 15:00</div>
+          </div>
+        </div>
+
+        <div class="say" data-when="idle">
+          <h2>Ready when you are</h2>
+          <p>Your interviewer will say it is an AI, tell you the call is recorded, and ask
+             if that is okay before anything else happens.</p>
+        </div>
+
+        <div class="say" data-when="permission">
+          <h2>Waiting on your microphone</h2>
+          <p>Your browser is asking for permission. Choose <b>Allow</b> to continue —
+             nothing is captured until you do.</p>
+        </div>
+
+        <div class="say" data-when="connecting">
+          <h2>Connecting</h2>
+          <p>Setting up a direct audio link with this machine.</p>
+          <ul class="steps">
+            <li data-step="mic" data-done="0">
+              <svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M4.8 8.2 7 10.4l4.2-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Microphone ready
+            </li>
+            <li data-step="ice" data-done="0">
+              <svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M4.8 8.2 7 10.4l4.2-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Network route gathered
+            </li>
+            <li data-step="answer" data-done="0">
+              <svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M4.8 8.2 7 10.4l4.2-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Interviewer answered
+            </li>
+          </ul>
+        </div>
+
+        <div class="say" data-when="live">
+          <div id="turn" data-turn="idle">
+            <span class="opt opt-idle who"><span class="bulb"></span> On air</span>
+            <span class="opt opt-agent who"><span class="bulb"></span> Interviewer speaking</span>
+            <span class="opt opt-you who"><span class="bulb"></span> Listening to you</span>
+            <span class="opt opt-both who"><span class="bulb"></span> You cut in — it stopped</span>
+          </div>
+          <h2>You're live</h2>
+          <p>Speak normally. Interrupt whenever you want: the interviewer stops talking
+             the moment you start.</p>
+        </div>
+
+        <div class="say" data-when="ended">
+          <h2>Interview ended</h2>
+          <p>Your microphone is off and the audio link is closed. A human reviewer takes
+             it from here.</p>
+        </div>
+
+        <div data-when="error">
+          <div class="alert" role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2v.3"/>
+            </svg>
+            <div>
+              <h2 id="err-title">Something went wrong</h2>
+              <p id="err-body">Try joining again.</p>
+              <div class="detail num" id="err-detail"></div>
+            </div>
+          </div>
+        </div>
+
+        <video class="selfview" id="selfview" autoplay playsinline muted></video>
+      </div>
+
+      <!-- ================= controls ================= -->
+      <div class="controls">
+        <button id="join" type="button">Join interview</button>
+        <button id="cancel" type="button" class="ghost" hidden>Cancel</button>
+        <button id="leave" type="button" class="stop" hidden>End interview</button>
+        <button id="retry" type="button" class="ghost" hidden>Try again</button>
+
+        <label class="toggle" for="video">
+          <input type="checkbox" id="video" />
+          <span class="box"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.2 6.3 4.7 8.8 9.8 3.4"/></svg></span>
+          <span>Send camera <span class="sub">optional — the screen is audio only</span></span>
+        </label>
+
+        <span class="spacer"></span>
+        <span class="hold">One interview at a time on this box.</span>
+      </div>
+      </div>
+
+      <!-- ================= rail ================= -->
+      <div class="rail">
+        <section class="panel">
+          <h3 class="label">Audio</h3>
+          <div class="meter agent">
+            <span class="who">Interviewer</span><span class="val num" id="agent-val">—</span>
+            <div class="track"><div class="fill" id="agent-fill"></div></div>
+          </div>
+          <div class="meter you">
+            <span class="who">You</span><span class="val num" id="you-val">—</span>
+            <div class="track"><div class="fill" id="you-fill"></div></div>
+          </div>
+          <div class="meter"><span class="hint" id="meter-hint">Levels are read from the live
+            audio in this tab. Nothing is measured before you join.</span></div>
+        </section>
+
+        <section class="panel">
+          <h3 class="label">What this page does</h3>
+          <ul class="facts">
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3.2 19 6v5.4c0 4.2-2.8 7.4-7 9-4.2-1.6-7-4.8-7-9V6l7-2.8Z"/><path d="M9.2 12.1l2 2 3.6-3.9"/></svg>
+              <span><b>Your audio has one destination</b>
+                It goes to <span class="host" id="host">this machine</span> and nowhere else.
+                No relay server is configured and no cloud transcription is in the path.</span>
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 12h3l2.5-6 3.5 13 2.5-7H20"/></svg>
+              <span><b>Interrupt any time</b>
+                Start talking and the interviewer stops mid-sentence, like a person would.</span>
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>
+              <span><b>Consent comes first</b>
+                The first thing you hear is the AI disclosure and the recording request.
+                Say no and the call ends and goes to a person.</span>
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.6V12l3 1.8"/></svg>
+              <span><b>Fifteen minutes, hard stop</b>
+                The interviewer holds a wall clock so every candidate gets the same run.</span>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
+
+    <!-- ================= prepared demo assessment ================= -->
+    <div class="panel assessment" id="assessment" hidden>
+      <div class="head">
+        <h3>Screening assessment</h3>
+        <span class="chip">Prepared demo</span>
+      </div>
+      <div class="body">
+        <div class="score">
+          <div class="n">7<span> / 10</span></div>
+          <div class="band label">Advance</div>
+        </div>
+        <ul>
+          <li><b>Debugging.</b> Walked through a real race-condition fix with concrete
+              before/after throughput.</li>
+          <li><b>Ownership.</b> Clear on what they personally did versus the rest of the team.</li>
+          <li><b>Tradeoffs.</b> Named what was given up (strict cross-shard ordering) and the fallout.</li>
+          <li><b>Recommendation.</b> Advance to a system-design round.</li>
+        </ul>
+      </div>
+      <div class="fine">Prepared demo assessment. A human recruiter makes the decision.</div>
+    </div>
+
+    <div class="colophon">Every model runs on one machine in your own rack. The recording and the
+      transcript stay on it.</div>
   </div>
+
   <audio id="remote" autoplay></audio>
 
 <script>
 (() => {
+  "use strict";
   const $ = (id) => document.getElementById(id);
-  const setStatus = (t) => { $("status").textContent = t; };
-  let pc, stream, meterRAF, audioCtx;
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* --- state machine ---------------------------------------------------
+     Every piece of stage copy lives in the markup; this only flips the
+     attribute the CSS keys off, so a state can never render half-applied. */
+  const CONN_TEXT = {
+    idle: "Not connected",
+    permission: "Waiting for mic",
+    connecting: "Connecting",
+    live: "On air — recording",
+    ended: "Call ended",
+    error: "Not connected",
+  };
+  let state = "idle";
+  function setState(next) {
+    state = next;
+    document.body.dataset.state = next;
+    $("conn-text").textContent = CONN_TEXT[next] || next;
+    $("join").hidden = !(next === "idle");
+    $("cancel").hidden = !(next === "permission" || next === "connecting");
+    $("leave").hidden = next !== "live";
+    $("retry").hidden = !(next === "ended" || next === "error");
+    $("video").disabled = next !== "idle" && next !== "ended" && next !== "error";
+  }
+  function fail(title, body, detail) {
+    $("err-title").textContent = title;
+    $("err-body").textContent = body;
+    $("err-detail").textContent = detail || "";
+    setState("error");
+  }
+  function step(name, done) {
+    const li = document.querySelector('.steps li[data-step="' + name + '"]');
+    if (li) li.dataset.done = done ? "1" : "0";
+  }
+
+  /* --- elapsed ---------------------------------------------------------- */
+  let startedAt = 0, clockTimer = null;
+  const mmss = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  };
+  function startClock() {
+    startedAt = Date.now();
+    const tick = () => { $("clock").textContent = mmss(Date.now() - startedAt); };
+    tick();
+    clockTimer = setInterval(tick, 1000);
+  }
+  function stopClock() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
+
+  /* --- meters: real AnalyserNodes on both directions ---------------------
+     Each analyser is pulled through a muted gain node so the graph is driven
+     even though neither branch is meant to be audible (the remote audio is
+     played by the <audio> element, not by this graph). */
+  let audioCtx = null, localAn = null, remoteAn = null, vizRAF = 0;
+  let localSrc = null, remoteSrc = null;
+
+  function ensureCtx() {
+    if (!audioCtx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new C();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+  function attachAnalyser(streamLike) {
+    const ctx = ensureCtx();
+    const src = ctx.createMediaStreamSource(streamLike);
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    an.smoothingTimeConstant = 0.72;
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    src.connect(an);
+    an.connect(mute);
+    mute.connect(ctx.destination);
+    return { src, an };
+  }
+  function meterLocal(track) {
+    try {
+      const a = attachAnalyser(new MediaStream([track]));
+      localSrc = a.src; localAn = a.an;
+    } catch (e) { /* meters are decoration; never let one break the call */ }
+  }
+  function meterRemote(stream) {
+    try {
+      const a = attachAnalyser(stream);
+      remoteSrc = a.src; remoteAn = a.an;
+    } catch (e) { /* ditto */ }
+  }
+
+  /** RMS of the time-domain buffer, 0..1, lightly compressed for display. */
+  const buf = new Uint8Array(1024);
+  function energy(an) {
+    if (!an) return 0;
+    an.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < an.fftSize; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+    const rms = Math.sqrt(sum / an.fftSize);
+    return Math.min(1, Math.pow(rms * 3.4, 0.75));
+  }
+
+  /* --- the visual -------------------------------------------------------
+     One circle. The interviewer's energy blooms outward in teal, yours blooms
+     inward in white, so barge-in is literally visible: both at once. Every
+     tick length comes from an AnalyserNode; when the room is quiet, so is this. */
+  const cv = $("viz"), cx2d = cv.getContext("2d");
+  const TICKS = 88;
+  const outer = new Float32Array(TICKS), inner = new Float32Array(TICKS);
+  const wave = new Uint8Array(2048);
+  let dpr = 1, W = 0, H = 0;
+
+  function sizeCanvas() {
+    const r = cv.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.max(1, Math.round(r.width));
+    H = Math.max(1, Math.round(r.height));
+    cv.width = W * dpr; cv.height = H * dpr;
+    cx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", sizeCanvas);
+
+  /** Per-tick waveform amplitude.
+      Time domain, not spectrum: a narrowband voice (or the mock backend's tone)
+      piles all of its spectral energy into a couple of bins and would light one
+      lonely arc. Slicing the waveform instead gives every tick something to say,
+      so the ring answers the whole signal rather than one corner of it. */
+  function waveform(an, out) {
+    const k = REDUCED.matches ? 0.16 : 0.4;
+    if (!an) { for (let i = 0; i < TICKS; i++) out[i] *= 0.86; return; }
+    const n = an.fftSize;
+    an.getByteTimeDomainData(wave.subarray(0, n));
+    for (let i = 0; i < TICKS; i++) {
+      const lo = Math.floor((i * n) / TICKS);
+      const hi = Math.max(lo + 1, Math.floor(((i + 1) * n) / TICKS));
+      let m = 0;
+      for (let b = lo; b < hi; b++) {
+        const v = Math.abs(wave[b] - 128);
+        if (v > m) m = v;
+      }
+      const v = Math.min(1, (m / 128) * 1.5);
+      out[i] += (v - out[i]) * k;
+    }
+  }
+
+  let agentLvl = 0, youLvl = 0, lastMeterPaint = 0;
+  function paint(now) {
+    vizRAF = requestAnimationFrame(paint);
+    if (!W) sizeCanvas();
+
+    const live = state === "live";
+    const eAgent = live ? energy(remoteAn) : 0;
+    const eYou = live ? energy(localAn) : 0;
+    agentLvl += (eAgent - agentLvl) * 0.3;
+    youLvl += (eYou - youLvl) * 0.3;
+
+    waveform(live ? remoteAn : null, outer);
+    waveform(live ? localAn : null, inner);
+
+    const cxp = W / 2, cyp = H / 2;
+    const R = Math.min(W, H) * 0.345;
+    cx2d.clearRect(0, 0, W, H);
+
+    // Halo, proportional to how loudly the interviewer is talking. Its outer stop
+    // has to land inside the canvas or the fill clips into a visible square.
+    if (agentLvl > 0.02 && !REDUCED.matches) {
+      const g = cx2d.createRadialGradient(cxp, cyp, R * 0.5, cxp, cyp, Math.min(W, H) * 0.5);
+      g.addColorStop(0, "rgba(45,212,191," + (0.2 * agentLvl).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(45,212,191,0)");
+      cx2d.fillStyle = g;
+      cx2d.fillRect(0, 0, W, H);
+    }
+
+    // the ring itself: one hairline, brightening with your own voice
+    cx2d.beginPath();
+    cx2d.arc(cxp, cyp, R, 0, Math.PI * 2);
+    cx2d.strokeStyle = "rgba(237,237,237," + (0.13 + 0.4 * youLvl).toFixed(3) + ")";
+    cx2d.lineWidth = 1;
+    cx2d.stroke();
+
+    cx2d.beginPath();
+    cx2d.arc(cxp, cyp, R * 0.62, 0, Math.PI * 2);
+    cx2d.strokeStyle = "rgba(237,237,237,.045)";
+    cx2d.stroke();
+
+    // Ticks grow out of the ring only when there is energy to grow them, so a
+    // silent room is a single clean circle rather than a busy sunburst.
+    const maxOut = Math.min(W, H) * 0.125;
+    const maxIn = R * 0.46;
+    cx2d.lineCap = "round";
+    for (let i = 0; i < TICKS; i++) {
+      const o = outer[i], n = inner[i];
+      const a = (i / TICKS) * Math.PI * 2 - Math.PI / 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+
+      // outward: the interviewer
+      if (o > 0.012) {
+        const lo = o * maxOut;
+        cx2d.beginPath();
+        cx2d.moveTo(cxp + ca * (R + 4), cyp + sa * (R + 4));
+        cx2d.lineTo(cxp + ca * (R + 4 + lo), cyp + sa * (R + 4 + lo));
+        cx2d.strokeStyle = "rgba(45,212,191," + (0.18 + 0.72 * o).toFixed(3) + ")";
+        cx2d.lineWidth = 2;
+        cx2d.stroke();
+      }
+
+      // inward: you
+      if (n > 0.012) {
+        const li = n * maxIn;
+        cx2d.beginPath();
+        cx2d.moveTo(cxp + ca * (R - 4), cyp + sa * (R - 4));
+        cx2d.lineTo(cxp + ca * (R - 4 - li), cyp + sa * (R - 4 - li));
+        cx2d.strokeStyle = "rgba(237,237,237," + (0.1 + 0.4 * n).toFixed(3) + ")";
+        cx2d.lineWidth = 1.5;
+        cx2d.stroke();
+      }
+    }
+
+    // meters + whose turn it is, at a readable rate rather than 60 Hz
+    if (now - lastMeterPaint > 90) {
+      lastMeterPaint = now;
+      const pct = (v) => Math.round(Math.min(1, v) * 100);
+      const a = live && agentLvl > 0.07, y = live && youLvl > 0.07;
+      $("agent-fill").style.width = pct(agentLvl) + "%";
+      $("you-fill").style.width = pct(youLvl) + "%";
+      $("agent-val").textContent = live ? pct(agentLvl) + "%" : "—";
+      $("you-val").textContent = live ? pct(youLvl) + "%" : "—";
+      $("agent-val").parentNode.classList.toggle("hot", a);
+      $("you-val").parentNode.classList.toggle("hot", y);
+      if (live) $("turn").dataset.turn = a && y ? "both" : a ? "agent" : y ? "you" : "idle";
+    }
+  }
+  sizeCanvas();
+  vizRAF = requestAnimationFrame(paint);
+
+  /* --- WebRTC ----------------------------------------------------------
+     Unchanged contract: getUserMedia -> RTCPeerConnection -> wait for ICE ->
+     POST /offer -> setRemoteDescription. Only the reporting around it is new. */
+  let pc = null, stream = null;
+
+  /* join() awaits five times. Cancelling or ending bumps this, and every
+     continuation checks it, so an abandoned handshake can never walk the UI back
+     into a live state after its peer connection has been torn down. */
+  let gen = 0;
+  const stale = (mine) => mine !== gen;
 
   async function waitIceComplete(pc) {
     if (pc.iceGatheringState === "complete") return;
@@ -81,49 +823,92 @@
     });
   }
 
-  function startMeter(track) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = audioCtx.createMediaStreamSource(new MediaStream([track]));
-    const an = audioCtx.createAnalyser();
-    an.fftSize = 512;
-    src.connect(an);
-    const data = new Uint8Array(an.fftSize);
-    const loop = () => {
-      an.getByteTimeDomainData(data);
-      let peak = 0;
-      for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] - 128));
-      $("level").style.width = Math.min(100, (peak / 128) * 160) + "%";
-      meterRAF = requestAnimationFrame(loop);
-    };
-    loop();
+  /** getUserMedia failures are the most common thing a candidate hits. */
+  function micFailure(e) {
+    const name = e && e.name;
+    const detail = (name ? name + ": " : "") + ((e && e.message) || "");
+    if (!window.isSecureContext) {
+      return fail("This page needs a secure connection",
+        "Browsers only allow microphone access over HTTPS or on localhost. Open the " +
+        "interview link your recruiter sent rather than a plain http:// address.", detail);
+    }
+    if (name === "NotAllowedError" || name === "SecurityError") {
+      return fail("Microphone access was blocked",
+        "Allow the microphone for this page in your browser's address bar, then try again.", detail);
+    }
+    if (name === "NotFoundError" || name === "OverconstrainedError") {
+      return fail("No microphone found",
+        "Plug in or enable a microphone, then try again.", detail);
+    }
+    if (name === "NotReadableError") {
+      return fail("Your microphone is in use",
+        "Another app or tab has the microphone. Close it and try again.", detail);
+    }
+    return fail("Could not start your microphone", "Try again, or switch browsers.", detail);
   }
 
   async function join() {
-    $("join").disabled = true;
-    setStatus("Requesting mic…");
+    const mine = ++gen;
+    setState("permission");
+    step("mic", false); step("ice", false); step("answer", false);
     const wantVideo = $("video").checked;
+
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
         video: wantVideo ? { width: 640, height: 480, frameRate: 15 } : false,
       });
     } catch (e) {
-      setStatus("Mic/cam permission needed: " + e.message);
-      $("join").disabled = false;
+      if (stale(mine)) return;
+      micFailure(e);
       return;
+    }
+    if (stale(mine)) { stream.getTracks().forEach((t) => t.stop()); stream = null; return; }
+
+    setState("connecting");
+    step("mic", true);
+    const mic = stream.getAudioTracks()[0];
+    if (mic) meterLocal(mic);
+    if (wantVideo && stream.getVideoTracks().length) {
+      $("selfview").srcObject = stream;
+      $("selfview").classList.add("on");
     }
 
     pc = new RTCPeerConnection();
-    pc.ontrack = (e) => { $("remote").srcObject = e.streams[0]; };
+    const mypc = pc;                 // cleanup() nulls the shared handle
+    pc.ontrack = (e) => {
+      $("remote").srcObject = e.streams[0];
+      meterRemote(e.streams[0]);
+    };
     pc.onconnectionstatechange = () => {
-      setStatus("Connection: " + pc.connectionState);
-      if (["failed", "disconnected", "closed"].includes(pc.connectionState)) cleanup();
+      // A connection we already tore down still emits "closed"; ignore it.
+      if (mypc !== pc || stale(mine)) return;
+      const cs = mypc.connectionState;
+      if (state === "live" || state === "connecting") {
+        $("conn-text").textContent = cs === "connected" ? CONN_TEXT[state] : "Connection: " + cs;
+      }
+      if (["failed", "disconnected", "closed"].includes(cs)) {
+        const wasLive = state === "live";
+        gen++;
+        cleanup();
+        if (wasLive) {
+          endCall("The call dropped",
+            "The audio link to the interviewer closed. You can join again.");
+        } else {
+          fail("The audio link failed",
+            "The connection to this machine could not be kept open. Check the network and try again.",
+            "RTCPeerConnection: " + cs);
+        }
+      }
     };
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-    setStatus("Connecting…");
     await pc.setLocalDescription(await pc.createOffer());
+    if (stale(mine)) return;
     await waitIceComplete(pc);
+    if (stale(mine)) return;
+    step("ice", true);
+
     let answer;
     try {
       const resp = await fetch("/offer", {
@@ -131,39 +916,100 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
       });
-      if (!resp.ok) { setStatus("Server: " + (await resp.text())); cleanup(); return; }
+      if (stale(mine)) return;
+      if (!resp.ok) {
+        const raw = await resp.text();
+        let msg = raw;
+        try { const j = JSON.parse(raw); if (j && j.error) msg = j.error; } catch (_) {}
+        cleanup();
+        if (resp.status === 409) {
+          fail("The interviewer is on another call",
+            "This box runs one interview at a time. Wait a moment and try again.",
+            "HTTP 409 — " + msg);
+        } else {
+          fail("The interviewer could not take the call",
+            "The server refused the connection. Try again, and tell your recruiter if it keeps happening.",
+            "HTTP " + resp.status + " — " + msg);
+        }
+        return;
+      }
       answer = await resp.json();
     } catch (e) {
-      setStatus("Signaling failed: " + e.message); cleanup(); return;
+      if (stale(mine)) return;
+      cleanup();
+      fail("Could not reach the interviewer",
+        "The request to set up the call did not get through. Check your connection and try again.",
+        (e && e.message) || String(e));
+      return;
     }
+
     await pc.setRemoteDescription(answer);
-    $("leave").disabled = false;
-    $("dot").classList.add("live");
-    $("listening").hidden = false;
-    $("prompt").textContent = "You're live. Speak naturally — you can interrupt the interviewer at any time.";
-    setStatus("Live.");
+    if (stale(mine)) return;
+    step("answer", true);
+    setState("live");
+    startClock();
   }
 
+  /** Tear down every resource. Safe to call more than once. */
   function cleanup() {
-    if (meterRAF) cancelAnimationFrame(meterRAF);
-    try { audioCtx && audioCtx.close(); } catch (e) {}
+    stopClock();
+    try { if (localSrc) localSrc.disconnect(); } catch (e) {}
+    try { if (remoteSrc) remoteSrc.disconnect(); } catch (e) {}
+    localSrc = remoteSrc = localAn = remoteAn = null;
+    agentLvl = youLvl = 0;
+    outer.fill(0); inner.fill(0);
+    $("agent-fill").style.width = "0%"; $("you-fill").style.width = "0%";
+    $("agent-val").textContent = "—"; $("you-val").textContent = "—";
+    try { if (audioCtx) audioCtx.close(); } catch (e) {}
+    audioCtx = null;
     if (stream) stream.getTracks().forEach((t) => t.stop());
-    try { pc && pc.close(); } catch (e) {}
-    $("listening").hidden = true;
-    $("dot").classList.remove("live");
-    $("join").disabled = false;
-    $("leave").disabled = true;
+    stream = null;
+    $("selfview").srcObject = null;
+    $("selfview").classList.remove("on");
+    try { if (pc) pc.close(); } catch (e) {}
+    pc = null;
+    $("turn").dataset.turn = "idle";
+  }
+
+  function endCall(title, body) {
+    setState("ended");
+    if (title) {
+      document.querySelector('.say[data-when~="ended"] h2').textContent = title;
+      document.querySelector('.say[data-when~="ended"] p').textContent = body;
+    }
+    $("assessment").hidden = false;
+    $("meter-hint").textContent = "The call is over, so there is no audio left to measure.";
   }
 
   function leave() {
+    gen++;
     cleanup();
-    setStatus("Interview ended.");
-    $("prompt").textContent = "Thanks — the interview has ended.";
-    $("assessment").hidden = false;
+    endCall(null, null);
+  }
+
+  /** Back out of a handshake that has not become a call yet. */
+  function cancel() {
+    gen++;
+    cleanup();
+    reset();
+  }
+
+  function reset() {
+    $("assessment").hidden = true;
+    $("clock").textContent = "00:00";
+    $("meter-hint").textContent =
+      "Levels are read from the live audio in this tab. Nothing is measured before you join.";
+    setState("idle");
   }
 
   $("join").addEventListener("click", join);
   $("leave").addEventListener("click", leave);
+  $("cancel").addEventListener("click", cancel);
+  $("retry").addEventListener("click", () => { reset(); join(); });
+  window.addEventListener("pagehide", cleanup);
+
+  try { $("host").textContent = location.host || "this machine"; } catch (e) {}
+  setState("idle");
 })();
 </script>
 </body>
